@@ -2,7 +2,7 @@
 
 /**
  * Cooking mode's hands-free row (Figma 2.3 "cook controls"): the chosen voice's 28px
- * MascotAvatar plus "Say “next” or “repeat” to keep going" (13 Medium, ink-soft). Tapping it
+ * MascotAvatar plus "Talk to Leo · ask anything, or say what’s next" (13 Medium, ink-soft). Tapping it
  * toggles conversation mode; turning it on also starts a voice session if needed and opens
  * the mic right away (inside the tap), so the cook never has to touch the screen again. When
  * it's on but no session is running (e.g. after a reload), the tap starts listening instead
@@ -36,8 +36,8 @@ export function HandsFreePill({ className }: { className?: string }) {
   else if (idleOn) text = "Hands-free on · tap to start listening";
   else if (rest === "blocked") text = "Hands-free needs a tap · use the mic";
   else if (rest) text = "Hands-free resting · tap the mic to talk";
-  else if (listening) text = `${persona.name}’s listening · say “next” or “repeat”`;
-  else text = "Say “next” or “repeat” to keep going";
+  else if (listening) text = `${persona.name}’s listening · just talk`;
+  else text = `Talk to ${persona.name} · ask anything, or say what’s next`;
 
   return (
     <button
@@ -48,7 +48,7 @@ export function HandsFreePill({ className }: { className?: string }) {
         idleOn
           ? "Start hands-free listening"
           : on
-            ? "Hands-free on. Say next or repeat to keep going. Tap to turn off"
+            ? "Hands-free on. Ask anything or say what's next. Tap to turn off"
             : "Hands-free off. Tap to turn on"
       }
       onClick={() => (idleOn ? setHandsFreeMode(true, { startSession: true }) : toggleHandsFree({ startSession: true }))}

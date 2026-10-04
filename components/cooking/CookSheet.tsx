@@ -20,8 +20,8 @@ export const sheetPrimaryClass = cn(
 
 /**
  * Figma 2.3 "cook controls": the white bottom sheet (radius 28 on top, the design's only
- * shadow) with the running timer, the hands-free row (the voice's mascot + "Say “next” or
- * “repeat” to keep going"), then back (cream) / primary (avocado) / mic (tomato: voice).
+ * shadow) with the running timer, the hands-free row (the voice's mascot + "Talk to Leo · ask
+ * anything"), then back (cream) / primary (avocado) / mic (tomato: voice).
  *
  * It is `sticky` at the end of the page's full-height column: it stays on screen while the
  * steps scroll, and once you reach the end it sits below the last step instead of covering

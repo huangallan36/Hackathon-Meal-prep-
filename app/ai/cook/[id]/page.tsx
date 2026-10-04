@@ -219,10 +219,11 @@ function CookView({ recipe }: { recipe: Recipe }) {
       {mode === "overview" ? (
         <CookSheet>
           {total > 0 ? (
-            <button type="button" onClick={() => beginSteps(recipe)} className={sheetPrimaryClass}>
-              Start cooking
-              <img src={COOK_ICON.next} alt="" width={18} height={18} className="block size-[18px]" />
-            </button>
+            // First: everything this recipe needs (have / need / where to buy); cooking starts from there.
+            <Link href={`/ai/groceries/${recipe.id}`} className={sheetPrimaryClass}>
+              <ShoppingBasket className="size-5" aria-hidden />
+              What I need
+            </Link>
           ) : recipe.sourceUrl ? (
             <a href={recipe.sourceUrl} target="_blank" rel="noopener noreferrer" className={sheetPrimaryClass}>
               <ExternalLink className="size-5" />

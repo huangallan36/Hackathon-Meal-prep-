@@ -15,6 +15,7 @@ import { copyText, peekRecipe } from "@/lib/kitchen/client";
 import { extrasFor, useGroceryExtras } from "@/lib/kitchen/extras";
 import { capitalize, groceryLine, groceryText, naturalList, plural } from "@/lib/kitchen/format";
 import { CHEAPEST_STORE, groceryKey, groceryPlan, quantityLabel } from "@/lib/kitchen/groceries";
+import { beginSteps } from "@/lib/cooking/actions";
 import { cookHref, FRIDGE_SCAN_HREF, RECIPES_HREF } from "@/lib/kitchen/routes";
 import { dedupeKey } from "@/lib/kitchen/sanitize";
 import { loadRecipe } from "@/lib/recipes/client";
@@ -166,8 +167,11 @@ function GroceryView({ recipe }: { recipe: Recipe }) {
     else toast("Couldn't copy here. Try a screenshot instead.", "warning");
   }
 
+  // Straight into step one: the recipe's overview already led here ("What I need").
   function startCooking() {
-    useKitchen.getState().startCooking(recipe);
+    const k = useKitchen.getState();
+    if (k.activeRecipe?.id !== recipe.id) k.startCooking(recipe);
+    if (useKitchen.getState().stepIndex < 0) beginSteps(recipe);
     router.push(cookHref(recipe.id));
   }
 
