@@ -544,6 +544,18 @@ export function afterWakePhrase(message: string, assistantName = ""): string {
     .trim();
 }
 
+const START_COOKING = new RegExp(
+  `^(?:(?:yeah|yes|yep|ok|okay|alright|sure|cool|great|perfect|awesome|sounds good|so|now|then)\\s+)*` +
+    `(?:(?:lets|let us|time to|ready to|i want to|im ready to|i wanna|we can|can we)\\s+)?` +
+    `(?:start cooking|start|begin|cook(?: it| this| that)?|get cooking|get started|start the steps|do it|do this|make it|make this|go)` +
+    `(?:\\s+(?:now|then|please|already))*$`,
+);
+
+/** "Yeah let's cook", "let's start", "ok let's do it": start the open recipe's steps (whole utterance only) */
+export function startCookingIntent(message: string): boolean {
+  return START_COOKING.test(normalizeUtterance(message));
+}
+
 /** "Where can I get groceries?", "which store is closest?", "is anywhere open?" */
 const WHERE_TO_SHOP = /\b(where|which|closest|nearest|nearby|cheapest|open)\b.*\b(grocer(y|ies)|stores?|shop|supermarket|buy)\b|\b(stores?|supermarket)\b.*\b(near|close|open|cheapest)\b/;
 

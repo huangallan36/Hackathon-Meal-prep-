@@ -202,6 +202,11 @@ async function startCooking(recipeId: number | null): Promise<string | null> {
     navigateTo("/ai/recipes");
     return null;
   }
+  // Already open (its overview, its shopping list, or mid-cook): "let's cook" means the steps.
+  // Re-opening it would reset it to the overview, which is where people got stuck.
+  const open = k.activeRecipe;
+  const seen = getCurrentPath() === `/ai/cook/${id}` || getCurrentPath() === `/ai/groceries/${id}` || groceriesOffered.has(id);
+  if (open?.id === id && open.steps.length && (seen || k.stepIndex >= 0)) return beginOrResume();
   let recipe: Recipe | null = null;
   try {
     recipe = await loadRecipe(id);
@@ -243,6 +248,17 @@ function ingredientsLine(recipe: Recipe): string {
   const need = list ? ` You'll need ${list}${extra}${pantry}.` : "";
   const have = main.noScan ? "" : main.need.length === 0 ? " You've got all of it." : "";
   return `${intro}${need}${have} Say next when you're ready for step one.`;
+}
+
+/** Into the steps of the open recipe: step one if not started, else where they left off */
+function beginOrResume(): string {
+  const k = useKitchen.getState();
+  const r = k.activeRecipe;
+  if (!r || !r.steps.length) return NO_RECIPE_LINE;
+  if (k.finishedRecipeId === r.id) useKitchen.setState({ finishedRecipeId: null });
+  if (k.stepIndex < 0) k.goToStep(0);
+  showCookScreen(r.id);
+  return speakStep(Math.max(0, useKitchen.getState().stepIndex));
 }
 
 /** Recipes whose missing ingredients Sous already pointed out this session */
