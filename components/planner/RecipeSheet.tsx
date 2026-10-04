@@ -51,6 +51,19 @@ export function RecipeSheet({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  // While open: the page behind stops scrolling, and focus returns to the tapped card on close.
+  useEffect(() => {
+    if (!open) return;
+    const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const scroller = document.getElementById("sous-scroll");
+    const overflow = scroller?.style.overflowY ?? "";
+    if (scroller) scroller.style.overflowY = "hidden";
+    return () => {
+      if (scroller) scroller.style.overflowY = overflow;
+      returnFocus?.focus({ preventScroll: true });
+    };
+  }, [open]);
+
   function handleDragEnd(_: unknown, info: PanInfo) {
     if (info.offset.y > 110 || info.velocity.y > 600) onClose();
   }
@@ -61,7 +74,7 @@ export function RecipeSheet({
         <motion.div
           key="planner-backdrop"
           aria-hidden
-          className="fixed inset-0 z-[55] bg-ink/40 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[55] touch-none bg-ink/40 backdrop-blur-[2px]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -149,7 +162,7 @@ function SheetBody({
               {formatCount(upvotes)} yums
             </span>
           )}
-          <IconButton label="Close" onClick={onClose} autoFocus className="absolute right-3 top-3 bg-surface/90 backdrop-blur">
+          <IconButton label="Close" onClick={onClose} autoFocus className="absolute right-3 top-3 size-11 bg-surface/90 backdrop-blur">
             <X className="size-5" />
           </IconButton>
         </div>
@@ -170,7 +183,7 @@ function SheetBody({
         {recipe.summary && <p className="mt-4 text-[15px] leading-relaxed text-ink-soft">{recipe.summary}</p>}
         {recipe.nutrition?.calories ? (
           <p className="mt-2 text-sm text-ink-soft">
-            About <span className="font-semibold text-ink">{recipe.nutrition.calories} kcal</span> and{" "}
+            About <span className="font-semibold text-ink">{Math.round(recipe.nutrition.calories)} kcal</span> and{" "}
             <span className="font-semibold text-ink">{Math.round(recipe.nutrition.protein)} g protein</span> per serving
           </p>
         ) : null}

@@ -179,6 +179,7 @@ async function liveSearch(query: string, options: SearchOptions): Promise<Recipe
     try {
       filled = (await withDeadline(fetchRecipesBulk(incomplete), left)).filter((r) => r.steps.length > 0);
     } catch (err) {
+      backOff(err);
       console.warn(`[recipes:search] bulk fill skipped: ${describeError(err)}`);
     }
   }

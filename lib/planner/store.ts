@@ -30,6 +30,30 @@ interface PlannerState {
 
 const MAX_PLANNED = 40;
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Persisted plan -> well-formed meals only (runs during hydration, so it must be defined first) */
+function revivePlan(value: unknown): PlannedMeal[] {
+  if (!Array.isArray(value)) return [];
+  const out: PlannedMeal[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const p = item as Partial<PlannedMeal>;
+    if (typeof p.id !== "string" || typeof p.date !== "string" || !ISO_DATE.test(p.date)) continue;
+    if (!Number.isSafeInteger(p.recipeId) || typeof p.title !== "string") continue;
+    out.push({
+      id: p.id,
+      date: p.date,
+      recipeId: p.recipeId as number,
+      title: p.title,
+      image: typeof p.image === "string" ? p.image : "",
+      readyInMinutes: typeof p.readyInMinutes === "number" && Number.isFinite(p.readyInMinutes) ? p.readyInMinutes : 30,
+      addedAt: typeof p.addedAt === "number" && Number.isFinite(p.addedAt) ? p.addedAt : 0,
+    });
+  }
+  return out.slice(-MAX_PLANNED);
+}
+
 export const usePlanner = create<PlannerState>()(
   persist(
     (set, get) => ({
@@ -56,7 +80,13 @@ export const usePlanner = create<PlannerState>()(
       },
       removePlanned: (id) => set((s) => ({ plan: s.plan.filter((p) => p.id !== id) })),
     }),
-    { name: storageKey("planner"), storage: persistStorage },
+    {
+      name: storageKey("planner"),
+      storage: persistStorage,
+      partialize: (s) => ({ plan: s.plan }),
+      // Whatever is in localStorage, the week strip only ever sees well-formed meals.
+      merge: (persisted, current) => ({ ...current, plan: revivePlan((persisted as { plan?: unknown } | null)?.plan) }),
+    },
   ),
 );
 

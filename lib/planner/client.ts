@@ -63,6 +63,8 @@ function isRecipe(value: unknown): value is Recipe {
     Number.isSafeInteger(r.id) &&
     typeof r.title === "string" &&
     typeof r.image === "string" &&
+    typeof r.readyInMinutes === "number" &&
+    typeof r.servings === "number" &&
     Array.isArray(r.ingredients) &&
     Array.isArray(r.steps) &&
     r.steps.length > 0 &&
@@ -88,8 +90,18 @@ function sanitize(res: unknown, fallbackQuery: string): PlannerSearchResponse {
       similar: typeof r.labels?.similar === "string" ? r.labels.similar : "",
     },
     anchor: typeof r.anchor === "string" ? r.anchor : null,
-    pairs: r.pairs && typeof r.pairs === "object" ? r.pairs : {},
+    pairs: sanitizePairs(r.pairs),
+    partial: r.partial === true,
   };
+}
+
+function sanitizePairs(value: unknown): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  if (!value || typeof value !== "object") return out;
+  for (const [id, list] of Object.entries(value as Record<string, unknown>)) {
+    if (Array.isArray(list)) out[id] = list.filter((x): x is string => typeof x === "string").slice(0, 3);
+  }
+  return out;
 }
 
 /**
@@ -105,8 +117,11 @@ export async function fetchPlannerSearch(query: string, options: SearchOptions, 
     const data = sanitize(res, query);
     const result: PlannerResult = { data, origin: "server" };
     remember([...data.matches, ...data.combinations, ...data.similar]);
-    if (memo.size >= MEMO_MAX) memo.delete(memo.keys().next().value ?? "");
-    memo.set(key, result);
+    // Partial answers (live lookup skipped) are shown but not kept: a later visit may do better.
+    if (!data.partial) {
+      if (memo.size >= MEMO_MAX) memo.delete(memo.keys().next().value ?? "");
+      memo.set(key, result);
+    }
     return result;
   } catch {
     return { data: searchRecipes(query, options), origin: "local" };
