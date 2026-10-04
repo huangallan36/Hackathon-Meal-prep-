@@ -2,12 +2,86 @@
 
 import { BellRing, Plus, Timer, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useSyncExternalStore } from "react";
 import { addMinute, cancelTimer, remainingSeconds } from "@/lib/cooking/actions";
 import { useNow } from "@/lib/cooking/clock";
 import { formatClock } from "@/lib/cooking/durations";
 import { useKitchen } from "@/lib/stores/kitchen";
 import { cn } from "@/lib/utils";
 import { ProgressRing } from "./ProgressRing";
+
+/* Whether the full timer card is on screen; the header chip only shows when it is not. */
+let cardVisible = false;
+const visibilityListeners = new Set<() => void>();
+function setCardVisible(visible: boolean) {
+  if (visible === cardVisible) return;
+  cardVisible = visible;
+  for (const l of visibilityListeners) l();
+}
+function subscribeVisibility(listener: () => void) {
+  visibilityListeners.add(listener);
+  return () => visibilityListeners.delete(listener);
+}
+function useCardVisible(): boolean {
+  return useSyncExternalStore(subscribeVisibility, () => cardVisible, () => false);
+}
+
+/** Ref callback: track the timer card against the scroll container (minus the sticky header). */
+let observedCard: Element | null = null;
+function observeCard(el: HTMLDivElement | null) {
+  if (!el || typeof IntersectionObserver === "undefined") return;
+  observedCard = el;
+  const io = new IntersectionObserver(
+    (entries) => {
+      // Several entries can be queued before delivery: the last one is the current state.
+      const latest = entries[entries.length - 1];
+      if (latest && observedCard === el) setCardVisible(latest.isIntersecting);
+    },
+    { root: document.getElementById("sous-scroll"), rootMargin: "-110px 0px 0px 0px" },
+  );
+  io.observe(el);
+  return () => {
+    io.disconnect();
+    if (observedCard === el) {
+      observedCard = null;
+      setCardVisible(false);
+    }
+  };
+}
+
+/**
+ * Compact countdown for the sticky header, so the timer stays visible while scrolling a long
+ * step (shown only while the full timer card is scrolled away). Tapping it scrolls back up.
+ */
+export function HeaderTimer() {
+  const timer = useKitchen((s) => s.timer);
+  const visible = useCardVisible();
+  const running = Boolean(timer && !timer.doneAt);
+  const now = useNow(running && !visible);
+  if (!timer || visible) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => document.getElementById("sous-scroll")?.scrollTo({ top: 0, behavior: "smooth" })}
+      aria-label={timer.doneAt ? `${timer.label} timer done` : `${timer.label} timer, ${formatClock(remainingSeconds(timer, now))} left`}
+      className={cn(
+        "inline-flex h-11 items-center gap-1.5 rounded-pill pl-1.5 pr-3 text-sm font-semibold tabular-nums text-white transition active:scale-95 animate-pop",
+        timer.doneAt ? "bg-accent shadow-accent" : "bg-ink shadow-soft",
+      )}
+    >
+      {timer.doneAt ? (
+        <span className="flex size-8 items-center justify-center">
+          <BellRing className="size-4" />
+        </span>
+      ) : (
+        <ProgressRing progress={remainingSeconds(timer, now) / Math.max(1, timer.totalSec)} size={32} stroke={3} barClassName="stroke-accent">
+          <Timer className="size-3.5 text-white/80" />
+        </ProgressRing>
+      )}
+      {timer.doneAt ? "Done" : formatClock(remainingSeconds(timer, now))}
+    </button>
+  );
+}
 
 /**
  * The cook page's kitchen timer: live countdown, +1 min, cancel; a "Time's up" state
@@ -30,6 +104,7 @@ export function TimerPill({ className }: { className?: string }) {
           className={className}
         >
           <div
+            ref={observeCard}
             role={timer.doneAt ? "alert" : "timer"}
             className={cn(
               "flex items-center gap-3 rounded-tile px-3 py-2.5 text-white transition-colors duration-300",

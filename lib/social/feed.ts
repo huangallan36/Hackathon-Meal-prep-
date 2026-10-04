@@ -19,16 +19,21 @@ export interface ProfileStats {
   upvotes: number;
 }
 
+/**
+ * Stats for a profile. Live touches: following someone adds 1 to their followers,
+ * and the demo user's "following" counts the cooks they follow in the app.
+ */
 export function profileStats(
   user: SocialUser,
   posts: SocialPost[],
   myUpvotes: Record<string, true>,
-  iFollow: boolean,
+  following: Record<string, true>,
 ): ProfileStats {
+  const iFollow = Boolean(following[user.handle]);
   return {
     posts: posts.length,
     followers: user.followers + (iFollow && !user.isMe ? 1 : 0),
-    following: user.following,
+    following: user.following + (user.isMe ? Object.keys(following).length : 0),
     upvotes: posts.reduce((sum, p) => sum + upvotesOf(p, myUpvotes), 0),
   };
 }

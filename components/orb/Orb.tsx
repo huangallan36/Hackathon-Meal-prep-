@@ -58,6 +58,11 @@ const BLOB_2 = "radial-gradient(circle at 30% 72%, rgba(214,55,22,0.85) 0%, rgba
 const SHIMMER = "conic-gradient(from 0deg, transparent 0 64%, rgba(255,255,255,0.75) 78%, transparent 90%)";
 const HIGHLIGHT =
   "radial-gradient(circle at 32% 22%, rgba(255,251,240,0.95) 0%, rgba(255,240,214,0.55) 11%, rgba(255,230,190,0) 32%), radial-gradient(circle at 70% 85%, rgba(120,24,6,0.38) 0%, rgba(120,24,6,0) 52%)";
+/** Shading scales with the orb so the 60px floating orb isn't muddy */
+const innerShade = (size: number) =>
+  `inset 0 ${-Math.round(size * 0.06)}px ${Math.round(size * 0.14)}px rgba(140,30,10,0.3), inset 0 ${Math.round(size * 0.05)}px ${Math.round(size * 0.12)}px rgba(255,240,214,0.35)`;
+const dropShadow = (size: number) =>
+  `0 ${Math.round(size * 0.1)}px ${Math.round(size * 0.22)}px -${Math.round(size * 0.08)}px rgba(242,84,45,0.7)`;
 const GLOW = "radial-gradient(circle, rgba(242,84,45,0.5) 0%, rgba(255,138,92,0.28) 36%, rgba(255,199,110,0) 68%)";
 
 /** Smooth pseudo-noise in [-1, 1] from a few incommensurate sines */
@@ -122,7 +127,8 @@ export function Orb({ status = "idle", size = 120, onClick, className, label, ac
     bump.current *= Math.exp(-dt / 200);
 
     scale.set(L.scale + breath + talk + bump.current * 0.035);
-    rotate.set((rotate.get() + (L.spin * dt) / 1000) % 360);
+    // Wrap at 3600 so the x1.6 and x2 derived rotations also land on whole turns (no visible jump).
+    rotate.set((rotate.get() + (L.spin * dt) / 1000) % 3600);
     glow.set(Math.min(1, L.glow + talk * 2.5));
   });
 
@@ -170,34 +176,36 @@ export function Orb({ status = "idle", size = 120, onClick, className, label, ac
 
       <motion.span
         aria-hidden
-        className="absolute inset-0 overflow-hidden rounded-full"
-        style={{
-          scale,
-          background: BODY,
-          boxShadow:
-            "inset 0 -12px 28px rgba(140,30,10,0.35), inset 0 10px 24px rgba(255,240,214,0.45), 0 18px 40px -14px rgba(242,84,45,0.7)",
-        }}
+        className="absolute inset-0 rounded-full"
+        style={{ scale, boxShadow: dropShadow(size) }}
+      />
+      {/* The mask forces Safari to clip the composited swirl layers to the circle */}
+      <motion.span
+        aria-hidden
+        className="absolute inset-0 overflow-hidden rounded-full will-change-transform [mask-image:radial-gradient(white,black)]"
+        style={{ scale, background: BODY }}
       >
         <motion.span
-          className="absolute -inset-[30%] opacity-70 mix-blend-soft-light"
+          className="absolute -inset-[30%] opacity-70 mix-blend-soft-light will-change-transform"
           style={{ background: SWIRL, rotate, filter: `blur(${Math.round(size * 0.08)}px)` }}
         />
         <motion.span
-          className="absolute -inset-[15%]"
+          className="absolute -inset-[15%] will-change-transform"
           style={{ background: BLOB, rotate, filter: `blur(${Math.round(size * 0.05)}px)` }}
         />
         <motion.span
-          className="absolute -inset-[15%] opacity-80"
+          className="absolute -inset-[15%] opacity-80 will-change-transform"
           style={{ background: BLOB_2, rotate: counterRotate, filter: `blur(${Math.round(size * 0.06)}px)` }}
         />
         <motion.span
-          className="absolute -inset-[10%] mix-blend-overlay"
+          className="absolute -inset-[10%] mix-blend-overlay will-change-transform"
           style={{ background: SHIMMER, rotate: shimmerRotate, filter: `blur(${Math.round(size * 0.04)}px)` }}
           initial={false}
           animate={{ opacity: status === "thinking" ? 1 : 0 }}
           transition={{ duration: 0.5 }}
         />
         <span className="absolute inset-0 rounded-full" style={{ background: HIGHLIGHT }} />
+        <span className="absolute inset-0 rounded-full" style={{ boxShadow: innerShade(size) }} />
         <span className="absolute inset-0 rounded-full ring-1 ring-inset ring-white/25" />
       </motion.span>
 

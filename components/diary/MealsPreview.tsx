@@ -45,7 +45,7 @@ export function MealsPreview({
           href={href}
           className="-my-3 -mr-2 inline-flex h-11 items-center gap-0.5 rounded-pill px-2 text-sm font-semibold text-accent transition active:scale-95"
         >
-          Open diary
+          Full day
           <ChevronRight className="size-4" />
         </Link>
       </div>

@@ -14,15 +14,22 @@ export interface DetectedIngredient {
   confidence: "high" | "medium" | "low";
 }
 
+/** Accents left over after NFD normalization ("jalapeño" -> "jalapeno") */
+const COMBINING_MARKS = new RegExp("[\\u0300-\\u036f]", "g");
+
 const JUNK = new Set(["", "none", "unknown", "food", "ingredient", "ingredients", "item", "items", "n/a"]);
 
 /**
- * "  3 Ripe Tomatoes (vine) " -> "ripe tomatoes". Returns null when nothing usable is left.
+ * "  3 Ripe Tomatoes (vine) " -> "ripe tomatoes", "Jalapeño" -> "jalapeno".
+ * Returns null when nothing usable is left.
  * Keeps letters, digits inside words, spaces, hyphens, apostrophes and "&".
  */
 export function normalizeIngredientName(input: unknown): string | null {
   if (typeof input !== "string") return null;
   const name = input
+    .slice(0, 200)
+    .normalize("NFD")
+    .replace(COMBINING_MARKS, "")
     .toLowerCase()
     .replace(/\(.*?\)/g, " ")
     .replace(/[^a-z0-9\s'&-]/g, " ")
@@ -35,7 +42,7 @@ export function normalizeIngredientName(input: unknown): string | null {
 }
 
 /** Loose identity so "egg" / "eggs" and "tomato" / "tomatoes" collapse to one chip */
-function dedupeKey(name: string): string {
+export function dedupeKey(name: string): string {
   if (name.endsWith("ies")) return `${name.slice(0, -3)}y`;
   if (name.endsWith("oes")) return name.slice(0, -2);
   if (name.endsWith("s") && !name.endsWith("ss")) return name.slice(0, -1);

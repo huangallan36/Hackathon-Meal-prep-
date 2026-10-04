@@ -9,10 +9,11 @@ import { MealsPreview } from "@/components/diary/MealsPreview";
 import { MonthCalendar } from "@/components/diary/MonthCalendar";
 import { NutrientGrid } from "@/components/diary/NutrientGrid";
 import { stagger } from "@/components/diary/stagger";
+import { WeekChart } from "@/components/diary/WeekChart";
 import { WeekStrip } from "@/components/diary/WeekStrip";
 import { IconButton } from "@/components/ui/Button";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
-import { currentStreak, dayTotals, formatWeekRange, longDayLabel, relativeDayLabel } from "@/lib/diary/stats";
+import { currentStreak, dayTotals, formatWeekRange, kcalByDate, longDayLabel, relativeDayLabel } from "@/lib/diary/stats";
 import { effectiveSelection, useDiaryView } from "@/lib/diary/view";
 import { lastUserLogAt, loggedDates, useDiary } from "@/lib/stores/diary";
 import type { ISODate } from "@/lib/types";
@@ -117,6 +118,16 @@ export default function DiaryPage() {
         <MacroBars totals={totals} goals={goals} className="animate-fade-up" style={stagger(4)} />
         <NutrientGrid totals={totals} goals={goals} estimated={microsEstimated} className="animate-fade-up" style={stagger(5)} />
         <ActivityRow activity={dayActivity} className="animate-fade-up" style={stagger(6)} />
+        <WeekChart
+          days={week.days}
+          kcalByDay={kcalByDate(entries)}
+          goal={goals.calories}
+          selected={selected}
+          today={today}
+          onSelect={(d) => select(d)}
+          className="animate-fade-up"
+          style={stagger(7)}
+        />
         <MonthCalendar
           key={selected.slice(0, 7)}
           today={today}
@@ -124,7 +135,7 @@ export default function DiaryPage() {
           initialMonth={selected}
           onOpenDay={openDay}
           className="animate-fade-up"
-          style={stagger(7)}
+          style={stagger(8)}
         />
       </div>
     </>

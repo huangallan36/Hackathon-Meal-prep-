@@ -236,6 +236,13 @@ function describeState(ctx: ChatContext): string {
   return lines.join("\n");
 }
 
+/**
+ * Every turn is a function call (an app tool or "reply"). In testing, Flash-Lite in AUTO
+ * mode often talked about an action ("let's peek in your fridge") without calling it;
+ * with mode ANY it went 8/8 on the demo scenarios.
+ */
+export const FORCE_CALL = true;
+
 export interface PromptOptions {
   /** Force a function call every turn (mode ANY + the reply tool). */
   forceCall?: boolean;
@@ -297,9 +304,6 @@ ${describeState(ctx)}
 Raw JSON (stepIndex is zero-based, -1 means not started):
 ${state}`;
 }
-
-/** Every turn is a function call (reply or an app tool). Flash-Lite picks text-only far less often this way. */
-export const FORCE_CALL = true;
 
 type ChatConfig = Omit<GenerateContentConfig, "abortSignal" | "thinkingConfig">;
 

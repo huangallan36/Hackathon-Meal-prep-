@@ -51,7 +51,7 @@ export function SnapViewfinder() {
 export function MealPhoto({ src, onRetake }: { src: string; onRetake: () => void }) {
   return (
     <div className="relative h-[210px] w-full overflow-hidden rounded-card bg-cream-deep shadow-card animate-pop">
-      <img src={src} alt="Your meal" className="size-full object-cover" />
+      <SmartImage src={src} alt="Your meal" className="size-full" />
       <button
         type="button"
         onClick={onRetake}

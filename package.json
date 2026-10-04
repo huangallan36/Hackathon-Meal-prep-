@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed": "node scripts/seed-recipes.mjs",
+    "avatars": "node scripts/gen-avatars.mjs"
   },
   "dependencies": {
     "@google/genai": "2.27.0",

@@ -3,7 +3,8 @@
 import { Sparkles } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
-import { SmartImage } from "@/components/ui/Misc";
+import { FridgeHero } from "./FridgeHero";
+import { FridgePhoto } from "./FridgePhoto";
 
 const HINTS = ["Checking the shelves", "Spotting the veggies", "Reading the dairy drawer", "Counting what's cookable"];
 
@@ -26,7 +27,16 @@ export function ScanningPhoto({ src, label = "Gemini is looking..." }: { src: st
 
   return (
     <div className="relative overflow-hidden rounded-card bg-ink shadow-lift" role="status" aria-live="polite">
-      <SmartImage src={src} alt="Your fridge photo" className="aspect-[4/5] w-full opacity-90" />
+      <FridgePhoto
+        src={src}
+        alt="Your fridge photo"
+        className="aspect-[4/5] w-full opacity-90"
+        fallback={
+          <span className="flex size-full items-center justify-center bg-cream-deep">
+            <FridgeHero className="h-auto w-3/4" />
+          </span>
+        }
+      />
 
       {/* Vignette so the overlays read on bright photos */}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-ink/20 via-transparent to-ink/70" />

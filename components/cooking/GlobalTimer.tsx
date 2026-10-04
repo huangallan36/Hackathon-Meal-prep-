@@ -15,8 +15,9 @@ import { ProgressRing } from "./ProgressRing";
  * App-wide kitchen timer, rendered by AppShell on every screen.
  * - Rings (chime, vibration, toast, Sous) when the countdown hits zero, on any screen,
  *   including right after a reload if the timer expired while the app was closed.
- * - Off the cook page it shows a compact live pill at the top (it sits over the fake
- *   Dynamic Island on desktop) that links back to cooking mode.
+ * - Off the cook page it shows a compact live pill at the top center that links back to
+ *   cooking mode: on the desktop phone frame it grows out of the fake Dynamic Island (like
+ *   an iOS Live Activity); on real phones it floats just below the screen header.
  */
 export function GlobalTimer() {
   const timer = useKitchen((s) => s.timer);
@@ -33,7 +34,7 @@ export function GlobalTimer() {
   const href = recipeId != null ? `/ai/cook/${recipeId}` : null;
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[calc(var(--safe-top)+6px)] z-[55] flex justify-center sm:top-[5px]">
+    <div className="pointer-events-none absolute inset-x-0 top-[calc(var(--safe-top)+76px)] z-[55] flex justify-center sm:top-[5px]">
       <AnimatePresence>
         {timer && !onCookPage && (
           <motion.div

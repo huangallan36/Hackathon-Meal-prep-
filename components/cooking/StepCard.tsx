@@ -51,7 +51,9 @@ export function StepCard({ recipe, index, pulse = 0 }: { recipe: Recipe; index: 
               {index + 1}
             </span>
             <span className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-faint">
-              Step {index + 1} of {recipe.steps.length}
+              {index === recipe.steps.length - 1
+                ? "Last step"
+                : `${recipe.steps.length - index - 1} more to go`}
             </span>
           </div>
 

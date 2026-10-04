@@ -32,11 +32,11 @@ export function BlockedNotice({
           <p className="mt-1 text-sm text-ink-soft">{reason}</p>
         </div>
       </div>
-      <div className="mt-3 flex flex-wrap gap-2 pl-13">
-        <Button size="sm" variant="secondary" icon={<ImageUp className="size-4" />} onClick={onChangePhoto}>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <Button size="sm" variant="secondary" icon={<ImageUp className="size-4" />} onClick={onChangePhoto} className="h-11 px-3">
           Change photo
         </Button>
-        <Button size="sm" variant="ghost" icon={<PenLine className="size-4" />} onClick={onEditCaption}>
+        <Button size="sm" variant="secondary" icon={<PenLine className="size-4" />} onClick={onEditCaption} className="h-11 px-3">
           Edit caption
         </Button>
       </div>

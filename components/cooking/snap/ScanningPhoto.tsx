@@ -2,6 +2,7 @@
 
 import { Sparkles } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
+import { SmartImage } from "@/components/ui/Misc";
 
 const SPARKS = [
   { left: "22%", top: "30%", delay: 0 },
@@ -15,7 +16,7 @@ export function ScanningPhoto({ src, label = "Estimating nutrition..." }: { src:
   const reduce = useReducedMotion();
   return (
     <div className="relative aspect-[4/3] w-full overflow-hidden rounded-card bg-cream-deep shadow-card" aria-busy="true">
-      <img src={src} alt="Your meal" className="size-full object-cover" />
+      <SmartImage src={src} alt="Your meal" className="size-full" />
       <div className="absolute inset-0 bg-ink/25" />
 
       {!reduce && (

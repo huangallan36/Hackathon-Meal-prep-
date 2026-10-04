@@ -56,6 +56,8 @@ export default function NewPostPage() {
   const contentKey = `${photo ?? ""}|${dishName.trim()}|${caption.trim()}`;
   const blockedReason = blocked && blocked.key === contentKey ? blocked.reason : null;
   const canPost = Boolean(photo && dishName.trim()) && !busy && !blockedReason;
+  /** Why Post is disabled, shown under the button instead of the usual note */
+  const missing = !photo ? "Add a photo of your dish to post" : !dishName.trim() ? "Give your dish a name to post" : null;
 
   function handlePick(src: string, source: PhotoSource) {
     setPhoto(src);
@@ -81,29 +83,36 @@ export default function NewPostPage() {
 
     setStatus("checking");
     setBlocked(null);
-    const verdict = await moderatePost({ photo, caption: text, dishName: name });
-    if (!alive.current) return;
-    if (!verdict.allowed) {
-      setBlocked({ reason: verdict.reason, key: checkedKey });
-      setStatus("idle");
-      return;
-    }
-
-    setStatus("posting");
-    let image = photo;
-    if (photo.startsWith("data:")) {
-      try {
-        image = await thumbnailFromDataUrl(photo);
-      } catch {
-        // Keep the original if the canvas is unavailable; it is already downscaled.
+    try {
+      // moderatePost never throws: it falls back to the local caption check.
+      const verdict = await moderatePost({ photo, caption: text, dishName: name });
+      if (!alive.current) return;
+      if (!verdict.allowed) {
+        setBlocked({ reason: verdict.reason, key: checkedKey });
+        setStatus("idle");
+        return;
       }
+
+      setStatus("posting");
+      let image = photo;
+      if (photo.startsWith("data:")) {
+        try {
+          image = await thumbnailFromDataUrl(photo);
+        } catch {
+          // Keep the original if the canvas is unavailable; it is already downscaled.
+        }
+      }
+      if (!alive.current) return;
+      addPost({ author: DEMO_USER.handle, dishName: name, caption: text, image, recipeId });
+      setDraft(null);
+      toast("Posted!", "success");
+      sayIfTalking("Posted! Your dish is live on Social.");
+      router.push("/social");
+    } catch {
+      if (!alive.current) return;
+      setStatus("idle");
+      toast("Couldn't post that just now. Try again?", "warning");
     }
-    if (!alive.current) return;
-    addPost({ author: DEMO_USER.handle, dishName: name, caption: text, image, recipeId });
-    setDraft(null);
-    toast("Posted!", "success");
-    sayIfTalking("Posted! Your dish is live on Social.");
-    router.push("/social");
   }
 
   return (
@@ -154,7 +163,7 @@ export default function NewPostPage() {
           </Button>
           <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-ink-faint">
             <ShieldCheck className="size-3.5 shrink-0" />
-            Sous checks every post to keep the feed tasty and kind
+            {missing ?? "Sous checks every post to keep the feed tasty and kind"}
           </p>
         </div>
       </div>

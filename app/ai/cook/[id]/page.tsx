@@ -8,9 +8,9 @@ import { FinishCelebration } from "@/components/cooking/FinishCelebration";
 import { IngredientsPanel } from "@/components/cooking/IngredientsPanel";
 import { RecipeCredits, RecipeOverview } from "@/components/cooking/RecipeOverview";
 import { StepCard } from "@/components/cooking/StepCard";
-import { StepControls } from "@/components/cooking/StepControls";
+import { StepControls, VoiceHint } from "@/components/cooking/StepControls";
 import { StepProgress } from "@/components/cooking/StepProgress";
-import { TimerPill } from "@/components/cooking/TimerPill";
+import { HeaderTimer, TimerPill } from "@/components/cooking/TimerPill";
 import { VideoTutorial } from "@/components/cooking/VideoTutorial";
 import { ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/Misc";
@@ -134,20 +134,23 @@ function CookView({ recipe }: { recipe: Recipe }) {
         title={mode === "overview" ? undefined : recipe.title}
         subtitle={mode === "step" ? "Cooking mode" : mode === "done" ? "Finished" : undefined}
         right={
-          mode === "step" ? (
-            <button
-              type="button"
-              aria-label={showIngredients ? "Hide ingredients" : "Show ingredients"}
-              aria-pressed={showIngredients}
-              onClick={() => setShowIngredients((v) => !v)}
-              className={cn(
-                "inline-flex size-11 items-center justify-center rounded-full shadow-soft transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
-                showIngredients ? "bg-accent text-white" : "bg-surface text-ink hover:bg-cream-deep",
-              )}
-            >
-              <ListChecks className="size-5" />
-            </button>
-          ) : undefined
+          <>
+            <HeaderTimer />
+            {mode === "step" && (
+              <button
+                type="button"
+                aria-label={showIngredients ? "Hide ingredients" : "Show ingredients"}
+                aria-pressed={showIngredients}
+                onClick={() => setShowIngredients((v) => !v)}
+                className={cn(
+                  "inline-flex size-11 items-center justify-center rounded-full shadow-soft transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                  showIngredients ? "bg-accent text-white" : "bg-surface text-ink hover:bg-cream-deep",
+                )}
+              >
+                <ListChecks className="size-5" />
+              </button>
+            )}
+          </>
         }
       />
 
@@ -170,6 +173,7 @@ function CookView({ recipe }: { recipe: Recipe }) {
               }}
               onNext={() => nextOrFinish(recipe)}
             />
+            <VoiceHint className="-mt-2" />
           </div>
         ) : (
           <div className="flex flex-col gap-5">

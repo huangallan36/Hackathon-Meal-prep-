@@ -90,7 +90,7 @@ const MEAL_DEFAULT: Record<MealType, FoodIconKey> = {
 };
 
 export function foodIconKey(name: string, meal: MealType): FoodIconKey {
-  return RULES.find(([re]) => re.test(name))?.[1] ?? MEAL_DEFAULT[meal];
+  return RULES.find(([re]) => re.test(name ?? ""))?.[1] ?? MEAL_DEFAULT[meal] ?? "soup";
 }
 
 /** Section header icon for each meal slot */

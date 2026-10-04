@@ -92,8 +92,9 @@ export async function speak(text: string, options?: SpeakOptions): Promise<void>
     }
 
     voice().setStatus("speaking");
-    const result = await playTts(toSpeech(display), usePrefs.getState().voiceId);
-    if (result.engine !== "none" && id === speechSeq) voice().setTtsEngine(result.engine);
+    await playTts(toSpeech(display), usePrefs.getState().voiceId, (engine) => {
+      if (id === speechSeq) voice().setTtsEngine(engine);
+    });
   } catch (err) {
     console.warn("[voice] speak failed:", err instanceof Error ? err.message : err);
   } finally {
@@ -187,6 +188,20 @@ export async function listen(): Promise<void> {
 /** Finish listening early (orb tapped while listening); the turn continues with what was heard. */
 export function finishListening(): void {
   stopListening();
+}
+
+/** Close the mic and drop whatever was heard (e.g. switching to typing). */
+export function cancelListening(): void {
+  if (voice().status !== "listening") return;
+  turnSeq++;
+  abortListening();
+  voice().setStatus("idle");
+}
+
+/** Open the text input; the mic closes so it can't pick up a half sentence meanwhile. */
+export function openTyping(): void {
+  cancelListening();
+  voice().setTyping(true);
 }
 
 /**

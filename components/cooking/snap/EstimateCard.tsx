@@ -36,7 +36,7 @@ export function EstimateCard({
   logging,
 }: {
   draft: EstimateDraft;
-  onChange: (patch: Partial<EstimateDraft>) => void;
+  onChange: (patch: Partial<Omit<EstimateDraft, "anchor">>) => void;
   meal: MealType;
   onMealChange: (meal: MealType) => void;
   source: "gemini" | "fallback";
@@ -65,16 +65,24 @@ export function EstimateCard({
       <label htmlFor={`${id}-name`} className="sr-only">
         Dish name
       </label>
-      <div className="group mt-3 flex items-center gap-2 border-b border-transparent pb-1 focus-within:border-accent">
-        <input
+      <div className="group mt-3 flex items-start gap-2 border-b border-transparent pb-1 focus-within:border-accent">
+        {/* A textarea so long dish names wrap instead of being cut off; newlines are not allowed. */}
+        <textarea
           id={`${id}-name`}
           value={draft.dishName}
           maxLength={60}
-          onChange={(e) => onChange({ dishName: e.target.value })}
-          className="min-w-0 flex-1 bg-transparent font-display text-[24px] font-semibold leading-tight text-ink outline-none placeholder:text-ink-faint"
+          rows={draft.dishName.length > 20 ? 2 : 1}
+          onChange={(e) => onChange({ dishName: e.target.value.replace(/[\r\n]+/g, " ") })}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              e.currentTarget.blur();
+            }
+          }}
+          className="min-w-0 flex-1 resize-none bg-transparent font-display text-[24px] font-semibold leading-tight text-ink outline-none placeholder:text-ink-faint"
           placeholder="What did you make?"
         />
-        <Pencil className="size-4 shrink-0 text-ink-faint transition group-focus-within:text-accent" aria-hidden />
+        <Pencil className="mt-2 size-4 shrink-0 text-ink-faint transition group-focus-within:text-accent" aria-hidden />
       </div>
 
       {/* Portion */}
@@ -132,7 +140,7 @@ export function EstimateCard({
                 inputMode="decimal"
                 value={draft[m.key]}
                 onChange={(e) => {
-                  const patch: Partial<EstimateDraft> = {};
+                  const patch: Partial<Omit<EstimateDraft, "anchor">> = {};
                   patch[m.key] = cleanNumberInput(e.target.value);
                   onChange(patch);
                 }}
@@ -153,7 +161,7 @@ export function EstimateCard({
       <Button size="lg" full className="mt-5" onClick={onLog} loading={logging} icon={<NotebookPen className="size-5" />}>
         Log to diary
       </Button>
-      <p className="mt-2 text-center text-xs text-ink-faint">AI estimates can be off. Tap any number to fix it.</p>
+      <p className="mt-2 text-center text-xs text-ink-faint">AI estimates can be off. Edit anything; calories follow your macros.</p>
     </section>
   );
 }

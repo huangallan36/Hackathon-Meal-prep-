@@ -71,13 +71,23 @@ export function fetchMatches(ingredients: string[]): Promise<MatchesResult> {
       const res = await fetchJSON<ByIngredientsResponse>(`/api/recipes/by-ingredients?${qs}`, {
         timeoutMs: TIMEOUTS.recipes,
       });
-      const matches = Array.isArray(res.matches) ? res.matches.filter((m) => m?.recipe?.steps?.length) : [];
+      const matches = (Array.isArray(res?.matches) ? res.matches : [])
+        .filter((m) => Array.isArray(m?.recipe?.steps) && m.recipe.steps.length > 0)
+        .map((m) => ({
+          recipe: m.recipe,
+          used: Array.isArray(m.used) ? m.used : [],
+          missing: Array.isArray(m.missing) ? m.missing : [],
+        }));
       if (matches.length === 0) throw new Error("no matches");
       result = { matches, source: res.source === "live" ? "live" : "cache" };
     } catch {
       result = { matches: rankByIngredients(key ? key.split(",") : [], 8), source: "cache" };
     }
-    useKitchen.getState().setMatches(result.matches, key, result.source);
+    // Only store it if the fridge hasn't changed meanwhile, so a slow, stale answer
+    // can't overwrite newer suggestions (and send /ai/recipes back to its skeleton).
+    if (ingredientsKey(useKitchen.getState().ingredients) === key) {
+      useKitchen.getState().setMatches(result.matches, key, result.source);
+    }
     return result;
   })();
 
@@ -117,3 +127,42 @@ export function peekRecipe(id: number): Recipe | null {
 }
 
 export const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/** Clipboard with a legacy fallback (navigator.clipboard is missing on plain-http LAN demos). */
+export async function copyText(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    /* permission denied: try the legacy path */
+  }
+  try {
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand("copy");
+    area.remove();
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Rewrite the current history entry's query without navigating (Next syncs this with
+ * useSearchParams). Used so Back from /ai/recipes returns to the chips, not the camera.
+ */
+export function replaceQuery(query: string): void {
+  try {
+    const url = `${window.location.pathname}${query ? `?${query}` : ""}`;
+    if (url !== `${window.location.pathname}${window.location.search}`) window.history.replaceState(null, "", url);
+  } catch {
+    /* history API unavailable: cosmetic only */
+  }
+}

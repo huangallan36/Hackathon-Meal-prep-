@@ -52,13 +52,17 @@ const LINK_RE = /\b(?:https?:\/\/|www\.)\S+|\b[a-z0-9-]+\.(?:com|net|org|io|ly|c
 const SPAM_RE =
   /\b(?:buy now|promo code|discount code|use code|click (?:the )?link|link in (?:my )?bio|dm (?:me )?(?:to|for) (?:order|buy|price)|follow for follow|f4f|onlyfans|crypto|giveaway)\b/;
 
+/** U+0300..U+036F, built from char codes so the source stays plain ASCII */
+const COMBINING_MARKS = new RegExp(`[${String.fromCharCode(0x300)}-${String.fromCharCode(0x36f)}]`, "g");
+
 const LEET: Record<string, string> = { "0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", $: "s", "!": "i" };
 
 /** Lowercase, strip accents, undo common leetspeak and squash long letter runs ("fuuuuck" -> "fuuck"). */
 export function normalizeForModeration(text: string): string {
   return text
     .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
+    // Combining marks (U+0300 to U+036F): "cafe" from "café"
+    .replace(COMBINING_MARKS, "")
     .toLowerCase()
     .replace(/[013457@$!]/g, (c) => LEET[c] ?? c)
     .replace(/([a-z])\1{2,}/g, "$1$1");

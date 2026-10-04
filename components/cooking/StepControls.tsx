@@ -4,16 +4,16 @@ import { Check, ChevronLeft, ChevronRight, Mic, RotateCcw } from "lucide-react";
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
-const control =
-  "inline-flex h-14 items-center justify-center gap-1.5 rounded-pill font-semibold transition-[transform,background-color,box-shadow] duration-200 active:scale-[0.96] select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-cream";
+const ring =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface";
 
-function ControlButton({ primary, className, ...rest }: { primary?: boolean } & ComponentProps<"button">) {
+function RoundControl({ className, ...rest }: ComponentProps<"button">) {
   return (
     <button
       type="button"
       className={cn(
-        control,
-        primary ? "bg-accent px-5 text-base text-white shadow-accent hover:bg-accent-strong" : "bg-surface px-4 text-[15px] text-ink shadow-card hover:bg-cream-deep",
+        "inline-flex size-[52px] shrink-0 items-center justify-center rounded-full text-ink transition hover:bg-cream-deep active:scale-90",
+        ring,
         className,
       )}
       {...rest}
@@ -21,7 +21,12 @@ function ControlButton({ primary, className, ...rest }: { primary?: boolean } & 
   );
 }
 
-/** Back / Repeat / Next (Finish on the last step) */
+/**
+ * Back / Repeat / Next (Finish on the last step) as a dock that sticks to the bottom of the
+ * screen while the step is in view. It lines up with the floating voice orb (same height and
+ * baseline, leaving the orb's column free), so orb + dock read as one control bar and the orb
+ * never covers Next. Sticky stays inside its section, so it can never cover the video below.
+ */
 export function StepControls({
   isLast,
   onBack,
@@ -34,25 +39,38 @@ export function StepControls({
   onNext: () => void;
 }) {
   return (
-    <div>
-      <div className="grid grid-cols-[auto_auto_1fr] gap-2.5">
-        <ControlButton onClick={onBack} aria-label="Previous step">
-          <ChevronLeft className="size-5" />
-          Back
-        </ControlButton>
-        <ControlButton onClick={onRepeat} aria-label="Repeat step">
-          <RotateCcw className="size-[18px]" />
-          Repeat
-        </ControlButton>
-        <ControlButton primary onClick={onNext} aria-label={isLast ? "Finish cooking" : "Next step"}>
+    <div className="sticky bottom-[calc(var(--nav-height)+var(--safe-bottom)+14px)] z-30 mr-[66px]">
+      <div className="flex items-center gap-1 rounded-pill bg-surface/90 p-1 shadow-lift ring-1 ring-line backdrop-blur-md">
+        <RoundControl onClick={onBack} aria-label="Previous step" title="Back">
+          <ChevronLeft className="size-6" />
+        </RoundControl>
+        <RoundControl onClick={onRepeat} aria-label="Repeat step" title="Repeat">
+          <RotateCcw className="size-5" />
+        </RoundControl>
+        <button
+          type="button"
+          onClick={onNext}
+          aria-label={isLast ? "Finish cooking" : "Next step"}
+          className={cn(
+            "inline-flex h-[52px] min-w-0 flex-1 items-center justify-center gap-1.5 rounded-pill px-4 text-base font-semibold text-white shadow-accent transition active:scale-[0.97]",
+            "bg-accent hover:bg-accent-strong",
+            ring,
+          )}
+        >
           {isLast ? "Finish" : "Next"}
-          {isLast ? <Check className="size-5" /> : <ChevronRight className="size-5" />}
-        </ControlButton>
+          {isLast ? <Check className="size-5" strokeWidth={2.6} /> : <ChevronRight className="size-5" />}
+        </button>
       </div>
-      <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-ink-faint">
-        <Mic className="size-3.5" />
-        Hands busy? Say &ldquo;next&rdquo;, &ldquo;repeat&rdquo; or &ldquo;go back&rdquo;
-      </p>
     </div>
+  );
+}
+
+/** Small voice cue under the step card */
+export function VoiceHint({ className }: { className?: string }) {
+  return (
+    <p className={cn("mr-[66px] flex items-center justify-center gap-1.5 text-center text-xs text-ink-faint", className)}>
+      <Mic className="size-3.5" />
+      Say &ldquo;next&rdquo;, &ldquo;repeat&rdquo; or &ldquo;go back&rdquo;
+    </p>
   );
 }

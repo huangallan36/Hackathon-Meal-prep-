@@ -2,7 +2,7 @@
 
 import { Camera, PartyPopper, RotateCcw, Undo2 } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
-import { Button, ButtonLink } from "@/components/ui/Button";
+import { ButtonLink } from "@/components/ui/Button";
 
 const COLORS = ["var(--color-accent)", "var(--color-butter)", "var(--color-herb)", "var(--color-fat)", "var(--color-protein)", "var(--color-carbs)"];
 
@@ -50,7 +50,7 @@ function ConfettiBurst() {
             y: [0, p.y, p.y + p.fall],
             opacity: [1, 1, 0],
             scale: [0.4, 1, 0.9],
-            rotate: p.rotate,
+            rotate: [0, p.rotate * 0.6, p.rotate],
           }}
           transition={{ duration: 1.5, delay: 0.15 + p.delay, ease: [0.16, 1, 0.3, 1], times: [0, 0.45, 1] }}
         />
@@ -58,6 +58,9 @@ function ConfettiBurst() {
     </div>
   );
 }
+
+const textButton =
+  "inline-flex h-11 items-center gap-1.5 whitespace-nowrap rounded-pill px-3 text-sm font-semibold text-ink-soft transition hover:bg-cream-deep active:scale-95";
 
 /** "Nice work!" card shown after the last step */
 export function FinishCelebration({
@@ -103,12 +106,14 @@ export function FinishCelebration({
       </div>
 
       <div className="relative mt-3 flex justify-center gap-1">
-        <Button variant="ghost" onClick={onBackToSteps} icon={<Undo2 className="size-4" />}>
+        <button type="button" onClick={onBackToSteps} className={textButton}>
+          <Undo2 className="size-4" />
           Back to steps
-        </Button>
-        <Button variant="ghost" onClick={onStartOver} icon={<RotateCcw className="size-4" />}>
+        </button>
+        <button type="button" onClick={onStartOver} className={textButton}>
+          <RotateCcw className="size-4" />
           Cook again
-        </Button>
+        </button>
       </div>
     </motion.section>
   );

@@ -1,7 +1,7 @@
 "use client";
 
-import { Flame, PartyPopper, Plus, RotateCcw, X } from "lucide-react";
-import { motion } from "motion/react";
+import { Flame, PartyPopper, Plus, RotateCcw, Undo2, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/Misc";
@@ -20,6 +20,7 @@ export function SwipeDeck() {
   const myUpvotes = useSocial((s) => s.myUpvotes);
   const upvote = useSocial((s) => s.upvote);
   const skip = useSocial((s) => s.skip);
+  const unswipe = useSocial((s) => s.unswipe);
   const resetFeed = useSocial((s) => s.resetFeed);
 
   const deck = useMemo(() => feedDeck(posts, skipped, myUpvotes), [posts, skipped, myUpvotes]);
@@ -27,14 +28,33 @@ export function SwipeDeck() {
   const topRef = useRef<SwipeCardHandle>(null);
   /** Bumps on every Yum to replay the "+1" burst */
   const [yums, setYums] = useState(0);
+  /** The last swipe, for Undo */
+  const [last, setLast] = useState<{ id: string; dir: SwipeDir } | null>(null);
+  /** The card an Undo brought back, so it flies in from the side it left by */
+  const [returning, setReturning] = useState<{ id: string; dir: SwipeDir } | null>(null);
+  const canUndo = Boolean(last && (skipped[last.id] || myUpvotes[last.id]) && posts.some((p) => p.id === last.id));
 
   function decide(postId: string, dir: SwipeDir) {
+    setLast({ id: postId, dir });
     if (dir === "right") {
       upvote(postId);
       setYums((n) => n + 1);
     } else {
       skip(postId);
     }
+  }
+
+  function undo() {
+    if (!last) return;
+    unswipe(last.id);
+    setReturning(last);
+    setLast(null);
+  }
+
+  function startOver() {
+    setLast(null);
+    setReturning(null);
+    resetFeed();
   }
 
   useEffect(() => {
@@ -64,12 +84,17 @@ export function SwipeDeck() {
           body="You've seen every plate from your cooks. Share your own, or start the feed over."
           action={
             <div className="mt-2 flex flex-col items-center gap-2">
-              <Button variant="soft" icon={<RotateCcw className="size-4" />} onClick={resetFeed}>
+              <Button variant="soft" icon={<RotateCcw className="size-4" />} onClick={startOver}>
                 Start over
               </Button>
               <ButtonLink href="/social/new" variant="ghost" icon={<Plus className="size-4" />}>
                 Share a dish
               </ButtonLink>
+              {canUndo && (
+                <Button variant="ghost" size="sm" icon={<Undo2 className="size-4" />} onClick={undo} className="h-11">
+                  Undo last swipe
+                </Button>
+              )}
             </div>
           }
         />
@@ -88,21 +113,43 @@ export function SwipeDeck() {
             author={userByHandle(users, post.author)}
             upvotes={upvotesOf(post, myUpvotes)}
             depth={depth}
+            returnFrom={returning?.id === post.id ? returning.dir : undefined}
             onDecide={decide}
           />
         ))}
       </div>
 
       <div className="flex items-center justify-center gap-7">
-        <button
-          type="button"
-          aria-label="Skip"
-          title="Skip (left arrow)"
-          onClick={() => topRef.current?.fling("left")}
-          className="flex size-14 items-center justify-center rounded-full bg-surface text-ink-soft shadow-card transition hover:text-ink active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-        >
-          <X className="size-6" strokeWidth={2.6} />
-        </button>
+        <div className="relative">
+          {/* Undo sits to the left of Skip so the main pair stays centered (and clear of the orb) */}
+          <AnimatePresence>
+            {canUndo && (
+              <motion.button
+                key="undo"
+                type="button"
+                aria-label="Undo last swipe"
+                title="Undo last swipe"
+                onClick={undo}
+                initial={{ opacity: 0, scale: 0.6 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.6 }}
+                transition={{ type: "spring", stiffness: 420, damping: 26 }}
+                className="absolute right-full top-1/2 mr-5 -mt-[22px] flex size-11 items-center justify-center rounded-full bg-surface text-ink-soft shadow-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                <Undo2 className="size-[18px]" strokeWidth={2.4} />
+              </motion.button>
+            )}
+          </AnimatePresence>
+          <button
+            type="button"
+            aria-label="Skip"
+            title="Skip (left arrow)"
+            onClick={() => topRef.current?.fling("left")}
+            className="flex size-14 items-center justify-center rounded-full bg-surface text-ink-soft shadow-card transition hover:text-ink active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <X className="size-6" strokeWidth={2.6} />
+          </button>
+        </div>
         <button
           type="button"
           aria-label="Yum: upvote this dish"

@@ -1,7 +1,8 @@
 /**
  * POST /api/chat: one Sous conversation turn (ChatRequest -> ChatResponse).
- * Gemini Flash-Lite answers with spoken text + function calls in a single round
- * trip. Any failure degrades to the keyword router, so this always returns 200.
+ * Gemini Flash-Lite picks exactly one function per turn (an app action or "reply"),
+ * with the spoken line as an argument, in one ~700ms round trip. Calls are validated
+ * against context; any failure degrades to the keyword router, so this always returns 200.
  */
 import { fallbackReply } from "@/lib/intents";
 import {
@@ -44,7 +45,8 @@ export async function POST(request: Request): Promise<Response> {
     if (!hasGeminiKey()) return respond(fallbackReply(message, context));
 
     const { response } = await generate({
-      models: CHAT_MODELS,
+      // Flash-Lite 503s are often transient; give it a second shot if the bigger model fails fast.
+      models: [...CHAT_MODELS, CHAT_MODELS[0]],
       contents: buildContents(parsed.history, message),
       config: chatConfig(context),
       timeoutMs: 9000,

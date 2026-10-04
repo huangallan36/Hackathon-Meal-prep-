@@ -12,6 +12,7 @@ export function AuthorLink({
   createdAt,
   tone = "dark",
   className,
+  onClick,
 }: {
   handle: string;
   user?: SocialUser;
@@ -19,6 +20,8 @@ export function AuthorLink({
   /** "light" = white text for photo scrims */
   tone?: "light" | "dark";
   className?: string;
+  /** e.g. close a sheet before navigating */
+  onClick?: () => void;
 }) {
   const name = user?.name ?? handle;
   return (
@@ -26,6 +29,7 @@ export function AuthorLink({
       href={`/social/u/${encodeURIComponent(handle)}`}
       data-no-drag
       onPointerDown={(e) => e.stopPropagation()}
+      onClick={onClick}
       className={cn(
         "inline-flex min-h-11 max-w-full items-center gap-2.5 rounded-pill pr-2 transition active:scale-[0.98]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",

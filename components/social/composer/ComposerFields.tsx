@@ -56,7 +56,7 @@ export function ComposerFields({
           className={cn(field, "resize-none py-3 leading-snug")}
         />
         <span
-          aria-live="polite"
+          aria-live={left <= 20 ? "polite" : "off"}
           className={cn("self-end text-xs tabular-nums", left <= 20 ? "font-semibold text-accent" : "text-ink-faint")}
         >
           {caption.length}/{CAPTION_MAX}

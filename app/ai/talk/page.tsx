@@ -17,6 +17,7 @@ import {
   endSession,
   handleUserText,
   isSttSupported,
+  openTyping,
   orbTap,
   startSession,
   togglePause,
@@ -148,7 +149,7 @@ export default function TalkPage() {
         />
         <RoundControl
           label="Type"
-          onClick={() => useVoice.getState().setTyping(true)}
+          onClick={openTyping}
           icon={<Keyboard className="size-6" />}
         />
         <RoundControl label="Hang up" tone="danger" onClick={hangUp} icon={<PhoneOff className="size-6" />} />

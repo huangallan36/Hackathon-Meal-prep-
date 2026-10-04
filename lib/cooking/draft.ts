@@ -3,7 +3,7 @@
  * editing (so a field can be empty mid-typing) and parsed + clamped on save.
  */
 import type { MealEstimate, Nutrition } from "@/lib/types";
-import { MEAL_LIMITS } from "./meal";
+import { kcalFromMacros, MEAL_LIMITS } from "./meal";
 
 export interface EstimateDraft {
   dishName: string;
@@ -13,6 +13,8 @@ export interface EstimateDraft {
   carbs: string;
   fat: string;
   fiber: string;
+  /** Calories and macro energy at the last explicit calorie value; macro edits move calories from here */
+  anchor: { calories: number; macroKcal: number };
 }
 
 export type NumberKey = keyof Nutrition;
@@ -28,6 +30,7 @@ export function toDraft(e: MealEstimate): EstimateDraft {
     carbs: fmt(e.carbs),
     fat: fmt(e.fat),
     fiber: fmt(e.fiber),
+    anchor: { calories: Math.round(e.calories), macroKcal: kcalFromMacros(e) },
   };
 }
 
@@ -54,4 +57,21 @@ export function draftNutrition(d: EstimateDraft): Nutrition {
     fat: parse(d.fat, MEAL_LIMITS.fat, false),
     fiber: parse(d.fiber, MEAL_LIMITS.fiber, false),
   };
+}
+
+/**
+ * Apply an edit. Changing protein, carbs or fat shifts calories by the energy difference
+ * (4/4/9 kcal per gram) so the card stays consistent; typing calories sets a new anchor.
+ */
+export function patchDraft(d: EstimateDraft, patch: Partial<Omit<EstimateDraft, "anchor">>): EstimateDraft {
+  const next: EstimateDraft = { ...d, ...patch };
+  if (patch.calories !== undefined) {
+    const n = draftNutrition(next);
+    return { ...next, anchor: { calories: n.calories, macroKcal: kcalFromMacros(n) } };
+  }
+  if (patch.protein !== undefined || patch.carbs !== undefined || patch.fat !== undefined) {
+    const kcal = d.anchor.calories + kcalFromMacros(draftNutrition(next)) - d.anchor.macroKcal;
+    next.calories = String(Math.round(Math.min(MEAL_LIMITS.calories, Math.max(0, kcal))));
+  }
+  return next;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { animate, motion, useDragControls, useMotionValue, useTransform, type PanInfo } from "motion/react";
-import { useImperativeHandle, useRef, type PointerEvent as ReactPointerEvent, type Ref } from "react";
+import { useEffect, useImperativeHandle, useRef, type PointerEvent as ReactPointerEvent, type Ref } from "react";
 import { SmartImage } from "@/components/ui/Misc";
 import type { SocialPost, SocialUser } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,7 @@ export interface SwipeCardHandle {
 /** Offset (px) plus a share of release velocity needed to count as a swipe */
 const SWIPE_THRESHOLD = 100;
 const FLY_OUT_PX = 540;
+const SPRING_BACK = { type: "spring", stiffness: 480, damping: 30 } as const;
 
 /**
  * One post in the swipe stack. Only the top card (depth 0) is draggable; the next
@@ -29,6 +30,7 @@ export function SwipeCard({
   author,
   upvotes,
   depth,
+  returnFrom,
   onDecide,
   ref,
 }: {
@@ -36,11 +38,13 @@ export function SwipeCard({
   author?: SocialUser;
   upvotes: number;
   depth: number;
+  /** Set when an undo brings this card back: it flies in from the side it left by */
+  returnFrom?: SwipeDir;
   onDecide: (postId: string, dir: SwipeDir) => void;
   ref?: Ref<SwipeCardHandle>;
 }) {
   const isTop = depth === 0;
-  const x = useMotionValue(0);
+  const x = useMotionValue(returnFrom === "right" ? FLY_OUT_PX : returnFrom === "left" ? -FLY_OUT_PX : 0);
   const rotate = useTransform(x, [-320, 0, 320], [-16, 0, 16]);
   const yumOpacity = useTransform(x, [24, SWIPE_THRESHOLD], [0, 1]);
   const yumScale = useTransform(x, [24, SWIPE_THRESHOLD], [0.85, 1]);
@@ -62,11 +66,18 @@ export function SwipeCard({
 
   useImperativeHandle(ref, () => ({ fling }));
 
+  // Undo: glide back to the center from wherever the card was thrown.
+  useEffect(() => {
+    if (x.get() === 0) return;
+    const glide = animate(x, 0, SPRING_BACK);
+    return () => glide.stop();
+  }, [x]);
+
   function handleDragEnd(_: unknown, info: PanInfo) {
     const power = info.offset.x + info.velocity.x * 0.2;
     if (power > SWIPE_THRESHOLD) fling("right");
     else if (power < -SWIPE_THRESHOLD) fling("left");
-    else animate(x, 0, { type: "spring", stiffness: 480, damping: 30 });
+    else animate(x, 0, SPRING_BACK);
   }
 
   function startDrag(e: ReactPointerEvent<HTMLElement>) {
@@ -82,7 +93,7 @@ export function SwipeCard({
       inert={!isTop}
       className={cn("absolute inset-0 select-none", isTop && "cursor-grab active:cursor-grabbing")}
       style={{ x, rotate, zIndex: 10 - depth, touchAction: "pan-y" }}
-      initial={{ scale: 0.86, y: 46, opacity: 0 }}
+      initial={returnFrom ? false : { scale: 0.86, y: 46, opacity: 0 }}
       animate={{ scale: 1 - depth * 0.05, y: depth * 22, opacity: 1 }}
       transition={{ type: "spring", stiffness: 320, damping: 30 }}
       drag={isTop ? "x" : false}

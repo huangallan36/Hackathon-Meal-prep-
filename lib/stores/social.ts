@@ -26,7 +26,11 @@ interface SocialState {
   seedKey: string;
 
   upvote: (postId: string) => void;
+  /** Take back a Yum (post detail sheet toggle) */
+  unvote: (postId: string) => void;
   skip: (postId: string) => void;
+  /** Undo a swipe either way, so the post returns to the feed */
+  unswipe: (postId: string) => void;
   addPost: (post: Omit<SocialPost, "id" | "createdAt" | "upvotes">) => SocialPost;
   toggleFollow: (handle: string) => void;
   setDraft: (draft: PostDraft | null) => void;
@@ -50,7 +54,9 @@ export const useSocial = create<SocialState>()(
       draft: null,
 
       upvote: (postId) => set((s) => ({ myUpvotes: { ...s.myUpvotes, [postId]: true } })),
+      unvote: (postId) => set((s) => ({ myUpvotes: without(s.myUpvotes, postId) })),
       skip: (postId) => set((s) => ({ skipped: { ...s.skipped, [postId]: true } })),
+      unswipe: (postId) => set((s) => ({ myUpvotes: without(s.myUpvotes, postId), skipped: without(s.skipped, postId) })),
       addPost: (post) => {
         const full: SocialPost = { ...post, id: uid("p"), createdAt: Date.now(), upvotes: 0 };
         set((s) => ({ posts: [full, ...s.posts] }));
@@ -71,7 +77,8 @@ export const useSocial = create<SocialState>()(
       storage: persistStorage,
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<SocialState>;
-        if (p.seedKey === currentSeedKey()) return { ...current, ...p };
+        // Profiles are read-only seed data: always take them from code so edits show up.
+        if (p.seedKey === currentSeedKey()) return { ...current, ...p, users: current.users };
         const seed = freshSeed();
         const userPosts = (p.posts ?? []).filter((post) => !post.id.startsWith("seed-"));
         return { ...current, ...p, ...seed, posts: [...userPosts, ...seed.posts] };
@@ -79,6 +86,13 @@ export const useSocial = create<SocialState>()(
     },
   ),
 );
+
+function without(map: Record<string, true>, key: string): Record<string, true> {
+  if (!map[key]) return map;
+  const next = { ...map };
+  delete next[key];
+  return next;
+}
 
 /* ------------------------------------------------------------------ */
 /* Selectors                                                           */

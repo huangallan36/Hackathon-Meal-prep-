@@ -13,14 +13,44 @@ const VOICE_FAILURE_CACHE_MS = 60 * 1000;
 const PREFERRED = ["Jessica", "George", "Bella", "Chris", "Charlie", "Lily", "Sarah", "Matilda", "Will", "Brian"];
 const VOICE_COUNT = 6;
 
-/** Verified premade voices on this account, used when the voices API is unreachable. */
+const PREVIEW = "https://storage.googleapis.com/eleven-public-prod/premade/voices";
+
+/** Verified premade voices on this account (labels from the live API), used when the voices API is unreachable. */
 export const FALLBACK_VOICES: VoiceOption[] = [
-  { id: "cgSgspJ2msm6clMCkdW9", name: "Jessica", description: "Playful, Bright, Warm", gender: "female", accent: "american" },
+  {
+    id: "cgSgspJ2msm6clMCkdW9",
+    name: "Jessica",
+    description: "Playful, Bright, Warm",
+    gender: "female",
+    accent: "american",
+    previewUrl: `${PREVIEW}/cgSgspJ2msm6clMCkdW9/56a97bf8-b69b-448f-846c-c3a11683d45a.mp3`,
+  },
   { id: "JBFqnCBsd6RMkjVDRZzb", name: "George", description: "Warm, Captivating Storyteller", gender: "male", accent: "british" },
-  { id: "hpp4J3VqNfWAUOO0d1Us", name: "Bella", description: "Professional, Bright, Warm", gender: "female", accent: "american" },
-  { id: "iP95p4xoKVk53GoZ742B", name: "Chris", description: "Charming, Down-to-Earth", gender: "male", accent: "american" },
+  {
+    id: "hpp4J3VqNfWAUOO0d1Us",
+    name: "Bella",
+    description: "Professional, Bright, Warm",
+    gender: "female",
+    accent: "american",
+    previewUrl: `${PREVIEW}/hpp4J3VqNfWAUOO0d1Us/dab0f5ba-3aa4-48a8-9fad-f138fea1126d.mp3`,
+  },
+  {
+    id: "iP95p4xoKVk53GoZ742B",
+    name: "Chris",
+    description: "Charming, Down-to-Earth",
+    gender: "male",
+    accent: "american",
+    previewUrl: `${PREVIEW}/iP95p4xoKVk53GoZ742B/3f4bde72-cc48-40dd-829f-57fbf906f4d7.mp3`,
+  },
   { id: "IKne3meq5aSn9XLyUdCD", name: "Charlie", description: "Deep, Confident, Energetic", gender: "male", accent: "australian" },
-  { id: "pFZP5JQG7iQjIQuC4Bku", name: "Lily", description: "Velvety Actress", gender: "female", accent: "british" },
+  {
+    id: "pFZP5JQG7iQjIQuC4Bku",
+    name: "Lily",
+    description: "Velvety Actress",
+    gender: "female",
+    accent: "british",
+    previewUrl: `${PREVIEW}/pFZP5JQG7iQjIQuC4Bku/89b68b35-b3dd-4348-a84a-a3c13a3c2b30.mp3`,
+  },
 ];
 
 export const TTS_MAX_CHARS = 800;

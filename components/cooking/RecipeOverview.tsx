@@ -1,6 +1,6 @@
 "use client";
 
-import { ChefHat, ChevronRight, Clock, ExternalLink, Flame, ListOrdered, ShoppingBasket, Users } from "lucide-react";
+import { ChefHat, ChevronRight, Clock, ExternalLink, ListOrdered, ShoppingBasket, Users } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
 import { Button } from "@/components/ui/Button";
@@ -34,9 +34,6 @@ export function RecipeOverview({ recipe, onStart }: { recipe: Recipe; onStart: (
           <Chip icon={<Clock className="size-3.5 text-accent" />}>{recipe.readyInMinutes} min</Chip>
           <Chip icon={<Users className="size-3.5 text-accent" />}>Serves {recipe.servings}</Chip>
           <Chip icon={<ListOrdered className="size-3.5 text-accent" />}>{recipe.steps.length} steps</Chip>
-          {recipe.nutrition && (
-            <Chip icon={<Flame className="size-3.5 text-accent" />}>{Math.round(recipe.nutrition.calories)} kcal</Chip>
-          )}
         </div>
         {recipe.summary && <p className="mt-3 text-[15px] leading-relaxed text-ink-soft">{recipe.summary}</p>}
       </div>

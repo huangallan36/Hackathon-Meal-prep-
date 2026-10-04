@@ -11,7 +11,7 @@ import { AuthorLink } from "./AuthorLink";
 import { CookThisButton } from "./CookThisButton";
 
 /**
- * Post detail bottom sheet: photo, dish, caption, Yum and "Cook this".
+ * Post detail bottom sheet: photo, dish, caption, a Yum toggle and "Cook this".
  * Closes on backdrop tap, the X, Escape, or dragging the handle down.
  */
 export function PostSheet({
@@ -19,7 +19,7 @@ export function PostSheet({
   author,
   upvotes,
   upvoted,
-  onUpvote,
+  onToggleUpvote,
   onClose,
 }: {
   /** null = closed */
@@ -27,7 +27,7 @@ export function PostSheet({
   author?: SocialUser;
   upvotes: number;
   upvoted: boolean;
-  onUpvote: () => void;
+  onToggleUpvote: () => void;
   onClose: () => void;
 }) {
   const controls = useDragControls();
@@ -93,16 +93,15 @@ export function PostSheet({
             </div>
 
             <h2 className="mt-4 text-balance font-display text-2xl font-semibold leading-tight text-ink">{post.dishName}</h2>
-            <AuthorLink handle={post.author} user={author} createdAt={post.createdAt} className="mt-1.5" />
+            <AuthorLink handle={post.author} user={author} createdAt={post.createdAt} onClick={onClose} className="mt-1.5" />
             {post.caption && <p className="mt-1.5 text-[15px] leading-relaxed text-ink-soft">{post.caption}</p>}
 
             <div className="mt-5 flex items-center gap-3">
               <button
                 type="button"
-                onClick={onUpvote}
-                disabled={upvoted}
+                onClick={onToggleUpvote}
                 aria-pressed={upvoted}
-                aria-label={upvoted ? `You yummed this (${upvotes} yums)` : `Yum this dish (${upvotes} yums)`}
+                aria-label={upvoted ? `Yummed (${upvotes} yums). Tap to undo` : `Yum this dish (${upvotes} yums)`}
                 className={cn(
                   "inline-flex h-12 shrink-0 items-center gap-2 rounded-pill px-5 font-semibold tabular-nums transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                   upvoted ? "bg-accent-soft text-accent-strong" : "bg-surface text-ink shadow-card hover:bg-cream-deep",

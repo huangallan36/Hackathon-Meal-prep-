@@ -25,6 +25,7 @@ export default function ProfilePage() {
   const following = useSocial((s) => s.following);
   const toggleFollow = useSocial((s) => s.toggleFollow);
   const upvote = useSocial((s) => s.upvote);
+  const unvote = useSocial((s) => s.unvote);
 
   const user = userByHandle(users, handle);
   const userPosts = postsBy(posts, handle);
@@ -51,14 +52,15 @@ export default function ProfilePage() {
   }
 
   const iFollow = Boolean(following[user.handle]);
-  const stats = profileStats(user, userPosts, myUpvotes, iFollow);
+  const stats = profileStats(user, userPosts, myUpvotes, following);
+  const openUpvoted = openPost ? Boolean(myUpvotes[openPost.id]) : false;
 
   return (
     <div className="pb-nav">
       <ScreenHeader
         back="/social"
         right={
-          <IconButton label="Copy profile link" onClick={() => void copyProfileLink(user.handle)}>
+          <IconButton label="Copy profile link" className="size-11" onClick={() => void copyProfileLink(user.handle)}>
             <Link2 className="size-5" />
           </IconButton>
         }
@@ -97,8 +99,12 @@ export default function ProfilePage() {
         post={openPost}
         author={user}
         upvotes={openPost ? upvotesOf(openPost, myUpvotes) : 0}
-        upvoted={openPost ? Boolean(myUpvotes[openPost.id]) : false}
-        onUpvote={() => openPost && upvote(openPost.id)}
+        upvoted={openUpvoted}
+        onToggleUpvote={() => {
+          if (!openPost) return;
+          if (openUpvoted) unvote(openPost.id);
+          else upvote(openPost.id);
+        }}
         onClose={closeSheet}
       />
     </div>

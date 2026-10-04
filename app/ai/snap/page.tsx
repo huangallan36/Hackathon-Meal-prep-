@@ -9,7 +9,7 @@ import { CookedRecipeCard, MealPhoto, SnapViewfinder } from "@/components/cookin
 import { PhotoPicker } from "@/components/ui/PhotoPicker";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { say } from "@/lib/cooking/actions";
-import { draftNutrition, toDraft, type EstimateDraft } from "@/lib/cooking/draft";
+import { draftNutrition, patchDraft, toDraft, type EstimateDraft } from "@/lib/cooking/draft";
 import { fallbackEstimate, sanitizeEstimate } from "@/lib/cooking/meal";
 import { TIMEOUTS } from "@/lib/config";
 import { postJSON } from "@/lib/http";
@@ -220,7 +220,7 @@ export default function SnapPage() {
             <MealPhoto src={photo} onRetake={retake} />
             <EstimateCard
               draft={draft}
-              onChange={(patch) => setDraft((d) => (d ? { ...d, ...patch } : d))}
+              onChange={(patch) => setDraft((d) => (d ? patchDraft(d, patch) : d))}
               meal={meal}
               onMealChange={setMeal}
               source={result.source}

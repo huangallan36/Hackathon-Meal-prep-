@@ -25,7 +25,8 @@ export function EntryRow({ entry, onOpen, className }: { entry: DiaryEntry; onOp
       <div className="min-w-0 flex-1">
         <p className="line-clamp-2 text-[15px] font-semibold leading-snug text-ink">{entry.name}</p>
         <p className="mt-0.5 truncate text-xs text-ink-soft">
-          {entry.portion} · {timeLabel(entry.loggedAt)}
+          {entry.portion ? `${entry.portion} · ` : ""}
+          {timeLabel(entry.loggedAt)}
         </p>
         <MacroLine n={entry.nutrition} className="mt-1" />
         {showTags && (

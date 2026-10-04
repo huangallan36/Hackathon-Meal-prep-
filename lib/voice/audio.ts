@@ -304,6 +304,10 @@ const CACHE_MAX = 16;
 const TTS_MAX_CHARS = 2000;
 /** Once audio starts streaming, allow this long for the rest of the bytes */
 const TTS_BODY_MS = 15_000;
+/** After two failures in a row, go straight to the browser voice for a while */
+const TTS_COOLDOWN_MS = 45_000;
+let ttsFailures = 0;
+let ttsCooldownUntil = 0;
 
 async function fetchTts(text: string, voiceId: string | null | undefined, signal: AbortSignal): Promise<Blob> {
   const key = `${voiceId ?? ""}|${text}`;
@@ -421,7 +425,11 @@ const isCurrent = (pb: Playback) => current === pb;
  * Speak `text` (already normalized for TTS). Resolves when playback ends, is stopped,
  * or fails over completely. Never rejects.
  */
-export async function playTts(text: string, voiceId?: string | null): Promise<PlaybackResult> {
+export async function playTts(
+  text: string,
+  voiceId?: string | null,
+  onStart?: (engine: Exclude<PlaybackEngine, "none">) => void,
+): Promise<PlaybackResult> {
   stopPlayback();
   const clean = text.trim();
   if (!clean || !isBrowser()) return { engine: "none", completed: true };
@@ -432,21 +440,31 @@ export async function playTts(text: string, voiceId?: string | null): Promise<Pl
 
   try {
     let blob: Blob | null = null;
-    try {
-      blob = await fetchTts(clean, voiceId, pb.abort.signal);
-    } catch (err) {
-      if (!isCurrent(pb)) return stopped("none");
-      console.warn("[voice] ElevenLabs unavailable, using browser voice:", err instanceof Error ? err.message : err);
+    if (Date.now() >= ttsCooldownUntil) {
+      try {
+        blob = await fetchTts(clean, voiceId, pb.abort.signal);
+        ttsFailures = 0;
+      } catch (err) {
+        if (!isCurrent(pb)) return stopped("none");
+        console.warn("[voice] ElevenLabs unavailable, using browser voice:", err instanceof Error ? err.message : err);
+        // Circuit breaker: on bad wifi don't make every line wait for another timeout.
+        if (++ttsFailures >= 2) {
+          ttsFailures = 0;
+          ttsCooldownUntil = Date.now() + TTS_COOLDOWN_MS;
+        }
+      }
     }
     if (!isCurrent(pb)) return stopped("none");
 
     if (blob) {
+      onStart?.("elevenlabs");
       const r = await playBlob(blob, pb);
       if (r === "ended") return { engine: "elevenlabs", completed: true };
       if (r === "stopped" || !isCurrent(pb)) return stopped("elevenlabs");
       console.warn("[voice] audio playback failed, using browser voice");
     }
 
+    if (synth()) onStart?.("browser");
     const r = await speakWithBrowser(clean, pb);
     if (r === "stopped" || !isCurrent(pb)) return stopped("browser");
     return { engine: r === "failed" ? "none" : "browser", completed: true };

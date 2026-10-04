@@ -96,6 +96,13 @@ export function dayTotals(entries: DiaryEntry[], date: ISODate): { totals: DayTo
   return { totals, microsEstimated, count };
 }
 
+/** Calories per logged date, one pass */
+export function kcalByDate(entries: DiaryEntry[]): Record<ISODate, number> {
+  const out: Record<ISODate, number> = {};
+  for (const e of entries) out[e.date] = (out[e.date] ?? 0) + (e.nutrition.calories || 0);
+  return out;
+}
+
 /** Entries of one day grouped by meal slot, each slot sorted by time */
 export function groupByMeal(entries: DiaryEntry[], date: ISODate): Record<MealType, DiaryEntry[]> {
   const out: Record<MealType, DiaryEntry[]> = { breakfast: [], lunch: [], dinner: [], snack: [] };
