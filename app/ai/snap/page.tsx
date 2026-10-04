@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { EstimateCard } from "@/components/cooking/snap/EstimateCard";
 import { LoggedCard } from "@/components/cooking/snap/LoggedCard";
 import { EstimateSkeleton, ScanningPhoto } from "@/components/cooking/snap/ScanningPhoto";
-import { CookedRecipeCard, MealPhoto, SnapViewfinder } from "@/components/cooking/snap/SnapPrompt";
+import { BackToCooked, CookedRecipeCard, MealPhoto, SnapViewfinder } from "@/components/cooking/snap/SnapPrompt";
 import { PhotoPicker } from "@/components/ui/PhotoPicker";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { say } from "@/lib/cooking/actions";
@@ -183,8 +183,8 @@ export default function SnapPage() {
   }
 
   const fallbackText = recipe?.nutrition
-    ? "Gemini was busy: using the recipe's per-serving numbers"
-    : "Gemini was busy: this is a typical plate, adjust as needed";
+    ? "Photo not analyzed: using the recipe's per-serving numbers"
+    : "Photo not analyzed: showing a typical plate, adjust as needed";
 
   return (
     <div className="pb-nav">
@@ -198,12 +198,14 @@ export default function SnapPage() {
         {phase === "pick" && (
           <>
             {recipe && <CookedRecipeCard recipe={recipe} onClear={() => setOtherMeal(true)} />}
+            {otherMeal && cooked && <BackToCooked title={cooked.title} onClick={() => setOtherMeal(false)} />}
             <SnapViewfinder />
             <PhotoPicker
               onPick={(src) => void estimate(src)}
               sampleSrc={recipe?.image || GENERIC_SAMPLE_MEAL}
               sampleLabel="Use sample photo"
-              className="animate-fade-up [animation-delay:120ms]"
+              // Two lg buttons share 350px: keep "Take photo" on one line.
+              className="animate-fade-up [animation-delay:120ms] [&_button]:whitespace-nowrap [&_button]:px-4"
             />
           </>
         )}

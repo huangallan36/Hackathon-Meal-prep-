@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/ui/Misc";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import {
   beginSteps,
+  clearStaleFinish,
   goToStepAndSay,
   nextOrFinish,
   previousStep,
@@ -104,6 +105,12 @@ function CookView({ recipe }: { recipe: Recipe }) {
   useEffect(() => {
     document.getElementById("sous-scroll")?.scrollTo({ top: 0, behavior: "smooth" });
   }, [mode, index]);
+
+  // Voice "go back" from the celebration leaves finishedRecipeId set: clear it so Next shows the last step again.
+  const staleFinish = finished && index < total - 1;
+  useEffect(() => {
+    if (staleFinish) clearStaleFinish(recipe);
+  }, [staleFinish, recipe]);
 
   // Desktop demo convenience: Right/Space = next, Left = back. Reads the store, so it stays in sync with voice.
   useEffect(() => {

@@ -115,6 +115,35 @@ export async function parseElevenLabsError(res: Response): Promise<{ status: num
 }
 
 /* ------------------------------------------------------------------ */
+/* Rate limit                                                          */
+/* ------------------------------------------------------------------ */
+
+const TTS_WINDOW_MS = 60_000;
+/** A busy demo speaks maybe 10 lines a minute; this only stops loops and scripted abuse. */
+const TTS_PER_WINDOW = 60;
+const ttsHits = new Map<string, { start: number; count: number }>();
+
+/** Best-effort client key (per server instance; good enough to protect the character quota). */
+export function clientKey(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return (forwarded || request.headers.get("x-real-ip") || "local").slice(0, 64);
+}
+
+/** Fixed-window limiter for /api/tts. Returns false when this client should use the browser voice. */
+export function allowTts(key: string, now = Date.now()): boolean {
+  if (ttsHits.size > 500) {
+    for (const [k, v] of ttsHits) if (now - v.start >= TTS_WINDOW_MS) ttsHits.delete(k);
+  }
+  const hit = ttsHits.get(key);
+  if (!hit || now - hit.start >= TTS_WINDOW_MS) {
+    ttsHits.set(key, { start: now, count: 1 });
+    return true;
+  }
+  hit.count++;
+  return hit.count <= TTS_PER_WINDOW;
+}
+
+/* ------------------------------------------------------------------ */
 /* Text to speech                                                      */
 /* ------------------------------------------------------------------ */
 

@@ -7,7 +7,7 @@ import { usePrefs } from "@/lib/stores/prefs";
 import type { VoiceOption, VoicesResponse } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { playTts, stopPlayback } from "@/lib/voice/audio";
-import { stopSpeaking, unlockAudio } from "@/lib/voice/engine";
+import { cancelListening, stopSpeaking, unlockAudio } from "@/lib/voice/engine";
 
 /** Mirrors the server's verified premade list, for when /api/voices is unreachable. */
 const FALLBACK_VOICES: VoiceOption[] = [
@@ -90,6 +90,8 @@ export function VoicePicker({ className }: { className?: string }) {
       return;
     }
     stopPreview();
+    // Half-duplex holds for previews too: close the mic and quiet Sous first.
+    cancelListening();
     stopSpeaking();
     setPreviewing(v.id);
     const done = () => setPreviewing((p) => (p === v.id ? null : p));

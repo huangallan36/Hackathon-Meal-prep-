@@ -28,6 +28,13 @@ export { isSttSupported } from "./stt";
 let turnSeq = 0;
 /** Bumps on every speak() / stopSpeaking(), so only the latest line resets the status. */
 let speechSeq = 0;
+/**
+ * The turn currently waiting on /api/chat (0 = none). A screen line that plays meanwhile
+ * hands the status back to "thinking" when it ends, so the orb never looks free mid-turn.
+ */
+let awaitingTurn = 0;
+/** A line that arrived while paused: shown right away, spoken on Resume. */
+let heldLine: string | null = null;
 
 /** Last line spoken, to drop an identical speak() that arrives while it is still playing */
 let lastLine = { text: "", at: 0 };
@@ -38,6 +45,11 @@ const MAX_MESSAGE_CHARS = 500;
 const SORRY_LINE = "Sorry, I didn't catch that. Try saying: scan my fridge.";
 
 const voice = () => useVoice.getState();
+
+/** Status to fall back to once Sous stops talking. */
+function restingStatus(): "thinking" | "idle" {
+  return awaitingTurn !== 0 && awaitingTurn === turnSeq ? "thinking" : "idle";
+}
 
 /* ------------------------------------------------------------------ */
 /* Audio                                                               */
@@ -73,24 +85,34 @@ export async function speak(text: string, options?: SpeakOptions): Promise<void>
   if (display === lastLine.text && now - lastLine.at < DUPLICATE_MS && voice().status === "speaking") return;
   lastLine = { text: display, at: now };
 
-  const id = ++speechSeq;
   try {
     const v = voice();
     // Half-duplex: close the mic before Sous talks.
     if (v.status === "listening") {
       turnSeq++;
       abortListening();
+      v.setStatus(restingStatus());
     }
     if (opts.addToTranscript === false) v.setCaption(display);
     else v.addLine("sous", display, opts.source);
+  } catch (err) {
+    console.warn("[voice] could not show line:", err instanceof Error ? err.message : err);
+  }
+  await voiceLine(display);
+}
 
-    // Paused: show the line, stay quiet.
+/** Play an already-displayed line and keep useVoice.status honest while it plays. Never rejects. */
+async function voiceLine(display: string): Promise<void> {
+  const id = ++speechSeq;
+  try {
+    // Paused: the line is on screen; hold it for Resume instead of talking.
     if (voice().paused) {
       stopPlayback();
-      if (voice().status !== "thinking") voice().setStatus("idle");
+      heldLine = display;
+      if (voice().status === "speaking") voice().setStatus(restingStatus());
       return;
     }
-
+    heldLine = null;
     voice().setStatus("speaking");
     await playTts(toSpeech(display), usePrefs.getState().voiceId, (engine) => {
       if (id === speechSeq) voice().setTtsEngine(engine);
@@ -98,14 +120,15 @@ export async function speak(text: string, options?: SpeakOptions): Promise<void>
   } catch (err) {
     console.warn("[voice] speak failed:", err instanceof Error ? err.message : err);
   } finally {
-    if (id === speechSeq && voice().status === "speaking") voice().setStatus("idle");
+    if (id === speechSeq && voice().status === "speaking") voice().setStatus(restingStatus());
   }
 }
 
 export function stopSpeaking(): void {
   speechSeq++;
+  heldLine = null;
   stopPlayback();
-  if (voice().status === "speaking") voice().setStatus("idle");
+  if (voice().status === "speaking") voice().setStatus(restingStatus());
 }
 
 /* ------------------------------------------------------------------ */
@@ -121,6 +144,9 @@ export function startSession(): void {
 export function endSession(): void {
   turnSeq++;
   speechSeq++;
+  awaitingTurn = 0;
+  heldLine = null;
+  lastLine = { text: "", at: 0 };
   abortListening();
   stopPlayback();
   voice().endSession();
@@ -142,7 +168,11 @@ export function pauseSession(): void {
 export function resumeSession(): void {
   if (!voice().paused) return;
   voice().setPaused(false);
-  resumePlayback();
+  const held = heldLine;
+  heldLine = null;
+  // A reply that arrived while paused is said now; otherwise pick up where the audio stopped.
+  if (held && !isPlaying() && voice().status !== "listening") void voiceLine(held);
+  else resumePlayback();
 }
 
 export function togglePause(): void {
@@ -213,6 +243,7 @@ export function orbTap(): void {
   const v = voice();
   if (!v.sessionActive) startSession();
   if (!isSttSupported()) {
+    if (v.status === "speaking") stopSpeaking();
     v.setTyping(true);
     return;
   }
@@ -221,7 +252,7 @@ export function orbTap(): void {
     finishListening();
     return;
   }
-  if (v.status === "speaking") stopSpeaking();
+  // listen() stops Sous first (barge-in) and opens the mic inside this tap.
   void listen();
 }
 
@@ -241,8 +272,12 @@ export async function handleUserText(text: string): Promise<void> {
     }
     if (!v.sessionActive) v.startSession();
     if (v.paused) v.setPaused(false);
-    if (v.status === "listening") abortListening();
+    if (v.status === "listening") {
+      turnSeq++;
+      abortListening();
+    }
     if (v.status === "speaking" || isPlaying()) stopSpeaking();
+    heldLine = null;
     await runTurn(clean, ++turnSeq);
   } catch (err) {
     console.warn("[voice] turn failed:", err instanceof Error ? err.message : err);
@@ -253,11 +288,18 @@ function toHistory(lines: TranscriptLine[]): ChatTurn[] {
   return lines.slice(-HISTORY_TURNS).map((l) => ({ role: l.role, text: l.text.slice(0, MAX_MESSAGE_CHARS) }));
 }
 
-/** A recipe is in progress, or we're on its cook screen (a finished recipe lingers in the store). */
-function isCooking(): boolean {
+/**
+ * "next" / "repeat" / "go back" skip the network when they clearly mean the recipe: on its
+ * cook screen, or anywhere once its steps have started. A recipe left on the overview (or a
+ * stale one from an earlier session) goes through Gemini instead, so a stray "okay" or
+ * "what?" on another screen doesn't yank the user into cooking mode.
+ */
+function quickPathOn(): boolean {
   const k = useKitchen.getState();
-  if (!k.activeRecipe) return false;
-  return k.finishedRecipeId !== k.activeRecipe.id || getCurrentPath().startsWith("/ai/cook");
+  const r = k.activeRecipe;
+  if (!r || !r.steps.length) return false;
+  if (getCurrentPath() === `/ai/cook/${r.id}`) return true;
+  return k.finishedRecipeId !== r.id && k.stepIndex >= 0;
 }
 
 function safeQuickIntent(text: string): SousAction["name"] | null {
@@ -300,7 +342,7 @@ async function runTurn(text: string, id: number): Promise<void> {
   voice().addLine("user", text);
   try {
     // Fast path: "next", "repeat", "go back" while cooking need no network at all.
-    if (isCooking()) {
+    if (quickPathOn()) {
       const quick = safeQuickIntent(text);
       if (quick) {
         const line = await applyActions([{ name: quick }]);
@@ -311,16 +353,23 @@ async function runTurn(text: string, id: number): Promise<void> {
     }
 
     voice().setStatus("thinking");
+    awaitingTurn = id;
     const context = buildChatContext();
     const res = await askSous({ message: text, history, context });
     if (id !== turnSeq) return;
+    // Actions can navigate or load a recipe; the orb keeps "thinking" until Sous answers.
     const override = await applyActions(res.actions);
     if (id !== turnSeq) return;
+    awaitingTurn = 0;
     await speak(override ?? res.reply, { source: res.source });
   } catch (err) {
     console.warn("[voice] turn failed:", err instanceof Error ? err.message : err);
-    if (id === turnSeq) await speak("Sorry, something went wrong on my end. Try that again?", { source: "fallback" });
+    if (id === turnSeq) {
+      awaitingTurn = 0;
+      await speak("Sorry, something went wrong on my end. Try that again?", { source: "fallback" });
+    }
   } finally {
+    if (awaitingTurn === id) awaitingTurn = 0;
     if (id === turnSeq && voice().status === "thinking") voice().setStatus("idle");
   }
 }

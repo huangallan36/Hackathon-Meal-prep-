@@ -159,9 +159,11 @@ function cleanContext(raw: unknown): ChatContext {
     }
   }
 
+  const userName = str(c.userName, 40);
   return {
     screen: str(c.screen, 200) || "/ai",
-    userName: str(c.userName, 40),
+    // The client sends "there" when no name is set ("Hey there"); that's not a name.
+    userName: /^there$/i.test(userName) ? "" : userName,
     ingredients: strList(c.ingredients, 40, 60),
     recipes,
     activeRecipe,
@@ -228,7 +230,11 @@ function describeState(ctx: ChatContext): string {
       a.stepIndex < 0
         ? `on the overview, not started (${a.steps.length} steps)`
         : `on step ${a.stepIndex + 1} of ${a.steps.length}: "${a.steps[a.stepIndex] ?? ""}"`;
-    lines.push(`- Cooking: "${a.title}" (id ${a.id}), ${where}.`);
+    // A recipe stays in the store after cooking; off the cook screen it may be old news.
+    const background = ctx.screen.startsWith("/ai/cook/")
+      ? ""
+      : " It's open in the background; they're not on the cooking screen right now.";
+    lines.push(`- Cooking: "${a.title}" (id ${a.id}), ${where}.${background}`);
   } else {
     lines.push("- Cooking: nothing yet.");
   }
@@ -368,11 +374,17 @@ export interface ParsedActions {
   rescued?: boolean;
 }
 
-/** Validate Gemini's function calls against the allow-list and the ids actually in context. */
+/**
+ * Validate Gemini's function calls against the allow-list and the ids actually in context.
+ * Result: at most one screen action, or one step action. A step action next to a screen
+ * action is dropped: the client runs actions in order, so "log_meal + next_step" would open
+ * the snap screen and then jump straight back to cooking mode.
+ */
 export function toActions(calls: FunctionCall[] | undefined, ctx: ChatContext, message: string): ParsedActions {
   const known = new Set<number>(ctx.recipes.map((r) => r.id));
   if (ctx.activeRecipe) known.add(ctx.activeRecipe.id);
-  const actions: SousAction[] = [];
+  let screen: SousAction | null = null;
+  let step: SousAction | null = null;
   const dropped: SousActionName[] = [];
   let said = "";
 
@@ -380,37 +392,44 @@ export function toActions(calls: FunctionCall[] | undefined, ctx: ChatContext, m
     if (!said && typeof call.args?.say === "string") said = call.args.say.slice(0, 400);
     const name = call.name as SousActionName;
     if (!SOUS_ACTIONS.includes(name)) continue;
-    if (actions.some((a) => a.name === name || (isStep(a.name) && isStep(name)))) continue;
     const argId = toRecipeId(call.args?.recipeId);
 
+    if (isStep(name)) {
+      if (step) continue;
+      if (ctx.activeRecipe && ctx.activeRecipe.steps.length > 0) step = { name };
+      else dropped.push(name);
+      continue;
+    }
+    if (screen) continue;
     if (name === "start_cooking") {
       const id = argId != null && known.has(argId) ? argId : pickRecipe(message, ctx.recipes);
       if (id == null) dropped.push(name);
-      else actions.push({ name, args: { recipeId: id } });
+      else screen = { name, args: { recipeId: id } };
     } else if (name === "show_groceries") {
       const id =
         argId != null && known.has(argId)
           ? argId
           : (ctx.activeRecipe?.id ?? pickRecipe(message, ctx.recipes) ?? ctx.recipes[0]?.id ?? null);
       if (id == null) dropped.push(name);
-      else actions.push({ name, args: { recipeId: id } });
-    } else if (isStep(name)) {
-      if (ctx.activeRecipe && ctx.activeRecipe.steps.length > 0) actions.push({ name });
-      else dropped.push(name);
+      else screen = { name, args: { recipeId: id } };
     } else {
-      actions.push({ name });
+      screen = { name };
     }
   }
-  return { actions: actions.slice(0, 2), dropped, said };
+  const actions = screen ? [screen] : step ? [step] : [];
+  return { actions, dropped, said };
 }
 
-/** What the model's text sounds like when it means an action but forgot to call it. */
+/**
+ * What the model's text sounds like when it means an action but forgot to call it.
+ * Deliberately narrow: a false positive navigates away mid-conversation.
+ */
 const PROMISES: Partial<Record<SousActionName, RegExp>> = {
-  open_fridge_camera: /\b(fridge|photo|picture|snap|peek|look)\b/,
-  show_recipes: /\b(ideas?|recipes?|options|here are|here's what)\b/,
-  start_cooking: /\b(let's (get )?(cook|make|start|do)|great (pick|choice)|good (pick|choice)|cooking|it is|coming up)\b/,
-  log_meal: /\b(log|diary|photo|snap|plate)\b/,
-  show_groceries: /\b(missing|shopping|list|buy|grab|need)\b/,
+  open_fridge_camera: /\b(fridge|photo|picture|snap|peek|take a look|have a look|look in)\b/,
+  show_recipes: /\b(ideas|recipes|options|here are|here's what)\b/,
+  start_cooking: /\b(let's (get )?(cooking|cook|make|start|do)|let's get started|great (pick|choice)|good (pick|choice)|coming up)\b/,
+  log_meal: /\b(log|diary|snap|plate)\b/,
+  show_groceries: /\b(missing|shopping list|grocery|groceries|to buy|the store)\b/,
 };
 const SAME_SCREEN: Partial<Record<SousActionName, RegExp>> = {
   open_fridge_camera: /^\/ai\/fridge/,

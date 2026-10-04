@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, RefreshCw } from "lucide-react";
+import { Camera, RefreshCw, Undo2 } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { SmartImage } from "@/components/ui/Misc";
 import type { Recipe } from "@/lib/types";
@@ -23,6 +23,22 @@ export function CookedRecipeCard({ recipe, onClear }: { recipe: Pick<Recipe, "ti
         Other meal
       </button>
     </div>
+  );
+}
+
+/** After "Other meal": a way back to logging the recipe that was just cooked */
+export function BackToCooked({ title, onClick }: { title: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex min-h-11 w-full items-center gap-2 rounded-pill bg-surface px-4 py-2 text-left text-sm text-ink-soft shadow-soft transition hover:bg-cream-deep active:scale-[0.99] animate-fade-up"
+    >
+      <Undo2 className="size-4 shrink-0 text-accent" />
+      <span className="min-w-0 flex-1 truncate">
+        Log <span className="font-semibold text-ink">{title}</span> instead
+      </span>
+    </button>
   );
 }
 

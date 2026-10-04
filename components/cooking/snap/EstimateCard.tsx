@@ -71,7 +71,7 @@ export function EstimateCard({
           id={`${id}-name`}
           value={draft.dishName}
           maxLength={60}
-          rows={draft.dishName.length > 20 ? 2 : 1}
+          rows={Math.min(3, Math.max(1, Math.ceil(draft.dishName.length / 20)))}
           onChange={(e) => onChange({ dishName: e.target.value.replace(/[\r\n]+/g, " ") })}
           onKeyDown={(e) => {
             if (e.key === "Enter") {

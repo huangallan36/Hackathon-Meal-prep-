@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Flame, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ActivityRow } from "@/components/diary/ActivityRow";
 import { CalorieRing } from "@/components/diary/CalorieRing";
+import { DayTitle } from "@/components/diary/DayTitle";
 import { MacroBars } from "@/components/diary/MacroBars";
 import { MealsPreview } from "@/components/diary/MealsPreview";
 import { MonthCalendar } from "@/components/diary/MonthCalendar";
@@ -38,6 +39,8 @@ export default function DiaryPage() {
   const { totals, microsEstimated } = dayTotals(entries, selected);
   const streak = currentStreak(logged, today);
   const dayActivity = activity[selected];
+  /** Today / yesterday get a relative heading with the date above it */
+  const recent = selected === today || selected === addDays(today, -1);
 
   function shiftWeek(delta: number) {
     const next = addDays(selected, delta * 7);
@@ -83,11 +86,13 @@ export default function DiaryPage() {
         />
 
         <div className="flex animate-fade-up items-end justify-between gap-3 px-1 pt-1" style={stagger(1)}>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-faint">
-              {selected === today || selected === addDays(today, -1) ? longDayLabel(selected) : "Looking back"}
+              {recent ? longDayLabel(selected) : "Looking back"}
             </p>
-            <h2 className="truncate font-display text-[26px] font-semibold leading-tight text-ink">{relativeDayLabel(selected, today)}</h2>
+            <h2 className="truncate font-display text-[26px] font-semibold leading-tight text-ink">
+              {recent ? relativeDayLabel(selected, today) : <DayTitle date={selected} size="hero" />}
+            </h2>
           </div>
           {selected !== today ? (
             <button

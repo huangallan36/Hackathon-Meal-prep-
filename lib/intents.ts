@@ -355,6 +355,8 @@ function pickByTitle(message: string, recipes: ChatContext["recipes"]): number |
 /* Fallback router                                                     */
 /* ------------------------------------------------------------------ */
 
+// No lookbehind anywhere in this file: it is a parse-time SyntaxError on Safari < 16.4,
+// and this module ships in the client bundle.
 const RE = {
   thanksOnly: /^(ok |okay |great |awesome |perfect )?(thanks|thank you|thank you so much|thanks so much|cheers|thx|ty)( sous)?( so much)?$/,
   bye: /\b(bye|goodbye|good night|see you|see ya|talk later|later sous)\b/,
@@ -362,16 +364,24 @@ const RE = {
   greeting: /^(hi|hey|hello|yo|hiya|good (morning|afternoon|evening))( there)?( sous)?$/,
   help: /\b(help|what can you do|how does this work|what do you do)\b/,
   log: /\b(log (it|this|that|my|the|meal|dinner|lunch|breakfast)|log$|track (it|this|that)|add (it|this|that) to (my )?diary|i ate|ive eaten|i just ate|done eating|finished eating|all done|im full|that was (so )?(delicious|good|great|amazing|tasty)|(snap|photo|picture of) (my|the) (meal|plate|dish|food))\b/,
-  groceries: /\b(grocer(y|ies)|shopping|shop|buy|missing|need to get|pick up|supermarket|do i need|what do i need)\b/,
-  showRecipes: /\b(recipes?|(?<!no )ideas?|suggest(ions?)?|options|what can i (make|cook)|what could i (make|cook)|something else|what else|show me)\b/,
-  strongList: /\b((?<!no )ideas?|suggest(ions?)?|options|what (else )?can i (make|cook)|what could i (make|cook)|something else|what else|other recipes|more recipes)\b/,
+  // "do I need to flip it?" is a cooking question, not a shopping trip.
+  groceries: /\b(grocer(y|ies)|shopping|shop|buy|missing|need to get|pick up|supermarket|the store)\b|^what do i need( for (this|it|that|the recipe|this recipe))?$|\bdo i (need|have) (anything|everything)\b/,
+  showRecipes: /\b(recipes?|ideas?|suggest(ions?)?|options|what can i (make|cook)|what could i (make|cook)|something else|what else|show me (some |the |other )?(recipes|ideas|options|something))\b/,
+  strongList: /\b(ideas?|suggest(ions?)?|options|what (else )?can i (make|cook)|what could i (make|cook)|something else|what else|other recipes|more recipes)\b/,
   switchCue: /\b(switch to|instead|lets (do|make|cook|try)|go with|change to|ill (do|make|have))\b/,
   pickCue: /\b(lets|let us|ill|i will|i want|id like|i would like|go with|do|make|cook|try|pick|choose|start|sounds (good|great)|that one|this one|one)\b/,
-  fridge: /\b(fridge|scan|camera|look in|whats in|ingredients)\b/,
-  tired: /\b(tired|wiped|exhausted|im beat|drained|long day|rough day|hungry|starving|dinner|lunch|breakfast|no idea|dont know what|not sure what|what (should|do|can) i (cook|make|eat)|what to (cook|make|eat)|something to eat|feed me|cook tonight|whats for dinner)\b/,
+  // Not bare "ingredients": mid-cook, "which ingredients go in now?" is about the recipe.
+  fridge: /\b(fridge|scan|camera|look in|whats in my|my ingredients|what i (have|got)|what ive got)\b/,
+  /** Clearly "help me figure out food", even with an old recipe still open */
+  undecided: /\b(no idea|dont know what|not sure what|what (should|do|can) i (cook|make|eat)|what to (cook|make|eat)|something (else )?to eat|feed me|cook tonight|whats for dinner)\b/,
+  /** Mood and meal words: a fridge cue only when nothing is mid-cook ("I'm starving, how long left?") */
+  tired: /\b(tired|wiped|exhausted|im beat|drained|long day|rough day|hungry|starving|dinner|lunch|breakfast)\b/,
   weary: /\b(tired|wiped|exhausted|im beat|drained|long day|rough day)\b/,
   question: /\b(how|what|when|why|which|is it|should i|can i|do i|does it|how long|ready|done yet|substitute|instead)\b/,
 };
+
+/** "no idea what to cook" must not read as "ideas" (a request for the recipe list). */
+const withoutNoIdea = (text: string) => text.replace(/\bno ideas?\b/g, " ");
 
 function reply(text: string, actions: SousAction[] = []): ChatResponse {
   return { reply: speakable(text), actions, source: "fallback" };
@@ -387,7 +397,7 @@ export function fallbackReply(message: string, context: ChatContext): ChatRespon
   if (!text) return reply("Sorry, I didn't catch that. Try saying scan my fridge.");
 
   if (cooking) {
-    const step = quickCookingIntent(text);
+    const step = quickCookingIntent(text) ?? stepCommandIn(text);
     if (step) return { reply: stepReply(step, context), actions: [{ name: step }], source: "fallback" };
   }
 
@@ -398,7 +408,8 @@ export function fallbackReply(message: string, context: ChatContext): ChatRespon
     return reply("Love that. Snap a quick photo of your plate and I'll log it to your diary.", [{ name: "log_meal" }]);
   }
 
-  if (RE.groceries.test(text) && !RE.strongList.test(text)) {
+  const listText = withoutNoIdea(text);
+  if (RE.groceries.test(text) && !RE.strongList.test(listText)) {
     const id = active?.id ?? pickRecipe(text, recipes) ?? recipes[0]?.id;
     if (id == null) return reply("Pick a recipe first, then I can tell you exactly what you're missing.");
     return reply("Here's what you're missing. I put it all on a little shopping list.", [
@@ -406,9 +417,12 @@ export function fallbackReply(message: string, context: ChatContext): ChatRespon
     ]);
   }
 
-  // Mid-cook, most messages are about the current step, so switching recipes needs a clear cue.
-  const midCook = active && cooking && active.stepIndex >= 0 ? active : null;
-  const wantsList = RE.showRecipes.test(text);
+  // Mid-cook (on the cooking or conversation screen), most messages are about the current
+  // step, so switching recipes needs a clear cue. A recipe left open in the store while the
+  // user browses other screens doesn't count.
+  const onCookingScreen = /^\/ai\/(cook|talk)(\/|$)/.test(context.screen ?? "");
+  const midCook = active && cooking && active.stepIndex >= 0 && onCookingScreen ? active : null;
+  const wantsList = RE.showRecipes.test(listText);
   if (recipes.length > 0 && !wantsList && !(cooking && /\bstep\b/.test(text))) {
     const cued = midCook
       ? RE.switchCue.test(text)
@@ -430,12 +444,12 @@ export function fallbackReply(message: string, context: ChatContext): ChatRespon
   }
 
   // Don't yank a mid-cook question over to the fridge; re-read the step instead.
-  if (midCook && RE.question.test(text) && !RE.fridge.test(text)) {
+  if (midCook && RE.question.test(text) && !RE.fridge.test(text) && !RE.undecided.test(text)) {
     const step = midCook.steps[Math.min(midCook.stepIndex, midCook.steps.length - 1)];
     return reply(`I'm having trouble connecting right now, so here's the step again. ${step}`);
   }
 
-  if (RE.fridge.test(text) || (!midCook && RE.tired.test(text))) {
+  if (RE.fridge.test(text) || RE.undecided.test(text) || (!midCook && RE.tired.test(text))) {
     const opener = RE.weary.test(text) ? "Long day, huh. " : "";
     return reply(`${opener}Let's see what you've got. Snap a quick photo of your fridge and I'll find something easy.`, [
       { name: "open_fridge_camera" },

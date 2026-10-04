@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { DaySummary } from "@/components/diary/DaySummary";
+import { DayTitle } from "@/components/diary/DayTitle";
 import { EntrySheet } from "@/components/diary/EntrySheet";
 import { HIT_AREA } from "@/components/diary/hitArea";
 import { MealSection } from "@/components/diary/MealSection";
@@ -12,7 +13,7 @@ import { stagger } from "@/components/diary/stagger";
 import { ButtonLink, IconButton } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/Misc";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
-import { fmt, groupByMeal, isFresh, isValidISODate, longDayLabel, MEAL_ORDER, sumNutrition } from "@/lib/diary/stats";
+import { fmt, groupByMeal, isFresh, isValidISODate, MEAL_ORDER, sumNutrition } from "@/lib/diary/stats";
 import { useDiaryView } from "@/lib/diary/view";
 import { useDiary } from "@/lib/stores/diary";
 import type { DiaryEntry } from "@/lib/types";
@@ -63,7 +64,7 @@ export default function DailyDiaryPage() {
     const future = valid;
     return (
       <>
-        <ScreenHeader title={future ? longDayLabel(date) : "Diary"} back="/diary" />
+        <ScreenHeader title={future ? <DayTitle date={date} /> : "Diary"} back="/diary" />
         <EmptyState
           className="animate-fade-up pb-nav pt-16"
           icon={future ? <CalendarClock className="size-6" /> : <CalendarX2 className="size-6" />}
@@ -96,7 +97,7 @@ export default function DailyDiaryPage() {
   return (
     <>
       <ScreenHeader
-        title={longDayLabel(date)}
+        title={<DayTitle date={date} />}
         subtitle={subtitle}
         back="/diary"
         right={

@@ -70,6 +70,18 @@ export function reopenSteps(recipe: Recipe): void {
   useKitchen.setState({ finishedRecipeId: null, stepIndex: Math.max(0, recipe.steps.length - 1) });
 }
 
+/**
+ * Called when the store says "finished" but the step is no longer the last one (a voice
+ * "go back" from the celebration moves stepIndex without clearing the flag). Without this,
+ * the next tap on Next would jump straight back to the celebration and skip the last step.
+ */
+export function clearStaleFinish(recipe: Recipe): void {
+  const k = useKitchen.getState();
+  if (k.finishedRecipeId === recipe.id && k.stepIndex < recipe.steps.length - 1) {
+    useKitchen.setState({ finishedRecipeId: null });
+  }
+}
+
 /** Cook the same recipe again from the overview */
 export function restartRecipe(): void {
   useKitchen.setState({ finishedRecipeId: null, stepIndex: -1, cookStartedAt: Date.now() });

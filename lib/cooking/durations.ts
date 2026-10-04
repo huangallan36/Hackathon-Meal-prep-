@@ -182,8 +182,9 @@ export function formatClock(totalSec: number): string {
 export function formatDuration(totalSec: number): string {
   const s = Math.max(0, Math.round(totalSec));
   if (s < 60) return `${s} sec`;
-  const h = Math.floor(s / 3600);
-  const m = Math.round((s % 3600) / 60);
+  const minutes = Math.round(s / 60);
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
   if (!h) return `${m} min`;
   return m ? `${h} hr ${m} min` : `${h} hr`;
 }

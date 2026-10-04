@@ -26,6 +26,8 @@ export function CalorieRing({
   const remaining = Math.round(goal - consumed);
   const over = remaining < 0;
   const r = ratio(consumed, goal);
+  // Never "100%" next to "10 kcal over" (or "5 kcal left"): round toward the side we're on
+  const pct = over ? Math.ceil(r * 100) : Math.floor(r * 100);
 
   return (
     <Card className={cn("p-5", className)} style={style}>
@@ -37,7 +39,7 @@ export function CalorieRing({
             over ? "bg-accent-soft text-accent-strong" : "bg-herb-soft text-herb",
           )}
         >
-          {Math.round(r * 100)}% of goal
+          {pct}% of goal
         </span>
       </div>
 

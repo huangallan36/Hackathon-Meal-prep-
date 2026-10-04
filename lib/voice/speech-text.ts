@@ -115,8 +115,8 @@ export function toSpeech(text: string): string {
   s = s
     .replace(/(\d)\s*°\s*F\b/g, "$1 degrees Fahrenheit")
     .replace(/(\d)\s*°\s*C\b/g, "$1 degrees Celsius")
-    .replace(/(\d)\s*(?:degrees?|deg\.?)\s*F\b\.?/gi, "$1 degrees Fahrenheit")
-    .replace(/(\d)\s*(?:degrees?|deg\.?)\s*C\b\.?/gi, "$1 degrees Celsius")
+    .replace(/(\d)\s*(?:degrees?|deg\.?)\s*F\b/gi, "$1 degrees Fahrenheit")
+    .replace(/(\d)\s*(?:degrees?|deg\.?)\s*C\b/gi, "$1 degrees Celsius")
     .replace(/\b(\d{3})\s?F\b/g, "$1 degrees Fahrenheit")
     .replace(/\b(\d{3})\s?C\b/g, "$1 degrees Celsius")
     .replace(/(\d)\s*°/g, "$1 degrees");

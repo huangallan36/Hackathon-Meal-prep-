@@ -34,19 +34,20 @@ const EYES = ["variant01", "variant04", "variant05"];
 const BACKGROUNDS = ["ffe4d9", "fff3d1", "e2f2e7", "fbefe2", "fde2cf", "f3e8d8"];
 
 /**
- * Hand-tuned looks so faces read the way the seeded bios do. Anything not
- * listed falls back to the seed alone. Keys are avatar file names.
+ * Hand-tuned looks so faces read the way the seeded bios do, with backgrounds
+ * spread out so neighbours in the feed differ. Anything not listed falls back
+ * to the seed alone. Keys are avatar file names.
  */
 const LOOKS = {
-  "maya.makes": { seed: "maya.makes", hair: ["variant48"], beardProbability: 0 },
-  "dev.eats": { seed: "dev.eats", hair: ["variant38"], beardProbability: 0, glassesProbability: 100, glasses: ["variant03", "variant08", "variant11"] },
-  "sofia.sazon": { seed: "sofia.sazon", hair: ["variant28"], beardProbability: 0 },
-  "jordan.grills": { seed: "jordan.grills", hair: ["variant22"], beardProbability: 100 },
-  "priya.plates": { seed: "priya.plates", hair: ["variant41"], beardProbability: 0 },
-  "liam.loaf": { seed: "liam.loaf", hair: ["variant20"], beardProbability: 100 },
-  "hana.bento": { seed: "hana.bento", hair: ["variant46"], beardProbability: 0 },
-  "noah.kitchen": { seed: "noah.kitchen", hair: ["variant14"], beardProbability: 0 },
-  alex: { seed: "alex.cooks", hair: ["variant27"], beardProbability: 0 },
+  "maya.makes": { seed: "maya.makes", bg: "fff3d1", hair: ["variant48"], beardProbability: 0 },
+  "dev.eats": { seed: "dev.eats", bg: "e2f2e7", hair: ["variant38"], beardProbability: 0, glassesProbability: 100, glasses: ["variant03", "variant08", "variant11"] },
+  "sofia.sazon": { seed: "sofia.sazon", bg: "ffe4d9", hair: ["variant28"], beardProbability: 0 },
+  "jordan.grills": { seed: "jordan.grills", bg: "fff3d1", hair: ["variant22"], beardProbability: 100 },
+  "priya.plates": { seed: "priya.plates", bg: "e2f2e7", hair: ["variant41"], beardProbability: 0 },
+  "liam.loaf": { seed: "liam.loaf", bg: "fbefe2", hair: ["variant20"], beardProbability: 100 },
+  "hana.bento": { seed: "hana.bento", bg: "ffe4d9", hair: ["variant46"], beardProbability: 0 },
+  "noah.kitchen": { seed: "noah.kitchen", bg: "fff3d1", hair: ["variant14"], beardProbability: 0 },
+  alex: { seed: "alex.cooks", bg: "ffe4d9", hair: ["variant27"], beardProbability: 0 },
 };
 
 /** Stable small hash so each avatar keeps the same background color */
@@ -56,8 +57,9 @@ function hash(text) {
   return h;
 }
 
+/** Every avatar the app references, plus the hand-tuned ones (in case a path is built dynamically) */
 async function avatarNames() {
-  const names = new Set();
+  const names = new Set(Object.keys(LOOKS));
   for (const rel of SOURCES) {
     const text = await readFile(path.join(ROOT, rel), "utf8").catch(() => "");
     for (const m of text.matchAll(/["']\/avatars\/([a-z0-9._-]+)\.svg["']/gi)) names.add(m[1]);
@@ -74,11 +76,11 @@ async function main() {
   await mkdir(OUT_DIR, { recursive: true });
 
   for (const name of names) {
-    const look = LOOKS[name] ?? { seed: name };
+    const { bg, ...look } = LOOKS[name] ?? { seed: name };
     const svg = createAvatar(notionists, {
       size: 128,
       radius: 50,
-      backgroundColor: [BACKGROUNDS[hash(name) % BACKGROUNDS.length]],
+      backgroundColor: [bg ?? BACKGROUNDS[hash(name) % BACKGROUNDS.length]],
       backgroundType: ["solid"],
       bodyIconProbability: 0,
       gestureProbability: 0,

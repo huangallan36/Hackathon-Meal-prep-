@@ -14,11 +14,13 @@ export function Transcript({ className, empty }: { className?: string; empty?: R
 
   const showInterim = status === "listening" && !!interim;
   const showThinking = status === "thinking";
+  // Keyed on the last line's id, not the length: the store caps the transcript at 60 lines.
+  const lastId = transcript[transcript.length - 1]?.id;
 
   useEffect(() => {
     const el = scroller.current;
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [transcript.length, interim, showThinking]);
+  }, [lastId, interim, showThinking]);
 
   const isEmpty = !transcript.length && !showInterim && !showThinking;
 
@@ -49,37 +51,52 @@ export function Transcript({ className, empty }: { className?: string; empty?: R
   );
 }
 
-function Bubble({ line }: { line: TranscriptLine }) {
-  const mine = line.role === "user";
+/** Sous's tiny orb avatar next to its bubbles (gradient = the orb's palette) */
+function SousDot() {
   return (
-    <p
-      className={cn(
-        "max-w-[86%] whitespace-pre-line px-4 py-2.5 text-[15px] leading-snug text-ink animate-fade-up",
-        mine
-          ? "self-end rounded-[20px] rounded-br-md bg-accent-soft"
-          : "self-start rounded-[20px] rounded-bl-md bg-surface shadow-soft",
-      )}
-    >
-      {line.text}
-    </p>
+    <span
+      aria-hidden
+      className="mb-1 size-6 shrink-0 rounded-full bg-[radial-gradient(circle_at_30%_25%,#ffe2b0,#ff8a5c_40%,#f2542d_70%,#c93c18)] shadow-soft"
+    />
+  );
+}
+
+function Bubble({ line }: { line: TranscriptLine }) {
+  if (line.role === "user") {
+    return (
+      <p className="max-w-[86%] self-end whitespace-pre-line rounded-[20px] rounded-br-md bg-accent-soft px-4 py-2.5 text-[15px] leading-snug text-ink animate-fade-up">
+        {line.text}
+      </p>
+    );
+  }
+  return (
+    <div className="flex max-w-[90%] items-end gap-2 self-start animate-fade-up">
+      <SousDot />
+      <p className="min-w-0 whitespace-pre-line rounded-[20px] rounded-bl-md bg-surface px-4 py-2.5 text-[15px] leading-snug text-ink shadow-soft">
+        {line.text}
+      </p>
+    </div>
   );
 }
 
 function ThinkingBubble() {
   return (
-    <span
-      role="status"
-      aria-label="Sous is thinking"
-      className="flex items-center gap-1.5 self-start rounded-[20px] rounded-bl-md bg-surface px-4 py-3.5 shadow-soft animate-fade-up"
-    >
-      {[0, 1, 2].map((i) => (
-        <motion.span
-          key={i}
-          className="block size-2 rounded-full bg-accent"
-          animate={{ opacity: [0.3, 1, 0.3], y: [0, -3, 0] }}
-          transition={{ duration: 1, repeat: Infinity, delay: i * 0.16, ease: "easeInOut" }}
-        />
-      ))}
-    </span>
+    <div className="flex items-end gap-2 self-start animate-fade-up">
+      <SousDot />
+      <span
+        role="status"
+        aria-label="Sous is thinking"
+        className="flex items-center gap-1.5 rounded-[20px] rounded-bl-md bg-surface px-4 py-3.5 shadow-soft"
+      >
+        {[0, 1, 2].map((i) => (
+          <motion.span
+            key={i}
+            className="block size-2 rounded-full bg-accent"
+            animate={{ opacity: [0.3, 1, 0.3], y: [0, -3, 0] }}
+            transition={{ duration: 1, repeat: Infinity, delay: i * 0.16, ease: "easeInOut" }}
+          />
+        ))}
+      </span>
+    </div>
   );
 }

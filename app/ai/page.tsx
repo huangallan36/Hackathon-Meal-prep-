@@ -17,6 +17,7 @@ import { usePrefs } from "@/lib/stores/prefs";
 import { userByHandle, useSocial } from "@/lib/stores/social";
 import { useVoice } from "@/lib/stores/voice";
 import type { VoiceStatus } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { listen, startSession, unlockAudio } from "@/lib/voice/engine";
 
 function timeOfDayCopy(date: Date): { greeting: string; subtitle: string } {
@@ -63,7 +64,7 @@ export default function AiHomePage() {
           </span>
         }
         right={
-          <IconButton label="Settings" onClick={() => setSettingsOpen(true)}>
+          <IconButton label="Settings" onClick={() => setSettingsOpen(true)} className="size-11">
             <Settings2 className="size-5" />
           </IconButton>
         }
@@ -91,9 +92,7 @@ export default function AiHomePage() {
           <Button size="lg" full className="mt-6" icon={<Mic className="size-5" />} onClick={start}>
             {sessionActive ? "Back to conversation" : "Start"}
           </Button>
-          <p className="mt-3 text-center text-sm text-ink-faint">
-            Try &ldquo;I&apos;m wiped, no idea what to cook&rdquo;
-          </p>
+          <LiveLine />
         </section>
 
         <section className="mt-8 grid grid-cols-2 gap-3 animate-fade-up [animation-delay:160ms]">
@@ -125,6 +124,42 @@ export default function AiHomePage() {
 
       <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
+  );
+}
+
+/**
+ * Under the Start button: a prompt to try, or (mid-session) what Sous is hearing or just said.
+ * The floating orb is hidden here, so this is the AI home's live caption.
+ */
+function LiveLine() {
+  const sessionActive = useVoice((s) => s.sessionActive);
+  const status = useVoice((s) => s.status);
+  const interim = useVoice((s) => s.interim);
+  const caption = useVoice((s) => s.caption);
+
+  let text: ReactNode = <>Try &ldquo;I&apos;m wiped, no idea what to cook&rdquo;</>;
+  let live = false;
+  if (sessionActive && status === "listening") {
+    text = interim || "Listening...";
+    live = true;
+  } else if (sessionActive && status === "thinking") {
+    text = "Thinking...";
+    live = true;
+  } else if (sessionActive && caption) {
+    text = <>&ldquo;{caption}&rdquo;</>;
+    live = true;
+  }
+
+  return (
+    <p
+      aria-live="polite"
+      className={cn(
+        "mt-3 line-clamp-2 min-h-10 max-w-[320px] text-center text-sm leading-5",
+        live ? "italic text-ink-soft" : "text-ink-faint",
+      )}
+    >
+      {text}
+    </p>
   );
 }
 

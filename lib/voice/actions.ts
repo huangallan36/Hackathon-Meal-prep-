@@ -61,11 +61,24 @@ function nextStep(): string {
   return speakStep(useKitchen.getState().stepIndex);
 }
 
+/** The "Nice work, snap your meal" card is showing (finished, still on the last step). */
+function onFinishCard(): boolean {
+  const k = useKitchen.getState();
+  const r = k.activeRecipe;
+  return !!r && k.finishedRecipeId === r.id && k.stepIndex >= r.steps.length - 1;
+}
+
 function previousStep(): string {
   const k = useKitchen.getState();
   const r = k.activeRecipe;
   if (!r || !r.steps.length) return NO_RECIPE_LINE;
   showCookScreen(r.id);
+  // From the finish card, "go back" means the last step (the card counts as one more step).
+  if (onFinishCard()) {
+    const last = r.steps.length - 1;
+    useKitchen.setState({ finishedRecipeId: null, stepIndex: last });
+    return speakStep(last);
+  }
   if (k.stepIndex < 0) return "We're at the start. Say next when you're ready to begin.";
   if (k.stepIndex === 0) return `We're at the start. ${speakStep(0)}`;
   k.prevStep();
@@ -77,6 +90,8 @@ function repeatStep(): string {
   const r = k.activeRecipe;
   if (!r || !r.steps.length) return NO_RECIPE_LINE;
   showCookScreen(r.id);
+  // On the finish card the last thing Sous said was the wrap-up, so say that again.
+  if (onFinishCard()) return LAST_STEP_LINE;
   if (k.stepIndex < 0) {
     k.goToStep(0);
     return speakStep(0);

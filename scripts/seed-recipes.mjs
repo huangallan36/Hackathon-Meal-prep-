@@ -20,7 +20,7 @@
  * run (bad key, quota, rate limit, network) leaves the existing cache intact.
  * The previous cache is copied to .tmp/data/recipes.prev.json before writing.
  */
-import { copyFile, mkdir, readFile, rename, writeFile, access } from "node:fs/promises";
+import { access, copyFile, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -112,7 +112,8 @@ class SeedError extends Error {}
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const quota = { used: null, left: null, spent: 0, calls: 0 };
 let lastCallAt = 0;
-let written = false;
+/** How far the run got, so a failure message says what happened to the cache */
+let phase = "fetching"; // -> "writing" -> "written"
 
 function explainStatus(status) {
   switch (status) {
@@ -186,7 +187,7 @@ function cleanTitle(title) {
     t.length >= 4 &&
     t.length <= 70 &&
     !/&#|<|>|\?|\*|@|#|\|/.test(t) &&
-    /^[\p{L}\p{N} ,.'&()\-–:!/]+$/u.test(t) &&
+    /^[\p{L}\p{N} ,.'’&()\-–:!/]+$/u.test(t) &&
     t !== t.toUpperCase()
   );
 }
@@ -228,11 +229,12 @@ function trim(recipe) {
 }
 
 /**
- * Round-robin across queries so no single query dominates the catalog: the
- * first perQuery rounds give every query one pick each, later rounds let
- * queries with spare results top up any shortfall.
+ * Round-robin across queries so no single query dominates the catalog: each
+ * round gives every query one pick, so with TARGET = queries x PER_QUERY each
+ * query ends up with PER_QUERY picks, and queries with spare results top up
+ * any query that ran short.
  */
-function balancedPick(buckets, perQuery, target) {
+function balancedPick(buckets, target) {
   const chosen = [];
   const taken = new Set();
   for (let round = 0; chosen.length < target; round++) {
@@ -244,9 +246,23 @@ function balancedPick(buckets, perQuery, target) {
       chosen.push({ ...next, _query: QUERIES[q].query });
       progressed = true;
     }
-    if (!progressed && round >= perQuery) break;
+    if (!progressed) break;
   }
   return chosen;
+}
+
+/**
+ * Atomic replace. Windows refuses rename() while another process (an editor or
+ * the dev server's file watcher) holds the target open, so fall back to a plain
+ * overwrite: the content is already complete and validated at this point.
+ */
+async function replaceFile(tmp, dest) {
+  try {
+    await rename(tmp, dest);
+  } catch {
+    await writeFile(dest, await readFile(tmp, "utf8"), "utf8");
+    await unlink(tmp).catch(() => {});
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -322,7 +338,7 @@ async function main() {
   }
 
   // 2) Balanced pick
-  const picks = balancedPick(buckets, PER_QUERY, TARGET);
+  const picks = balancedPick(buckets, TARGET);
   if (picks.length < MIN_RECIPES) {
     throw new SeedError(`Only ${picks.length} usable recipes in the search results (need ${MIN_RECIPES}). Nothing was written.`);
   }
@@ -339,9 +355,12 @@ async function main() {
     if (Array.isArray(data)) full.push(...data);
   }
 
-  // 4) Final filter + trim
+  // 4) Final filter + trim, in pick order (bulk responses are not guaranteed to keep it)
+  const order = new Map(picks.map((p, i) => [p.id, i]));
+  const unique = [...new Map(full.filter((r) => order.has(r?.id)).map((r) => [r.id, r])).values()];
+  unique.sort((a, b) => order.get(a.id) - order.get(b.id));
   const recipes = [];
-  for (const r of full) {
+  for (const r of unique) {
     const why = rejection(r, true);
     if (why) {
       console.log(`      drop  ${r.title} (${why})`);
@@ -358,8 +377,9 @@ async function main() {
   await copyFile(OUT_FILE, BACKUP_FILE).catch(() => {});
   const tmp = `${OUT_FILE}.tmp`;
   await writeFile(tmp, `${JSON.stringify(recipes, null, 2)}\n`, "utf8");
-  await rename(tmp, OUT_FILE);
-  written = true;
+  phase = "writing";
+  await replaceFile(tmp, OUT_FILE);
+  phase = "written";
   await access(YOUTUBE_FILE).catch(() => writeFile(YOUTUBE_FILE, "{}\n", "utf8"));
 
   let youtube = {};
@@ -387,6 +407,11 @@ async function main() {
 main().catch((err) => {
   const message = err instanceof SeedError ? err.message : `unexpected error: ${err instanceof Error ? err.message : err}`;
   console.error(`\nSeed failed: ${message}`);
-  console.error(written ? "data/recipes.json was already written; check it before committing." : "data/recipes.json was not changed.");
+  const fate = {
+    fetching: "data/recipes.json was not changed.",
+    writing: `data/recipes.json may be incomplete: restore it from ${rel(BACKUP_FILE)}.`,
+    written: "data/recipes.json was already written; check it before committing.",
+  };
+  console.error(fate[phase]);
   process.exit(1);
 });

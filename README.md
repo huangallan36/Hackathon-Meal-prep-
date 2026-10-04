@@ -58,7 +58,7 @@ sample photo's canned ingredient list matches what Gemini sees in it.
 | **Structured JSON vision: ingredients.** Fridge photo -> `{ ingredients: [{ name, confidence }] }` via `responseJsonSchema`, then cleaned into editable chips. | `app/api/vision/ingredients` |
 | **Structured JSON vision: nutrition.** Plate photo -> dish name, portion, calories, protein, carbs, fat, fiber, shown as an editable "Estimated" card. | `app/api/vision/meal` |
 | **Image + caption moderation** for Social posts, with a local rule check as backstop. | `app/api/moderate`, `lib/social/moderation-*.ts` |
-| **Model fallback chain.** Flash models often return 503 "high demand", so every call walks a chain with per-attempt timeouts; vision calls are *hedged* (the next model starts in parallel if the first is slow). | `lib/server/gemini.ts`, `lib/kitchen/hedge.ts` |
+| **Model fallback chain.** Flash models often return 503 "high demand", so every call walks a chain with per-attempt timeouts; the fridge scan is *hedged* (the next model starts in parallel if the first is slow, first valid answer wins). | `lib/server/gemini.ts`, `lib/kitchen/hedge.ts` |
 
 ### Best Use of ElevenLabs
 
@@ -144,13 +144,19 @@ and `SOUS_FORCE_CACHE` is not `1`; any error falls back to the catalog.
 `npm run seed` (`scripts/seed-recipes.mjs`, no dependencies) rebuilds the catalog: 7
 popularity-sorted searches (chicken, beef, salmon, eggs, rice, pasta, vegetables), a filter
 (image, clean title, <= 60 min, 3-14 steps, real meals), 3 picks per query (~21 recipes), then
-one `informationBulk` pass with nutrition. It costs about **23 points**, prints the quota headers,
+`informationBulk` with nutrition for the picks only (2 calls of <= 20 ids). Requests run one at
+a time, 1.1 s apart (free plan: 1 request/s). It costs about **23 points**, prints the quota headers,
 and never overwrites the cache on a bad key (401), exhausted quota (402), rate limit (429) or
 network error. `npm run seed -- --dry-run` prints the plan and cost without any requests.
 The previous catalog is kept in `.tmp/data/recipes.prev.json`.
 
 Until the seed has been run, `data/recipes.json` holds 3 "Sous Test Kitchen" placeholder
-recipes. Optional YouTube tutorials are mapped by recipe id in `data/youtube.json`.
+recipes with a drawn placeholder image, so **run the seed before demo day** for real food
+photos. The catalog is imported at build time: restart `npm run dev` (or rebuild / redeploy)
+after seeding, commit the new `data/recipes.json`, and tap **Reset demo data** once so the
+fridge matches saved from the old catalog are cleared (Social re-seeds itself when the catalog
+changes). Optional YouTube tutorials are mapped by recipe id in `data/youtube.json`
+(`{ "<recipeId>": "<youtubeVideoId>" }`, edited by hand).
 
 ---
 
@@ -161,7 +167,7 @@ Requires **Node.js 20.9+**.
 ```bash
 npm install
 cp .env.example .env.local   # then add your keys
-npm run seed                 # optional: real recipes into data/recipes.json (needs a Spoonacular key)
+npm run seed                 # recommended: ~21 real recipes into data/recipes.json (needs a Spoonacular key)
 npm run avatars              # optional: avatars are already committed in public/avatars
 npm run dev                  # http://localhost:3000
 ```
@@ -195,7 +201,8 @@ All are read on the server only. **Never prefix them with `NEXT_PUBLIC_`.**
 
 ## Deploy to Vercel
 
-1. Push the repo to GitHub (`.env.local` is git-ignored; only `.env.example` is committed).
+1. Run `npm run seed` locally and commit `data/recipes.json` (the build bundles it), then push
+   the repo to GitHub (`.env.local` is git-ignored; only `.env.example` is committed).
 2. In Vercel, **Add New -> Project** and import the repo. The framework preset is detected
    (Next.js); keep the default build settings.
 3. Under **Settings -> Environment Variables**, add `GEMINI_API_KEY`, `ELEVENLABS_API_KEY` and

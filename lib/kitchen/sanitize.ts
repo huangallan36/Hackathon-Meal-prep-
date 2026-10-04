@@ -89,6 +89,8 @@ export function parseIngredientsParam(raw: string | null): string[] {
   return uniqueIngredients(raw.slice(0, 2000).split(","));
 }
 
+const LOCAL_IMAGE = /^\/(?!\/)[\w./-]+\.(?:jpe?g|png|webp)$/i;
+
 /** Shape check for the vision request body (imagePart does the deeper validation) */
 export function isImageInput(value: unknown): value is ImageInput {
   if (!value || typeof value !== "object") return false;
@@ -99,7 +101,9 @@ export function isImageInput(value: unknown): value is ImageInput {
   if (typeof v.url === "string") {
     const url = v.url;
     if (url.startsWith("data:image/")) return true;
-    return url.length <= 2048 && (url.startsWith("https://") || (url.startsWith("/") && !url.startsWith("//")));
+    if (url.length > 2048) return false;
+    // Same-origin paths must be plain image files in /public (e.g. /sample-fridge.jpg), never routes.
+    return url.startsWith("https://") || LOCAL_IMAGE.test(url);
   }
   return false;
 }

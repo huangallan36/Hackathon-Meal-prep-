@@ -26,18 +26,32 @@ function respond(body: ChatResponse): Response {
   return Response.json(body, { headers: { "Cache-Control": "no-store" } });
 }
 
+/** Parsed JSON body, or null when it is too large or not JSON. Never logs the body itself. */
+async function readBody(request: Request): Promise<unknown> {
+  const declared = Number(request.headers.get("content-length") ?? 0);
+  if (declared > CHAT_LIMITS.bodyBytes) {
+    console.warn(`[chat] body too large (${declared} bytes declared)`);
+    return null;
+  }
+  const raw = await request.text();
+  if (raw.length > CHAT_LIMITS.bodyBytes) {
+    console.warn(`[chat] body too large (${raw.length} chars)`);
+    return null;
+  }
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    console.warn("[chat] invalid JSON body");
+    return null;
+  }
+}
+
 export async function POST(request: Request): Promise<Response> {
   let message = "";
   let context = EMPTY_CONTEXT;
 
   try {
-    const raw = await request.text();
-    if (raw.length > CHAT_LIMITS.bodyBytes) {
-      console.warn(`[chat] body too large (${raw.length} chars)`);
-      return respond(fallbackReply("", context));
-    }
-
-    const parsed = parseChatRequest(JSON.parse(raw));
+    const parsed = parseChatRequest(await readBody(request));
     if (!parsed) return respond(fallbackReply("", context));
     message = parsed.message;
     context = parsed.context;

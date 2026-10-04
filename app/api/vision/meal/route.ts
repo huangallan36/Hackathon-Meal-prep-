@@ -16,6 +16,16 @@ export const maxDuration = 30;
 const MAX_BODY_CHARS = 6_000_000;
 const MAX_URL_CHARS = 2048;
 const IMAGE_MIME = /^image\/(jpeg|jpg|png|webp|heic|heif)$/i;
+const BASE64 = /^(?:data:image\/[\w.+-]+;base64,)?[A-Za-z0-9+/\r\n]+={0,2}$/;
+
+/**
+ * Whole-request budget. The client gives up after TIMEOUTS.vision (25s), so the answer
+ * (Gemini or fallback) must be back before that, including the time to fetch a URL image.
+ */
+const BUDGET_MS = 22_500;
+const ATTEMPT_MS = 12_000;
+/** Not worth starting a vision call with less than this left */
+const MIN_GEMINI_MS = 3_000;
 
 function reply(estimate: MealEstimate, source: MealEstimateResponse["source"]): Response {
   const body: MealEstimateResponse = { estimate, source };
@@ -27,7 +37,7 @@ function parseImage(value: unknown): ImageInput | null {
   const v = value as Record<string, unknown>;
   if (typeof v.base64 === "string") {
     const mimeType = typeof v.mimeType === "string" ? v.mimeType : "image/jpeg";
-    if (!IMAGE_MIME.test(mimeType) || v.base64.length < 100) return null;
+    if (!IMAGE_MIME.test(mimeType) || v.base64.length < 100 || !BASE64.test(v.base64)) return null;
     return { base64: v.base64, mimeType };
   }
   if (typeof v.url === "string" && v.url.length <= MAX_URL_CHARS) {
@@ -44,6 +54,7 @@ function parseRecipeId(value: unknown): number | undefined {
 }
 
 export async function POST(req: Request): Promise<Response> {
+  const deadline = Date.now() + BUDGET_MS;
   let recipe: Recipe | undefined;
   let dishHint: string | undefined;
 
@@ -77,6 +88,11 @@ export async function POST(req: Request): Promise<Response> {
     }
 
     const photo = await imagePart(image, req.url);
+    const remaining = deadline - Date.now();
+    if (remaining < MIN_GEMINI_MS) {
+      console.warn(`[vision/meal] image took too long (${BUDGET_MS - remaining}ms), using fallback`);
+      return reply(fallback, "fallback");
+    }
     const { data, model } = await generateJSON<unknown>({
       models: VISION_MODELS,
       parts: [
@@ -85,8 +101,8 @@ export async function POST(req: Request): Promise<Response> {
       ],
       schema: MEAL_SCHEMA,
       systemInstruction: MEAL_SYSTEM_PROMPT,
-      timeoutMs: 22_000,
-      attemptTimeoutMs: 12_000,
+      timeoutMs: remaining,
+      attemptTimeoutMs: Math.min(ATTEMPT_MS, remaining),
       label: "meal",
     });
     const estimate = sanitizeEstimate(data, fallback);

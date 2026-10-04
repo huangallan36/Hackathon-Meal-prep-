@@ -4,7 +4,7 @@
  * status so the client switches to browser speechSynthesis.
  */
 import { speakable } from "@/lib/intents";
-import { defaultVoiceId, isVoiceId, prepareTtsText, streamSpeech } from "@/lib/server/elevenlabs";
+import { allowTts, clientKey, defaultVoiceId, isVoiceId, prepareTtsText, streamSpeech } from "@/lib/server/elevenlabs";
 import type { TtsError } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -19,6 +19,7 @@ function fail(error: string, status: number): Response {
 
 export async function POST(request: Request): Promise<Response> {
   try {
+    if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_CHARS) return fail("text_too_long", 413);
     const raw = await request.text();
     if (raw.length > MAX_BODY_CHARS) return fail("text_too_long", 413);
 
@@ -35,6 +36,11 @@ export async function POST(request: Request): Promise<Response> {
     if (!text) return fail("empty_text", 400);
     const voiceId = isVoiceId(body.voiceId) ? body.voiceId : defaultVoiceId();
 
+    if (!allowTts(clientKey(request))) {
+      console.warn("[tts] rate limited");
+      return fail("rate_limited", 429);
+    }
+
     const started = Date.now();
     const upstream = await streamSpeech(text, voiceId, {
       headerTimeoutMs: 10_000,
@@ -43,7 +49,8 @@ export async function POST(request: Request): Promise<Response> {
     });
     if (!upstream.ok) {
       console.warn(`[tts] elevenlabs ${upstream.status} ${upstream.code} after ${Date.now() - started}ms`);
-      return fail(upstream.code, upstream.code === "no_api_key" ? 503 : 502);
+      const status = upstream.code === "no_api_key" ? 503 : upstream.code === "timeout" ? 504 : 502;
+      return fail(upstream.code, status);
     }
     console.info(`[tts] ${text.length} chars, first byte in ${Date.now() - started}ms`);
 

@@ -3,6 +3,7 @@
 import { Dumbbell, Footprints, Moon, type LucideIcon } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Card, SectionLabel } from "@/components/ui/Card";
+import { fmt } from "@/lib/diary/stats";
 import type { DailyActivity } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { CountUp } from "./CountUp";
@@ -33,7 +34,7 @@ export function ActivityRow({
           tint="bg-accent-soft text-accent"
           value={activity?.exerciseMinutes}
           unit="min"
-          caption={activity ? (activity.exerciseKcal > 0 ? `${activity.exerciseKcal} kcal` : "rest day") : "exercise"}
+          caption={activity ? (activity.exerciseKcal > 0 ? `${fmt(activity.exerciseKcal)} kcal` : "rest day") : "exercise"}
         />
         <Stat
           Icon={Moon}
