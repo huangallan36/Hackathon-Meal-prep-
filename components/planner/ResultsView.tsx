@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { MascotAvatar } from "@/components/mascot/Mascot";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, FallbackNote } from "@/components/ui/Misc";
-import { SPOONACULAR_BACKLINK } from "@/lib/config";
+import { fromSpoonacular, fromTheMealDB, SPOONACULAR_BACKLINK, THEMEALDB_URL } from "@/lib/config";
 import type { PlannerResult } from "@/lib/planner/client";
 import { usePopularRecipes } from "@/lib/planner/hooks";
 import {
@@ -73,7 +73,8 @@ export function ResultsView({
   const keep = cut ? (r: Recipe) => hasIngredient(r, cut) : undefined;
   const combos = combinationGroups(data, keep);
   const rows = keep ? all.filter(keep) : all;
-  const total = new Set([...data.matches, ...data.combinations, ...data.similar].map((r) => r.id)).size;
+  const listed = [...data.matches, ...data.combinations, ...data.similar];
+  const total = new Set(listed.map((r) => r.id)).size;
   const shown = cut ? new Set([...rows, ...combos.flatMap((g) => g.recipes)].map((r) => r.id)).size : total;
 
   if (total === 0) {
@@ -146,7 +147,7 @@ export function ResultsView({
           {cut && <> with {cut}</>}
         </p>
         <FallbackNote show={result.origin === "local"} />
-        {data.source === "live" && (
+        {data.source === "live" && (listed.some(fromSpoonacular) || !listed.some(fromTheMealDB)) && (
           <a
             href={SPOONACULAR_BACKLINK}
             target="_blank"
@@ -154,6 +155,16 @@ export function ResultsView({
             className="text-xs font-medium text-ink-faint underline-offset-2 hover:underline"
           >
             Fresh picks from Spoonacular
+          </a>
+        )}
+        {listed.some(fromTheMealDB) && (
+          <a
+            href={THEMEALDB_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs font-medium text-ink-faint underline-offset-2 hover:underline"
+          >
+            Recipes and photos from TheMealDB
           </a>
         )}
       </div>

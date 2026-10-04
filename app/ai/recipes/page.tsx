@@ -9,7 +9,7 @@ import { ButtonLink, IconButton } from "@/components/ui/Button";
 import { SectionHeader } from "@/components/ui/Card";
 import { EmptyState, FallbackNote } from "@/components/ui/Misc";
 import { PageTitle, ScreenHeader } from "@/components/ui/ScreenHeader";
-import { fromSpoonacular, SPOONACULAR_BACKLINK } from "@/lib/config";
+import { fromSpoonacular, fromTheMealDB, SPOONACULAR_BACKLINK, THEMEALDB_URL } from "@/lib/config";
 import { announceMatches, fetchMatches } from "@/lib/kitchen/client";
 import { bestMatchLine, ingredientSummary } from "@/lib/kitchen/format";
 import { cookHref, FRIDGE_EDIT_HREF, FRIDGE_SCAN_HREF } from "@/lib/kitchen/routes";
@@ -178,17 +178,42 @@ function NoIngredients({ onCook }: { onCook: (recipe: Recipe) => void }) {
   );
 }
 
-/** Spoonacular's required credit when a listed recipe came from it; catalog photos are credited on each recipe */
+/**
+ * Credits for the listed recipes: Spoonacular's required backlink when one came from it,
+ * TheMealDB for its live recipes, and the catalog's Wikimedia photos (credited on each recipe).
+ */
 function Attribution({ recipes }: { recipes: Recipe[] }) {
-  if (!recipes.some(fromSpoonacular)) {
+  const spoon = recipes.some(fromSpoonacular);
+  const mealDb = recipes.some(fromTheMealDB);
+  const catalog = recipes.some((r) => !fromSpoonacular(r) && !fromTheMealDB(r));
+  if (!spoon && !mealDb) {
     return <p className="pt-1 text-center text-xs text-ink-faint">Dish photos from Wikimedia Commons, credited on each recipe</p>;
   }
   return (
     <p className="pt-1 text-center text-xs text-ink-faint">
-      Recipes from{" "}
-      <a href={SPOONACULAR_BACKLINK} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
-        Spoonacular
-      </a>
+      {spoon && (
+        <>
+          Recipes from{" "}
+          <a href={SPOONACULAR_BACKLINK} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+            Spoonacular
+          </a>
+        </>
+      )}
+      {spoon && mealDb && <span aria-hidden> &middot; </span>}
+      {mealDb && (
+        <>
+          Recipes and photos from{" "}
+          <a href={THEMEALDB_URL} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+            TheMealDB
+          </a>
+        </>
+      )}
+      {catalog && !spoon && (
+        <>
+          <br />
+          Dish photos from Wikimedia Commons, credited on each recipe
+        </>
+      )}
     </p>
   );
 }

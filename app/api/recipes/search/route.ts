@@ -7,8 +7,11 @@
  * offline fallback). Only when it finds fewer than 3 matches, and Spoonacular is enabled,
  * do we spend quota on complexSearch, with an in-memory cache, hourly/daily budgets and a
  * back-off after 401/402/429, so search-as-you-type can never starve the fridge -> recipes
- * demo path. Any error: HTTP 200 with catalog results (source "cache").
+ * demo path. Whenever Spoonacular isn't used, live TheMealDB recipes for the query are added
+ * after the catalog's (lib/server/themealdb.ts). Any error: HTTP 200 with catalog results
+ * (source "cache").
  */
+import { fromTheMealDB } from "@/lib/config";
 import { getCatalog, youtubeIdFor } from "@/lib/recipes/catalog";
 import { normalizeRecipe, type SpoonacularRecipeInfo } from "@/lib/recipes/normalize";
 import {
@@ -22,6 +25,7 @@ import {
 } from "@/lib/planner/search";
 import { describeError } from "@/lib/server/gemini";
 import { fetchRecipesBulk, rememberRecipe, spoon, SpoonacularError, spoonacularEnabled } from "@/lib/server/spoonacular";
+import { mealSearch } from "@/lib/server/themealdb";
 import type { Recipe } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -48,6 +52,10 @@ const CACHE_TTL_MS = HOUR_MS;
 /** After a 401/402 (bad key / daily points gone) stop trying for an hour; after a 429, a minute */
 const BLOCK_AUTH_MS = HOUR_MS;
 const BLOCK_RATE_MS = 60_000;
+/** TheMealDB (free, no key) fills in whenever Spoonacular isn't used; it shares the client's 10s */
+const MEALDB_COUNT = 6;
+const MEALDB_BUDGET_MS = 8_000;
+const MIN_MEALDB_MS = 1_500;
 
 type SpoonIngredient = NonNullable<SpoonacularRecipeInfo["extendedIngredients"]>[number];
 
@@ -198,28 +206,52 @@ async function liveSearch(query: string, options: SearchOptions): Promise<Recipe
   return recipes;
 }
 
+/**
+ * Spoonacular not used (no key, quota guard, nothing found, or it failed): catalog results
+ * first, then live TheMealDB recipes for the query pinned after them. Same response as
+ * before when TheMealDB has nothing or is down.
+ */
+async function withMealDb(query: string, options: SearchOptions, local: PlannerSearchResponse, started: number, partial = false) {
+  const plain = partial ? { ...local, partial } : local;
+  const budgetMs = MEALDB_BUDGET_MS - (Date.now() - started);
+  if (budgetMs < MIN_MEALDB_MS || !local.query) return respond(plain);
+  const live = await mealSearch(local.query, { limit: MEALDB_COUNT, budgetMs, exclude: getCatalog() });
+  if (!live.length) return respond(plain);
+  const merged = searchRecipes(query, options, getCatalog(), live);
+  // The curated catalog's matches stay on top; live ones follow in their scored order
+  merged.matches = [...merged.matches.filter((r) => !fromTheMealDB(r)), ...merged.matches.filter(fromTheMealDB)];
+  return respond(merged);
+}
+
 export async function GET(req: Request) {
+  const started = Date.now();
   let query = "";
   let options: SearchOptions = {};
+  let local: PlannerSearchResponse | null = null;
   try {
     ({ query, options } = parseSearchParams(new URL(req.url).searchParams));
-    const local = searchRecipes(query, options);
-    const wantsLive =
-      query.length >= MIN_LIVE_QUERY &&
-      local.matches.length < MIN_LOCAL_MATCHES &&
-      hasSearchTerms(query) &&
-      spoonacularEnabled();
-    if (!wantsLive) return respond(local);
+    local = searchRecipes(query, options);
+    const realQuery = query.length >= MIN_LIVE_QUERY && hasSearchTerms(query);
+    if (!realQuery) return respond(local);
+    const wantsSpoonacular = local.matches.length < MIN_LOCAL_MATCHES && spoonacularEnabled();
+    if (!wantsSpoonacular) return await withMealDb(query, options, local, started);
 
     const live = await liveSearch(query, options);
-    if (live === null) return respond({ ...local, partial: true });
-    if (!live.length) return respond(local);
+    if (live === null) return await withMealDb(query, options, local, started, true);
+    if (!live.length) return await withMealDb(query, options, local, started);
     const catalogIds = new Set(getCatalog().map((r) => r.id));
     const pinned = live.filter((r) => !catalogIds.has(r.id));
     return respond(searchRecipes(query, options, getCatalog(), pinned));
   } catch (err) {
     backOff(err);
-    console.warn(`[recipes:search] serving cache for "${query}": ${describeError(err)}`);
+    console.warn(`[recipes:search] Spoonacular unavailable for "${query}", trying TheMealDB: ${describeError(err)}`);
+    if (local) {
+      try {
+        return await withMealDb(query, options, local, started, true);
+      } catch {
+        // fall through to the catalog
+      }
+    }
     return fromCache(query, options, true);
   }
 }

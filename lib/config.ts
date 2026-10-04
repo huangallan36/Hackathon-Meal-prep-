@@ -50,3 +50,17 @@ export const SPOONACULAR_BACKLINK = "https://spoonacular.com/food-api";
 export function fromSpoonacular(recipe: { image: string }): boolean {
   return /^https?:\/\/([a-z0-9-]+\.)*spoonacular\.com\//i.test(recipe.image);
 }
+
+/** TheMealDB (free, no key): the live recipe source when Spoonacular has no key or fails */
+export const THEMEALDB_URL = "https://www.themealdb.com";
+
+/**
+ * TheMealDB recipes get id = MEALDB_ID_OFFSET + idMeal, so they never collide with Spoonacular
+ * ids (well under 10 million) or the bundled catalog (910001-910010).
+ */
+export const MEALDB_ID_OFFSET = 800_000_000;
+const MEALDB_ID_MAX = 900_000_000;
+
+export function fromTheMealDB(recipe: { id: number }): boolean {
+  return Number.isSafeInteger(recipe.id) && recipe.id > MEALDB_ID_OFFSET && recipe.id < MEALDB_ID_MAX;
+}

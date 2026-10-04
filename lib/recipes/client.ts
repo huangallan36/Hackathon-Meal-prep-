@@ -9,6 +9,8 @@ import type { Recipe, RecipeResponse } from "@/lib/types";
 /**
  * Find a full recipe by id from the fastest source available:
  * active recipe -> current suggestions -> bundled cache -> /api/recipes/[id].
+ * Live TheMealDB recipes (ids from MEALDB_ID_OFFSET, lib/config.ts) resolve through the same
+ * route, which looks them up on TheMealDB, so cooking mode, groceries and deep links work.
  * Returns null only if every source fails.
  */
 export async function loadRecipe(id: number): Promise<Recipe | null> {

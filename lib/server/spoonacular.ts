@@ -43,7 +43,8 @@ export async function spoon<T>(path: string, params: Params = {}, timeoutMs = 80
   return (await res.json()) as T;
 }
 
-/* In-memory cache of normalized live recipes (per server instance, 1 hour) */
+/* In-memory cache of normalized live recipes (per server instance, 1 hour). TheMealDB recipes
+   (lib/server/themealdb.ts) are remembered here too, so every route can recall them by id. */
 const recipeCache = new Map<number, { at: number; recipe: Recipe }>();
 const HOUR = 60 * 60 * 1000;
 
