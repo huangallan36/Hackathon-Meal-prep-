@@ -1,6 +1,5 @@
 "use client";
 
-import { X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { dayPhrase } from "@/lib/planner/format";
 import { usePopularRecipes, useRecentRecipes, useWeekPlan, type PlanDay, type RecentItem } from "@/lib/planner/hooks";
@@ -9,6 +8,7 @@ import { getCatalog } from "@/lib/recipes/catalog";
 import type { ISODate, Recipe } from "@/lib/types";
 import { QUICK_MINUTES } from "./FilterChips";
 import { PlannerSection, Scroller } from "./PlannerSection";
+import { PlanTargetBanner } from "./PlanTargetBanner";
 import { PopularCard } from "./PopularCard";
 import { RecentCard, RecentEmpty } from "./RecentCard";
 import { RecipeRow } from "./RecipeRow";
@@ -79,21 +79,7 @@ export function BrowseView({
         }
       >
         <WeekStrip days={days} target={planTarget} onDay={onDay} />
-        {target && (
-          <div className="mt-3 flex items-center gap-3 rounded-tile bg-accent-soft py-1.5 pl-4 pr-1.5 animate-fade-up">
-            <p className="min-w-0 flex-1 text-sm font-medium text-accent-strong">
-              Pick a recipe for {dayPhrase(target.date)}
-            </p>
-            <button
-              type="button"
-              onClick={onCancelTarget}
-              aria-label="Stop planning this day"
-              className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-accent-strong transition hover:bg-surface/60 active:scale-95"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
-        )}
+        {target && <PlanTargetBanner date={target.date} onCancel={onCancelTarget} className="mt-3" />}
       </PlannerSection>
 
       <PlannerSection id="recent" title="Recently Made" subtitle={recent.length ? "Your greatest hits, one tap from round two" : undefined}>

@@ -191,6 +191,8 @@ export async function listen(): Promise<void> {
     if (v.status === "thinking" || v.status === "listening") return;
     if (!v.sessionActive) v.startSession();
     if (v.paused) v.setPaused(false);
+    // Talking again drops anything held from a pause: the user has moved on.
+    heldLine = null;
     if (v.status === "speaking" || isPlaying()) stopSpeaking();
     if (!isSttSupported()) {
       v.setTyping(true);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCatalog } from "@/lib/recipes/catalog";
 import { useDiary } from "@/lib/stores/diary";
 import { useKitchen } from "@/lib/stores/kitchen";
@@ -14,13 +14,46 @@ import { plannedOn, usePlanner, type PlannedMeal } from "./store";
 /** Queries shorter than this browse instead of searching */
 export const MIN_QUERY = 2;
 
-export function useDebouncedValue<T>(value: T, ms: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(value), ms);
-    return () => clearTimeout(t);
-  }, [value, ms]);
-  return debounced;
+/**
+ * Search box state. `input` follows every keystroke; `query` settles `ms` after typing stops.
+ * `commit` (Enter, a chip, the clear button) applies a value at once and cancels the pending
+ * update, so a stale debounced value can never flash up after a clear or a chip tap.
+ */
+export function useSearchInput(
+  initial: string,
+  ms: number,
+): { input: string; query: string; type: (value: string) => void; commit: (value: string) => void } {
+  const [input, setInput] = useState(initial);
+  const [query, setQuery] = useState(initial);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
+
+  const type = useCallback(
+    (value: string) => {
+      setInput(value);
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(() => {
+        timer.current = null;
+        setQuery(value);
+      }, ms);
+    },
+    [ms],
+  );
+
+  const commit = useCallback((value: string) => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    setInput(value);
+    setQuery(value);
+  }, []);
+
+  return { input, query, type, commit };
 }
 
 /**

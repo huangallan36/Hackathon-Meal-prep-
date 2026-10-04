@@ -125,7 +125,7 @@ function PerServing({ nutrition }: { nutrition: NonNullable<Recipe["nutrition"]>
 /** Spoonacular's terms require a visible credit + backlink */
 export function RecipeCredits({ recipe }: { recipe: Pick<Recipe, "sourceName" | "sourceUrl"> }) {
   return (
-    <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-xs text-ink-faint">
+    <p className="flex flex-wrap items-center justify-center gap-x-2 text-center text-xs text-ink-faint [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center">
       {recipe.sourceName && (
         <span>
           Recipe by{" "}

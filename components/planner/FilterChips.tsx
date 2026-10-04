@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Leaf, Timer } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import type { SearchFilters } from "@/lib/planner/search";
 import { cn } from "@/lib/utils";
 
@@ -27,8 +27,23 @@ export function FilterChips({
 }) {
   const quick = filters.maxMinutes === QUICK_MINUTES;
   const veg = filters.diet === "vegetarian";
+  const rowRef = useRef<HTMLDivElement>(null);
+
+  // Slide the active query chip into view (e.g. "Rice" picked from an empty state or typed).
+  // Only the chip row scrolls horizontally; the page itself never moves.
+  useEffect(() => {
+    const row = rowRef.current;
+    const chip = row?.querySelector<HTMLElement>('[data-query-chip][aria-pressed="true"]');
+    if (!row || !chip) return;
+    // The row is `relative`, so offsetLeft is measured from the row's own edge.
+    const left = chip.offsetLeft;
+    const right = left + chip.offsetWidth;
+    if (left >= row.scrollLeft && right <= row.scrollLeft + row.clientWidth) return;
+    row.scrollTo({ left: Math.max(0, left - row.clientWidth / 2 + chip.offsetWidth / 2), behavior: "smooth" });
+  }, [activeQuery]);
+
   return (
-    <div className="no-scrollbar -mx-5 mt-3 flex gap-2 overflow-x-auto px-5 py-1.5">
+    <div ref={rowRef} className="no-scrollbar relative -mx-5 mt-3 flex gap-2 overflow-x-auto px-5 py-1.5">
       <ChipButton
         pressed={quick}
         icon={<Timer className="size-4" />}
@@ -47,7 +62,7 @@ export function FilterChips({
       {queryChips.map((chip) => {
         const active = activeQuery === chip.toLowerCase();
         return (
-          <ChipButton key={chip} pressed={active} onClick={() => onQuery(active ? "" : chip)}>
+          <ChipButton key={chip} pressed={active} queryChip onClick={() => onQuery(active ? "" : chip)}>
             {chip}
           </ChipButton>
         );
@@ -60,11 +75,14 @@ export function FilterChips({
 function ChipButton({
   pressed,
   icon,
+  queryChip,
   onClick,
   children,
 }: {
   pressed: boolean;
   icon?: ReactNode;
+  /** Marks chips that set the query (auto-scrolled into view when active) */
+  queryChip?: boolean;
   onClick: () => void;
   children: ReactNode;
 }) {
@@ -72,6 +90,7 @@ function ChipButton({
     <button
       type="button"
       aria-pressed={pressed}
+      data-query-chip={queryChip || undefined}
       onClick={onClick}
       className={cn(
         "inline-flex h-11 shrink-0 items-center gap-1.5 rounded-pill px-4 text-sm font-semibold transition-[background-color,color,box-shadow,transform] duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",

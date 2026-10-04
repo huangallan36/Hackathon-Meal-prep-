@@ -38,6 +38,11 @@ export interface PlannerSearchResponse extends RecipeSearchResponse {
   anchor: string | null;
   /** recipeId -> what that combination pairs the anchor with, e.g. ["rice", "spinach"] */
   pairs: Record<string, string[]>;
+  /**
+   * True when a live lookup was wanted but skipped (quota guard, upstream error), so the client
+   * should not keep this answer for the session: asking again later may find more.
+   */
+  partial?: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -244,6 +249,11 @@ function parseQuery(query: string): ParsedQuery {
     terms.push({ raw, alts: [word, ...(SYNONYMS[word] ?? [])], prefix: i === rawWords.length - 1 && raw.length >= 3 });
   });
   return { text, terms, quick };
+}
+
+/** True when the query names something (not just "quick", "a recipe" or a number) */
+export function hasSearchTerms(query: string): boolean {
+  return parseQuery(query).terms.length > 0;
 }
 
 interface Indexed {

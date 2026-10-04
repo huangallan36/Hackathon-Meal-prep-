@@ -9,6 +9,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { BrowseView } from "@/components/planner/BrowseView";
 import { FilterChips } from "@/components/planner/FilterChips";
 import { FilteredView } from "@/components/planner/FilteredView";
+import { PlanTargetBanner } from "@/components/planner/PlanTargetBanner";
 import { RecipeSheet } from "@/components/planner/RecipeSheet";
 import { ResultsView } from "@/components/planner/ResultsView";
 import { SearchBar } from "@/components/planner/SearchBar";
@@ -17,9 +18,9 @@ import { knownRecipe, resolveRecipe } from "@/lib/planner/client";
 import { dayPhrase, hasFilters } from "@/lib/planner/format";
 import {
   MIN_QUERY,
-  useDebouncedValue,
   usePlannerSearch,
   usePopularityMap,
+  useSearchInput,
   type PlanDay,
   type RecentItem,
 } from "@/lib/planner/hooks";
@@ -45,13 +46,13 @@ function scrollToTop() {
 export default function MealPlannerPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const remember = usePlannerSession((s) => s.remember);
+  // Restores the last search + filters when coming back from "Cook this" (in-memory only).
+  const [initial] = useState(() => usePlannerSession.getState());
 
-  // Typing is debounced; Enter or a chip searches immediately (submitted === input).
-  const [input, setInput] = useState(() => usePlannerSession.getState().query);
-  const [submitted, setSubmitted] = useState(input);
-  const debounced = useDebouncedValue(input, DEBOUNCE_MS);
-  const query = normalizeQuery(submitted === input ? input : debounced);
-  const [filters, setFilters] = useState<SearchFilters>(() => usePlannerSession.getState().filters);
+  // Typing is debounced; Enter, a chip or the clear button applies immediately.
+  const { input, query: rawQuery, type, commit } = useSearchInput(initial.query, DEBOUNCE_MS);
+  const query = normalizeQuery(rawQuery);
+  const [filters, setFilters] = useState<SearchFilters>(initial.filters);
 
   const [selected, setSelected] = useState<Recipe | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -64,19 +65,17 @@ export default function MealPlannerPage() {
   const filtered = hasFilters(filters);
 
   function changeInput(value: string) {
-    setInput(value);
+    type(value);
     remember({ query: value });
   }
 
   function clearInput() {
-    setInput("");
-    setSubmitted("");
+    commit("");
     remember({ query: "" });
   }
 
   function searchFor(value: string) {
-    setInput(value);
-    setSubmitted(value);
+    commit(value);
     remember({ query: value });
     scrollToTop();
   }
@@ -87,22 +86,34 @@ export default function MealPlannerPage() {
   }
 
   const closeSheet = useCallback(() => setSelected(null), []);
+  /** Latest recipe id being fetched, so a slow answer can't replace a newer tap */
+  const pendingId = useRef<number | null>(null);
 
   async function openId(id: number) {
     const known = knownRecipe(id);
     if (known) {
+      pendingId.current = null;
       setSelected(known);
       return;
     }
+    pendingId.current = id;
     setBusyId(id);
     const recipe = await resolveRecipe(id);
+    if (pendingId.current !== id) return;
+    pendingId.current = null;
     setBusyId(null);
     if (recipe) setSelected(recipe);
     else toast("Couldn't open that recipe right now. Try again in a bit?", "warning");
   }
 
+  function openRecipe(recipe: Recipe) {
+    pendingId.current = null;
+    setBusyId(null);
+    setSelected(recipe);
+  }
+
   function openRecent(item: RecentItem) {
-    if (item.recipe) setSelected(item.recipe);
+    if (item.recipe) openRecipe(item.recipe);
     else void openId(item.id);
   }
 
@@ -130,32 +141,35 @@ export default function MealPlannerPage() {
         <SearchBar
           value={input}
           onChange={changeInput}
-          onSubmit={() => setSubmitted(input)}
+          onSubmit={() => commit(input)}
           onClear={clearInput}
           busy={searching && loading}
           inputRef={inputRef}
           className="mt-1 animate-fade-up"
         />
         <FilterChips filters={filters} onFilters={changeFilters} queryChips={chips} activeQuery={query} onQuery={searchFor} />
+        {planTarget && (searching || filtered) && (
+          <PlanTargetBanner date={planTarget} onCancel={() => setPlanTarget(null)} className="mt-3" />
+        )}
 
         {searching ? (
           <ResultsView
             result={result ?? previous}
             loading={loading}
             filtersActive={filtered}
-            onOpen={setSelected}
+            onOpen={openRecipe}
             onQuery={searchFor}
             onClearFilters={() => changeFilters({})}
           />
         ) : filtered ? (
-          <FilteredView filters={filters} onOpen={setSelected} onClear={() => changeFilters({})} />
+          <FilteredView filters={filters} onOpen={openRecipe} onClear={() => changeFilters({})} />
         ) : (
           <BrowseView
             planTarget={planTarget}
             busyId={busyId}
             onDay={openDay}
             onCancelTarget={() => setPlanTarget(null)}
-            onOpen={setSelected}
+            onOpen={openRecipe}
             onOpenRecent={openRecent}
             onQuery={searchFor}
           />
