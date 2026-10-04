@@ -61,7 +61,7 @@ export function useVoiceSearch({
       if (s.toasts.some((t) => !prev.toasts.includes(t))) toasted = true;
     });
 
-    const text = await listenOnce();
+    const text = await listenOnce({ quiet: true });
     stopTyping();
     stopToasts();
     const ours = live.current;

@@ -160,7 +160,7 @@ async function logFood(description: unknown, meal: unknown): Promise<string> {
   const text = typeof description === "string" ? description.replace(/\s+/g, " ").trim().slice(0, 200) : "";
   const today = todayISO();
   if (!text) {
-    navigateTo(`/diary/${today}`);
+    navigateTo("/diary");
     return "Tell me what you had, like a chicken wrap and a latte, and I'll log it.";
   }
   const slot: MealType = MEALS.includes(meal as MealType) ? (meal as MealType) : mealForNow();
@@ -169,7 +169,7 @@ async function logFood(description: unknown, meal: unknown): Promise<string> {
     if (!items.length) return "Hmm, I couldn't tell what you had. Try again, like two eggs and toast.";
     const logged = logFoods(items, slot, today);
     if (!logged.length) return "Sorry, I couldn't save that to your diary. Try again?";
-    navigateTo(`/diary/${today}`);
+    navigateTo("/diary");
     toast(`Added to ${MEAL_LABEL[slot]}`, "success");
     const kcal = logged.reduce((sum, e) => sum + (e.nutrition.calories || 0), 0);
     const dayKcal = dayTotals(useDiary.getState().entries, today).totals.calories;

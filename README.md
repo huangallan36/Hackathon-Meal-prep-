@@ -81,7 +81,8 @@ If the wifi is bad, keep going: every step has an offline fallback (see below).
   talking, protection against stale responses. Speech-to-text is the browser's Web Speech API.
   Instant "next / back / repeat" in cooking mode without a network round trip. `lib/voice/*`
 - **Docked bubble**: minimize Sous into a draggable orb over a simulated phone home screen; it
-  keeps listening and shows captions. Drag it onto the ✕ to hang up.
+  keeps listening and shows captions, and a Live Activity card shows the call and the current
+  recipe step (inspired by the design's lock-screen frame). Drag the bubble onto the ✕ to hang up.
 - **Cooking mode**: step list with the current step expanded, spoken steps, timers detected from
   step text, video tutorial cards. `app/ai/cook/[id]`
 - **Groceries**: Need / Have checklist for a recipe, add items, nearby stores. `app/ai/groceries/[id]`
@@ -90,8 +91,9 @@ If the wifi is bad, keep going: every step has an offline fallback (see below).
 - **Nutrient tracking**: 15 nutrients with daily targets (calories, protein, carbs, fat, fiber,
   iron, calcium, potassium, vitamins A, C and D, plus sodium, sugar, saturated fat and cholesterol
   as limits). Every logging path records them: photo, recipe, voice and typed. `lib/nutrients.ts`
-- **Diary and Me**: daily diary per meal, energy rings, nutrient breakdown with statuses,
-  calendar, weekly averages and highlighted nutrients. `app/diary`, `app/me`
+- **Diary and Me**: daily diary per meal with an add-food sheet and "Log dinner by voice", energy
+  rings, nutrient breakdown with statuses, month calendar, weekly averages and highlighted
+  nutrients with a Sous tip. `app/diary`, `app/me`
 - **Social**: swipeable feed (right = upvote, left = skip), profiles, composer with moderation;
   no calories are ever shown publicly. `app/social`
 
@@ -117,15 +119,17 @@ Figma icons and illustrations are in `public/figma/`. Shared primitives are in `
 | --- | --- |
 | `/` | Redirects to `/ai` |
 | `/ai` | Home: greeting, persona picker, Start talking, things to try |
-| `/ai/talk` | Live call (dark screen): orb, transcript, Pause / Type / End, hands-free toggle |
+| `/ai/talk` | Live call (dark screen): orb, transcript, quick actions, Pause / Type / End, hands-free toggle; Type switches to the light chat view |
 | `/ai/fridge` | Fridge scan -> editable ingredient chips |
 | `/ai/recipes` | Recipes ranked by fridge match |
 | `/ai/cook/[id]` | Cooking mode |
 | `/ai/groceries/[id]` | Groceries checklist and nearby stores |
 | `/ai/snap` | Snap the finished meal -> nutrition estimate -> log |
 | `/planner` | Meal planner and search (`/ai/plan` redirects here) |
-| `/diary`, `/diary/[date]` | Daily diary, calendar, nutrient breakdown |
-| `/me` | Personal stats, weekly averages, highlighted nutrients |
+| `/diary`, `/diary/[date]` | Daily diary (today, or a date): energy rings, meals, log by voice, nutrient breakdown |
+| `/diary/calendar` | Month calendar: on target / over / partial days, day card, logging streak |
+| `/me` | Personal stats: weekly averages, energy targets, activity, Community (Social) |
+| `/me/nutrients` | Highlighted nutrients: weekly averages vs targets, Sous tip ("Plan it for me") |
 | `/social`, `/social/new`, `/social/u/[handle]` | Feed, composer, profiles |
 
 ### API routes

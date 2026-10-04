@@ -172,7 +172,7 @@ export async function dictate(): Promise<string> {
   if (v.status === "listening") cancelListening();
   if (v.status === "speaking") stopSpeaking();
   const typingBefore = v.typing;
-  const text = await listenOnce();
+  const text = await listenOnce({ quiet: true });
   // A blocked mic makes the recognizer open Sous's own text box; the caller's field is the
   // better place to type here, so put that back the way it was.
   if (!text && !typingBefore && useVoice.getState().typing) useVoice.getState().setTyping(false);

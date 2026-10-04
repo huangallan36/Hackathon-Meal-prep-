@@ -9,6 +9,7 @@ import { FloatingOrb } from "@/components/orb/FloatingOrb";
 import { Toaster } from "@/components/ui/Misc";
 import { isDarkScreen, isFullscreen } from "@/lib/nav";
 import { useDock } from "@/lib/stores/dock";
+import { useVoice } from "@/lib/stores/voice";
 import { cn } from "@/lib/utils";
 import { BottomNav } from "./BottomNav";
 
@@ -36,7 +37,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   const fullscreen = isFullscreen(pathname);
-  const dark = isDarkScreen(pathname) || docked;
+  // The call screen is dark, except its light typing view (Figma 1.3)
+  const talkTyping = useVoice((s) => s.typing) && pathname === "/ai/talk";
+  const dark = (isDarkScreen(pathname) && !talkTyping) || docked;
 
   return (
     <div className="flex min-h-dvh w-full items-center justify-center bg-cream sm:bg-[radial-gradient(circle_at_20%_10%,#fdfaf5,transparent_50%),radial-gradient(circle_at_85%_90%,#e2ede5,transparent_45%),#efe9df] sm:p-6">

@@ -90,7 +90,7 @@ function AddFoodBody({ meal, date, onDone }: { meal: MealType; date: ISODate; on
     setListening(true);
     ownsMic.current = true;
     try {
-      const heard = await listenOnce();
+      const heard = await listenOnce({ quiet: true });
       // A blocked mic opens the voice typing sheet; this sheet already has a text field.
       if (!wasTyping && useVoice.getState().typing) useVoice.getState().setTyping(false);
       if (!alive.current || !heard) return;
