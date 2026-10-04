@@ -16,6 +16,8 @@ export interface TranscriptLine {
   at: number;
   /** Where Sous's line came from (for a subtle "offline mode" hint) */
   source?: "gemini" | "fallback" | "local";
+  /** The recipe this Sous line suggested or opened (drives the inline recipe card in the chat) */
+  recipeId?: number;
 }
 
 /** Which engine actually voiced the last Sous line */
@@ -34,6 +36,8 @@ export type HandsFreeRest = "silence" | "stopped" | "blocked" | "error";
 interface VoiceState {
   /** True between Start and Hang up */
   sessionActive: boolean;
+  /** epoch ms the current session started (the call timer), null when no session */
+  sessionStartedAt: number | null;
   status: VoiceStatus;
   /** User paused Sous (audio paused, mic off) */
   paused: boolean;
@@ -61,13 +65,19 @@ interface VoiceState {
   setCaption: (caption: string | null) => void;
   setTtsEngine: (engine: TtsEngine | null) => void;
   setHandsFreeRest: (rest: HandsFreeRest | null) => void;
-  addLine: (role: TranscriptLine["role"], text: string, source?: TranscriptLine["source"]) => void;
+  addLine: (
+    role: TranscriptLine["role"],
+    text: string,
+    source?: TranscriptLine["source"],
+    extra?: Pick<TranscriptLine, "recipeId">,
+  ) => void;
   startSession: () => void;
   endSession: () => void;
 }
 
 export const useVoice = create<VoiceState>()((set) => ({
   sessionActive: false,
+  sessionStartedAt: null,
   status: "idle",
   paused: false,
   typing: false,
@@ -88,15 +98,26 @@ export const useVoice = create<VoiceState>()((set) => ({
   setCaption: (caption) => set({ caption, captionAt: Date.now() }),
   setTtsEngine: (ttsEngine) => set({ ttsEngine }),
   setHandsFreeRest: (handsFreeRest) => set({ handsFreeRest, handsFreeRestAt: handsFreeRest ? Date.now() : 0 }),
-  addLine: (role, text, source) =>
+  addLine: (role, text, source, extra) =>
     set((s) => ({
-      transcript: [...s.transcript, { id: uid("t"), role, text, at: Date.now(), source }].slice(-60),
+      transcript: [
+        ...s.transcript,
+        { id: uid("t"), role, text, at: Date.now(), source, ...(extra?.recipeId ? { recipeId: extra.recipeId } : {}) },
+      ].slice(-60),
       ...(role === "sous" ? { caption: text, captionAt: Date.now() } : {}),
     })),
-  startSession: () => set({ sessionActive: true, paused: false, error: null }),
+  startSession: () =>
+    set((s) => ({
+      sessionActive: true,
+      // Starting again mid-session (another tap) keeps the call timer running.
+      sessionStartedAt: s.sessionActive && s.sessionStartedAt ? s.sessionStartedAt : Date.now(),
+      paused: false,
+      error: null,
+    })),
   endSession: () =>
     set({
       sessionActive: false,
+      sessionStartedAt: null,
       status: "idle",
       paused: false,
       typing: false,

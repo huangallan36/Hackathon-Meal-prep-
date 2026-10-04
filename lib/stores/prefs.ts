@@ -7,8 +7,13 @@ import { persistStorage } from "@/lib/storage";
 
 interface PrefsState {
   userName: string;
-  /** ElevenLabs voice id chosen in the voice picker (null = server default) */
+  /**
+   * ElevenLabs voice id of the chosen sous-chef persona (Maya / Leo / Nova, see
+   * lib/voice/personas.ts). null = not picked yet: Maya. Read it through usePersona()
+   * / ttsVoiceId() so an id that isn't a persona's still maps to one.
+   */
   voiceId: string | null;
+  /** The persona's name ("Maya") */
   voiceName: string | null;
   /**
    * Conversation mode: Sous opens the mic again by itself after it talks, so no tap is

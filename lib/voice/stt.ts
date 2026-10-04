@@ -45,6 +45,11 @@ export interface ListenOptions {
    * shows its own hint) and a start that never opens the mic counts as "blocked".
    */
   auto?: boolean;
+  /**
+   * The caller has its own text input (a search field, the chat composer): mic problems are
+   * still explained with a toast, but Sous's type-to-talk sheet doesn't open.
+   */
+  quiet?: boolean;
 }
 
 interface ActiveRecognition {
@@ -91,18 +96,23 @@ export function abortListening(): void {
   a.settle("", "aborted");
 }
 
-function openTyping(message: string) {
-  toast(message, "warning", 3600);
-  useVoice.getState().setTyping(true);
-}
-
-export function listenOnce(): Promise<string> {
-  return listenOnceDetailed().then((r) => r.text);
+/**
+ * Listen once and resolve with the transcript ("" for silence, cancel or errors).
+ * By default a mic problem opens the type-to-talk sheet; pass { quiet: true } to only toast.
+ */
+export function listenOnce(options?: Pick<ListenOptions, "quiet">): Promise<string> {
+  return listenOnceDetailed({ quiet: options?.quiet === true }).then((r) => r.text);
 }
 
 /** listenOnce with the reason it ended (hands-free mode needs it). Never rejects. */
 export function listenOnceDetailed(options?: ListenOptions): Promise<ListenResult> {
   const auto = options?.auto === true;
+  const quiet = options?.quiet === true;
+  /** A mic problem inside a tap: say what happened and (unless quiet) offer typing instead. */
+  const openTyping = (message: string) => {
+    toast(message, "warning", 3600);
+    if (!quiet) useVoice.getState().setTyping(true);
+  };
   abortListening();
   const Ctor = recognizerCtor();
   if (!Ctor) {

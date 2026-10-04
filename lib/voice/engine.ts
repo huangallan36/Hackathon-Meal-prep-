@@ -25,6 +25,7 @@ import type { ChatContext, ChatRequest, ChatResponse, ChatTurn, SousAction } fro
 import { applyActions } from "./actions";
 import { isPlaying, pausePlayback, playTts, resumePlayback, stopPlayback, unlockAudio as unlockAudioElement } from "./audio";
 import { buildChatContext, getCurrentPath, setRouterPush } from "./context";
+import { ttsVoiceId } from "./persona";
 import { toDisplay, toSpeech } from "./speech-text";
 import { abortListening, isListening, isSttSupported, listenOnceDetailed, stopListening, type ListenOutcome } from "./stt";
 
@@ -229,6 +230,8 @@ export interface SpeakOptions {
   /** Add the line to the transcript (default true) */
   addToTranscript?: boolean;
   source?: "gemini" | "fallback" | "local";
+  /** The recipe this line suggests or opens (the chat view shows it as a card under the line) */
+  recipeId?: number;
 }
 
 /** Speak text with ElevenLabs (browser voice fallback). Resolves when playback ends or is stopped. */
@@ -259,7 +262,7 @@ export async function speak(text: string, options?: SpeakOptions): Promise<void>
       v.setStatus(restingStatus());
     }
     if (opts.addToTranscript === false) v.setCaption(display);
-    else v.addLine("sous", display, opts.source);
+    else v.addLine("sous", display, opts.source, opts.recipeId ? { recipeId: opts.recipeId } : undefined);
   } catch (err) {
     console.warn("[voice] could not show line:", err instanceof Error ? err.message : err);
   }
@@ -279,7 +282,8 @@ async function voiceLine(display: string): Promise<void> {
     }
     heldLine = null;
     voice().setStatus("speaking");
-    await playTts(toSpeech(display), usePrefs.getState().voiceId, (engine) => {
+    // The chosen persona's ElevenLabs voice (Maya's when none was picked).
+    await playTts(toSpeech(display), ttsVoiceId(), (engine) => {
       if (id === speechSeq) voice().setTtsEngine(engine);
     });
   } catch (err) {
@@ -484,6 +488,38 @@ export async function handleUserText(text: string): Promise<void> {
   }
 }
 
+/** "Beef & Rice Skillet" -> "beef and rice skillet" (for spotting a recipe title in a reply) */
+function plainWords(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+/**
+ * The recipe a Sous line is about: the one an action opened (start cooking, groceries), else
+ * a suggested or active recipe whose title the line says out loud. Undefined when none.
+ */
+function recipeFor(actions: SousAction[], line: string): number | undefined {
+  try {
+    for (const a of actions) {
+      const id = a.args?.recipeId;
+      if ((a.name === "start_cooking" || a.name === "show_groceries") && typeof id === "number" && id > 0) return id;
+    }
+    const said = ` ${plainWords(line)} `;
+    const k = useKitchen.getState();
+    const candidates = [...(k.activeRecipe ? [k.activeRecipe] : []), ...k.matches.map((m) => m.recipe)];
+    for (const r of candidates) {
+      const title = plainWords(r.title);
+      if (title.length >= 4 && said.includes(` ${title} `)) return r.id;
+    }
+  } catch {
+    /* a card is a nice-to-have */
+  }
+  return undefined;
+}
+
 function toHistory(lines: TranscriptLine[]): ChatTurn[] {
   return lines.slice(-HISTORY_TURNS).map((l) => ({ role: l.role, text: l.text.slice(0, MAX_MESSAGE_CHARS) }));
 }
@@ -562,7 +598,8 @@ async function runTurn(text: string, id: number): Promise<void> {
     const override = await applyActions(res.actions);
     if (id !== turnSeq) return;
     awaitingTurn = 0;
-    await speak(override ?? res.reply, { source: res.source });
+    const line = override ?? res.reply;
+    await speak(line, { source: res.source, recipeId: recipeFor(res.actions, line) });
   } catch (err) {
     console.warn("[voice] turn failed:", err instanceof Error ? err.message : err);
     if (id === turnSeq) {

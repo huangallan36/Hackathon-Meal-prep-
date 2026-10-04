@@ -3,14 +3,19 @@
  * never logged; errors are reduced to status + error code.
  */
 import type { VoiceOption, VoicesResponse } from "@/lib/types";
+import { PERSONAS } from "@/lib/voice/personas";
 
 const API = "https://api.elevenlabs.io";
 const VOICE_ID = /^[A-Za-z0-9]{10,40}$/;
 const VOICE_CACHE_MS = 10 * 60 * 1000;
 const VOICE_FAILURE_CACHE_MS = 60 * 1000;
 
-/** Preferred premade voices, in order. The first six found are offered. */
+/**
+ * Preferred premade voices, in order, after the sous-chef personas' own voices (Maya, Leo,
+ * Nova always come first so the home picker finds their preview clips). Six are offered.
+ */
 const PREFERRED = ["Jessica", "George", "Bella", "Chris", "Charlie", "Lily", "Sarah", "Matilda", "Will", "Brian"];
+const PERSONA_VOICE_IDS = PERSONAS.map((p) => p.voiceId);
 const VOICE_COUNT = 6;
 
 const PREVIEW = "https://storage.googleapis.com/eleven-public-prod/premade/voices";
@@ -25,6 +30,8 @@ export const FALLBACK_VOICES: VoiceOption[] = [
     accent: "american",
     previewUrl: `${PREVIEW}/cgSgspJ2msm6clMCkdW9/56a97bf8-b69b-448f-846c-c3a11683d45a.mp3`,
   },
+  { id: "nPczCjzI2devNBz1zQrb", name: "Brian", description: "Deep, Resonant and Comforting", gender: "male", accent: "american" },
+  { id: "FGY2WhTYpPnrIDTdsKH5", name: "Laura", description: "Enthusiast, Quirky Attitude", gender: "female", accent: "american" },
   { id: "JBFqnCBsd6RMkjVDRZzb", name: "George", description: "Warm, Captivating Storyteller", gender: "male", accent: "british" },
   {
     id: "hpp4J3VqNfWAUOO0d1Us",
@@ -251,14 +258,18 @@ export function toVoiceOption(v: ElevenVoice): VoiceOption | null {
   };
 }
 
-/** Pick VOICE_COUNT voices by first-name preference, topping up with whatever else is available. */
+/** Pick VOICE_COUNT voices: the personas' voices, then by first-name preference, then whatever else is available. */
 export function pickVoices(all: VoiceOption[]): VoiceOption[] {
   const byName = new Map<string, VoiceOption>();
   for (const v of all) if (!byName.has(v.name.toLowerCase())) byName.set(v.name.toLowerCase(), v);
   const picked: VoiceOption[] = [];
+  for (const id of PERSONA_VOICE_IDS) {
+    const v = all.find((x) => x.id === id);
+    if (v) picked.push(v);
+  }
   for (const name of PREFERRED) {
     const v = byName.get(name.toLowerCase());
-    if (v && picked.length < VOICE_COUNT) picked.push(v);
+    if (v && picked.length < VOICE_COUNT && !picked.some((p) => p.id === v.id)) picked.push(v);
   }
   for (const v of all) {
     if (picked.length >= VOICE_COUNT) break;

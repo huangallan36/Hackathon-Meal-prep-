@@ -169,13 +169,40 @@ export function stepTimers(step: RecipeStep, max = 3): StepTimer[] {
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-/** 1200 -> "20:00", 5400 -> "1:30:00", 45 -> "00:45" */
+/** 1200 -> "20:00", 300 -> "5:00", 5400 -> "1:30:00", 45 -> "0:45" (Figma "Start 5:00 timer") */
 export function formatClock(totalSec: number): string {
   const s = Math.max(0, Math.ceil(totalSec));
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const r = s % 60;
-  return h ? `${h}:${pad(m)}:${pad(r)}` : `${pad(m)}:${pad(r)}`;
+  return h ? `${h}:${pad(m)}:${pad(r)}` : `${m}:${pad(r)}`;
+}
+
+/* ------------------------------------------------------------------ */
+/* Time left                                                           */
+/* ------------------------------------------------------------------ */
+
+/** How long a step takes: Spoonacular's step length, else the durations in its text; null if unknown */
+export function stepSeconds(step: RecipeStep): number | null {
+  if (step.minutes && step.minutes > 0) return Math.round(step.minutes * 60);
+  const found = parseDurations(step.text);
+  return found.length ? found.reduce((sum, d) => sum + d.seconds, 0) : null;
+}
+
+/**
+ * Rough minutes left from step `index` (inclusive) to the end, for "~18 min left".
+ * Steps with a known length count as written; the rest share whatever is left of
+ * readyInMinutes (at least a minute each).
+ */
+export function minutesLeft(recipe: { steps: RecipeStep[]; readyInMinutes: number }, index: number): number {
+  const known = recipe.steps.map(stepSeconds);
+  const knownTotal = known.reduce<number>((sum, s) => sum + (s ?? 0), 0);
+  const unknown = known.filter((s) => s == null).length;
+  const ready = Math.max(0, recipe.readyInMinutes || 0) * 60;
+  const perUnknown = unknown ? Math.max(60, (ready - knownTotal) / unknown) : 0;
+  let left = 0;
+  for (let i = Math.max(0, index); i < known.length; i++) left += known[i] ?? perUnknown;
+  return Math.max(1, Math.round(left / 60));
 }
 
 /** 1200 -> "20 min", 5400 -> "1 hr 30 min", 45 -> "45 sec" */

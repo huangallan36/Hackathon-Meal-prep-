@@ -7,6 +7,7 @@
 import { useKitchen, type KitchenTimer } from "@/lib/stores/kitchen";
 import { usePrefs } from "@/lib/stores/prefs";
 import type { ChatContext } from "@/lib/types";
+import { currentPersona } from "./persona";
 
 let currentPath = "";
 let previousPath = "";
@@ -65,6 +66,7 @@ export function buildChatContext(): ChatContext {
   const context: ChatContext = {
     screen: getCurrentPath(),
     userName: userName || "there",
+    assistantName: currentPersona().name,
     ingredients: k.ingredients.slice(0, 40),
     recipes: k.matches.slice(0, MAX_RECIPES).map((m) => ({
       id: m.recipe.id,

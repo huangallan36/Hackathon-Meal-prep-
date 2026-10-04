@@ -3,14 +3,17 @@
  * looks current. Today has breakfast + lunch logged, leaving dinner for the live demo.
  *
  * Meals are picked from a hash of the calendar date (not the offset), so a given day
- * keeps the same meals as the demo rolls forward. Weekends run a little richer, a few
- * days land slightly over goal, most land a bit under (~1,840 kcal a day vs 2,200).
+ * keeps the same meals as the demo rolls forward. Like Figma's diary calendar (3.4), most
+ * past days land on target (within 10% of 2,200 kcal), about one a week runs over (treat
+ * nights), and about one a week is only partly logged (no dinner), which pulls the weekly
+ * average down to ~1,900 kcal (Figma 3.1 shows 1,840).
  *
  * Every meal carries the full nutrient set (lib/nutrients.ts). The values are tuned so the
  * last 7 full days average out like Figma's "Highlighted nutrients": iron low (~50%), fiber
  * and vitamin A a bit low (~73%, ~71%), calcium and vitamin C on track (~105%, ~109%),
- * sodium over (~126%); protein ~128 g, carbs ~190 g, fat ~62 g. Check with
- * `node .tmp/nutrients/seed-sim.mjs` after changing anything here.
+ * sodium over (~126%); protein ~130 g, carbs ~195 g, fat ~64 g. Check with
+ * `node .tmp/nutrients/seed-sim.mjs` and `node .tmp/diary/day-status-sim.mjs` after
+ * changing anything here.
  */
 import { roundMicro } from "@/lib/diary/micros";
 import { MICRO_KEYS } from "@/lib/nutrients";
@@ -18,7 +21,7 @@ import type { DailyActivity, DiaryEntry, ISODate, MealType, Micros, Nutrition } 
 import { addDays, fromISODate } from "@/lib/utils";
 
 /** Bump when the seed changes shape so persisted stores regenerate it */
-export const SEED_VERSION = 4;
+export const SEED_VERSION = 5;
 
 type SeedMeal = { name: string; portion: string; n: Nutrition; m: Required<Micros> };
 
@@ -126,12 +129,53 @@ function hash(s: string): number {
 
 const pickFrom = <T,>(list: T[], seed: number): T => list[seed % list.length];
 
-function slotsFor(date: ISODate, h: number): MealType[] {
+/**
+ * What kind of day a past date was (Figma 3.4's calendar colors):
+ *   full     every meal logged, calories within 10% of the 2,200 goal (on target)
+ *   big      a treat night, more than 10% over (over)
+ *   partial  dinner never got logged (partial)
+ */
+type DayKind = "full" | "big" | "partial";
+
+const kindRoll = (date: ISODate) => hash(`${date}:kind`) % 100;
+const rollsPartial = (date: ISODate) => kindRoll(date) < 18;
+
+function dayKind(date: ISODate): DayKind {
+  const k = kindRoll(date);
+  // Never two partial days within three days of each other (a run of them looks broken)
+  if (rollsPartial(date) && !rollsPartial(addDays(date, -1)) && !rollsPartial(addDays(date, -2))) return "partial";
+  const dow = fromISODate(date).getDay(); // 0 Sun .. 6 Sat
+  const treatNight = dow === 5 || dow === 6 || dow === 0;
+  return k >= (treatNight ? 78 : 93) ? "big" : "full";
+}
+
+/** Calories a past day is scaled to: full days 2,000-2,280, big days 2,470-2,720 */
+function dayKcalTarget(date: ISODate, kind: DayKind): number {
+  const r = (hash(`${date}:kcal`) % 1000) / 1000;
+  return kind === "big" ? 2470 + r * 250 : 2000 + r * 280;
+}
+
+function slotsFor(date: ISODate, h: number, kind: DayKind): MealType[] {
+  if (kind === "partial") return h % 3 === 0 ? ["breakfast", "snack", "lunch"] : ["breakfast", "lunch"];
   const dow = fromISODate(date).getDay(); // 0 Sun .. 6 Sat
   const weekend = dow === 0 || dow === 6;
+  if (kind === "big") return ["breakfast", "lunch", "snack", "dinner", "snack"];
   if (weekend) return h % 2 === 0 ? ["breakfast", "lunch", "snack", "dinner", "snack"] : ["breakfast", "lunch", "snack", "dinner"];
   if (h % 5 === 0) return ["breakfast", "lunch", "dinner"];
   return h % 4 === 1 ? ["breakfast", "snack", "lunch", "snack", "dinner"] : ["breakfast", "lunch", "snack", "dinner"];
+}
+
+/** Scale a full / big day's calories and macros (portions vary) to its target */
+function scaleDayKcal(day: DiaryEntry[], target: number) {
+  const kcal = day.reduce((a, e) => a + e.nutrition.calories, 0);
+  if (kcal <= 0) return;
+  const f = Math.min(1.7, Math.max(0.75, target / kcal));
+  for (const e of day) {
+    e.nutrition.calories = Math.round(e.nutrition.calories * f);
+    e.nutrition.protein = Math.round(e.nutrition.protein * f);
+    e.nutrition.carbs = Math.round(e.nutrition.carbs * f);
+    e.nutrition.fat = Math.round(e.nutrition.fat * f);
+  }
 }
 
 /**
@@ -154,11 +198,13 @@ const DAY_TARGET: Record<keyof Micros | "fiber", number> = {
   saturatedFat: 17, // 85% of 20 g: on track
   cholesterol: 250, // 83% of 300 mg: on track
 };
-const TYPICAL_DAY_KCAL = 1840;
+/** Mean calories of a seeded past day (partial days included) */
+const TYPICAL_DAY_KCAL = 2050;
 
 function normalizeDay(day: DiaryEntry[], date: ISODate) {
   const kcal = day.reduce((a, e) => a + e.nutrition.calories, 0);
-  const size = Math.sqrt(Math.max(0.6, Math.min(1.4, kcal / TYPICAL_DAY_KCAL)));
+  // Fourth root: a half-logged day still has fewer micros, without swinging the weekly average
+  const size = Math.pow(Math.max(0.6, Math.min(1.4, kcal / TYPICAL_DAY_KCAL)), 0.25);
   const scale = (key: keyof typeof DAY_TARGET, total: number) => {
     const jitter = 1 + ((hash(`${date}:${key}`) % 1000) / 1000 - 0.5) * 0.3;
     return total > 0 ? Math.min(6, Math.max(0.3, (DAY_TARGET[key] * size * jitter) / total)) : 1;
@@ -179,7 +225,8 @@ export function seedDiary(today: ISODate): DiaryEntry[] {
     const h = hash(date);
     const dow = fromISODate(date).getDay();
     const treatNight = dow === 5 || dow === 6 || dow === 0;
-    const slots: MealType[] = offset === 0 ? ["breakfast", "lunch"] : slotsFor(date, h);
+    const kind = dayKind(date);
+    const slots: MealType[] = offset === 0 ? ["breakfast", "lunch"] : slotsFor(date, h, kind);
     const day: DiaryEntry[] = [];
 
     slots.forEach((slot, i) => {
@@ -189,7 +236,7 @@ export function seedDiary(today: ISODate): DiaryEntry[] {
           ? TODAY[slot]
           : slot === "dinner" && treatNight
             ? pickFrom(TREAT_DINNERS, seed)
-            : slot === "snack" && treatNight && slots[i - 1] === "dinner"
+            : slot === "snack" && (treatNight || kind === "big") && slots[i - 1] === "dinner"
               ? pickFrom(TREAT_SNACKS, seed)
               : pickFrom(POOL[slot], seed);
       // Snacks land after whichever meal precedes them
@@ -213,7 +260,10 @@ export function seedDiary(today: ISODate): DiaryEntry[] {
       });
     });
     // Today keeps the meals' own numbers (it's half a day, and the live demo builds on it)
-    if (offset < 0) normalizeDay(day, date);
+    if (offset < 0) {
+      if (kind !== "partial") scaleDayKcal(day, dayKcalTarget(date, kind));
+      normalizeDay(day, date);
+    }
     out.push(...day);
   }
   return out;

@@ -147,13 +147,97 @@ export function loggedDaysIn(entries: DiaryEntry[], endDate: ISODate, days = 7):
  * nothing was logged.
  */
 export function weekAverages(entries: DiaryEntry[], endDate: ISODate, days = 7): NutrientTotals {
-  const dates = loggedDaysIn(entries, endDate, days);
-  const avg = emptyTotals();
-  if (!dates.length) return avg;
-  const inWindow = new Set(dates);
-  const { totals } = sumNutrients(entries.filter((e) => inWindow.has(e.date)));
-  for (const n of NUTRIENTS) avg[n.key] = totals[n.key] / dates.length;
-  return avg;
+  return weekSummary(entries, endDate, days).averages;
+}
+
+export interface WeekSummary {
+  /** Daily average of every nutrient over the logged days (all zeros when none) */
+  averages: NutrientTotals;
+  /** Logged dates in the window, oldest first */
+  loggedDays: ISODate[];
+  microsEstimated: boolean;
+  aiEstimated: boolean;
+}
+
+/** weekAverages plus which days count and whether any of it is estimated */
+export function weekSummary(entries: DiaryEntry[], endDate: ISODate, days = 7): WeekSummary {
+  const loggedDays = loggedDaysIn(entries, endDate, days);
+  const averages = emptyTotals();
+  if (!loggedDays.length) return { averages, loggedDays, microsEstimated: false, aiEstimated: false };
+  const inWindow = new Set(loggedDays);
+  const { totals, microsEstimated, aiEstimated } = sumNutrients(entries.filter((e) => inWindow.has(e.date)));
+  for (const n of NUTRIENTS) averages[n.key] = totals[n.key] / loggedDays.length;
+  return { averages, loggedDays, microsEstimated, aiEstimated };
+}
+
+/** The `days` dates ending on `endDate`, oldest first */
+export function daysEnding(endDate: ISODate, days = 7): ISODate[] {
+  const n = Math.max(1, Math.floor(days));
+  return Array.from({ length: n }, (_, i) => addDays(endDate, i - (n - 1)));
+}
+
+/* ------------------------------------------------------------------ */
+/* Day status (Figma 3.4 calendar colors)                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * on-target: within 10% of the calorie goal; over: more than 10% above it;
+ * partial: fewer than 3 meals (breakfast, lunch, dinner) or under 90%; none: nothing logged.
+ */
+export type DayStatus = "on-target" | "over" | "partial" | "none";
+
+export const DAY_STATUS_LABEL: Record<DayStatus, string> = {
+  "on-target": "on target",
+  over: "over",
+  partial: "partial",
+  none: "nothing logged",
+};
+
+export interface DayInfo {
+  date: ISODate;
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  /** Distinct main meals logged (breakfast, lunch, dinner) */
+  meals: number;
+  entries: number;
+  status: DayStatus;
+}
+
+/** `entries` = how many foods were logged that day (0 = nothing logged) */
+export function dayStatus(kcal: number, meals: number, entries: number, goal: number): DayStatus {
+  if (entries <= 0) return "none";
+  const r = ratio(kcal, goal);
+  if (goal > 0 && r > 1.1) return "over";
+  if (meals < 3 || r < 0.9) return "partial";
+  return "on-target";
+}
+
+/** Status and totals for every logged date, one pass */
+export function dayInfos(entries: DiaryEntry[], goal: number): Map<ISODate, DayInfo> {
+  const acc = new Map<ISODate, { kcal: number; protein: number; carbs: number; fat: number; slots: Set<MealType>; entries: number }>();
+  for (const e of entries) {
+    let a = acc.get(e.date);
+    if (!a) acc.set(e.date, (a = { kcal: 0, protein: 0, carbs: 0, fat: 0, slots: new Set(), entries: 0 }));
+    a.kcal += e.nutrition.calories || 0;
+    a.protein += e.nutrition.protein || 0;
+    a.carbs += e.nutrition.carbs || 0;
+    a.fat += e.nutrition.fat || 0;
+    if (e.meal !== "snack") a.slots.add(e.meal);
+    a.entries++;
+  }
+  const out = new Map<ISODate, DayInfo>();
+  for (const [date, a] of acc) {
+    const meals = a.slots.size;
+    const status = dayStatus(a.kcal, meals, a.entries, goal);
+    out.set(date, { date, kcal: a.kcal, protein: a.protein, carbs: a.carbs, fat: a.fat, meals, entries: a.entries, status });
+  }
+  return out;
+}
+
+export function emptyDayInfo(date: ISODate): DayInfo {
+  return { date, kcal: 0, protein: 0, carbs: 0, fat: 0, meals: 0, entries: 0, status: "none" };
 }
 
 /* ------------------------------------------------------------------ */
@@ -203,6 +287,16 @@ export function highlightedNutrients(totals: NutrientTotals, goals?: Partial<Nut
   return [...lows, ...over];
 }
 
+/** Figma 3.2's rows, in its order; the rest of the registry follows */
+export const FEATURED_NUTRIENTS: NutrientDef["key"][] = ["iron", "fiber", "vitaminA", "calcium", "vitaminC", "sodium"];
+
+/** Every nutrient but calories as rows: Figma 3.2's six first, then registry order */
+export function weeklyNutrientRows(totals: NutrientTotals, goals?: Partial<NutritionGoals>): NutrientRow[] {
+  const featured = FEATURED_NUTRIENTS.map((k) => NUTRIENTS.find((n) => n.key === k)).filter((n): n is NutrientDef => !!n);
+  const rest = NUTRIENTS.filter((n) => n.key !== "calories" && !FEATURED_NUTRIENTS.includes(n.key));
+  return [...featured, ...rest].map((n) => nutrientRow(n, totals, goals));
+}
+
 /** Calories per logged date, one pass */
 export function kcalByDate(entries: DiaryEntry[]): Record<ISODate, number> {
   const out: Record<ISODate, number> = {};
@@ -239,6 +333,17 @@ export function currentStreak(logged: Set<ISODate>, today: ISODate): number {
   let day = logged.has(today) ? today : addDays(today, -1);
   let n = 0;
   while (logged.has(day)) {
+    n++;
+    day = addDays(day, -1);
+  }
+  return n;
+}
+
+/** Consecutive logged days ending on `date` (0 when `date` itself has nothing logged) */
+export function streakEndingOn(logged: Set<ISODate>, date: ISODate): number {
+  let n = 0;
+  let day = date;
+  while (logged.has(day) && n < 3660) {
     n++;
     day = addDays(day, -1);
   }
@@ -286,8 +391,43 @@ export function relativeDayLabel(iso: ISODate, today: ISODate): string {
   return longDayLabel(iso);
 }
 
-/** "M", "T", ... (Mon-start) */
-export const WEEKDAY_INITIALS = ["M", "T", "W", "T", "F", "S", "S"];
+/** "Saturday, October 3" (with the year when it isn't this year) */
+export function fullDayLabel(iso: ISODate, today: ISODate): string {
+  const sameYear = iso.slice(0, 4) === today.slice(0, 4);
+  return formatDay(iso, { weekday: "long", month: "long", day: "numeric", ...(sameYear ? {} : { year: "numeric" }) });
+}
+
+/** Daily diary heading: "Today", "Yesterday", else the weekday ("Thursday") */
+export function dayHeading(iso: ISODate, today: ISODate): string {
+  if (iso === today) return "Today";
+  if (iso === addDays(today, -1)) return "Yesterday";
+  return formatDay(iso, { weekday: "long" });
+}
+
+/** "S", "M", ... (Sunday-start, like Figma's calendars) */
+export const WEEKDAY_INITIALS = ["S", "M", "T", "W", "T", "F", "S"];
+
+/** Initial of the weekday `iso` falls on */
+export function weekdayInitial(iso: ISODate): string {
+  return WEEKDAY_INITIALS[fromISODate(iso).getDay()];
+}
+
+/**
+ * The daily diary's week strip: the Sunday-Saturday week holding `selected`, except the
+ * current week, which is the 7 days ending today (so the strip never shows future days).
+ */
+export function stripDays(selected: ISODate, today: ISODate): ISODate[] {
+  const saturday = addDays(selected, 6 - fromISODate(selected).getDay());
+  return daysEnding(saturday < today ? saturday : today);
+}
+
+/** "7h 10m" */
+export function formatHours(hours: number): string {
+  const mins = Math.max(0, Math.round((Number.isFinite(hours) ? hours : 0) * 60));
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h ? `${h}h ${m}m` : `${m}m`;
+}
 
 export interface MonthRef {
   year: number;
@@ -320,9 +460,9 @@ export interface CalendarCell {
   inMonth: boolean;
 }
 
-/** Mon-start grid for a month in whole weeks, padded with neighbouring-month days */
+/** Sunday-start grid for a month in whole weeks, padded with neighbouring-month days */
 export function monthGrid({ year, month }: MonthRef): CalendarCell[] {
-  const lead = (new Date(year, month, 1).getDay() + 6) % 7;
+  const lead = new Date(year, month, 1).getDay();
   const days = new Date(year, month + 1, 0).getDate();
   const total = Math.ceil((lead + days) / 7) * 7;
   return Array.from({ length: total }, (_, i) => {

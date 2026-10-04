@@ -10,6 +10,7 @@ export function ProgressBar({
   trackClass = "bg-cream-deep",
   height = "h-2.5",
   delay = 0,
+  label,
   className,
 }: {
   value: number;
@@ -17,11 +18,17 @@ export function ProgressBar({
   trackClass?: string;
   height?: string;
   delay?: number;
+  /** Accessible description ("Protein: 128 of 150 g") */
+  label?: string;
   className?: string;
 }) {
   const pct = clamp(Number.isFinite(value) ? value : 0, 0, 1) * 100;
   return (
-    <div className={cn("w-full overflow-hidden rounded-pill", height, trackClass, className)}>
+    <div
+      className={cn("w-full overflow-hidden rounded-pill", height, trackClass, className)}
+      role={label ? "img" : undefined}
+      aria-label={label}
+    >
       <motion.div
         className={cn("h-full rounded-pill", colorClass)}
         initial={{ width: 0 }}
