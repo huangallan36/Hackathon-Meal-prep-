@@ -55,7 +55,7 @@ function hint(
     case "thinking":
       return "";
     case "speaking":
-      return `Tap ${name} to interrupt`;
+      return `Talk over ${name} or tap to interrupt`;
     default:
       if (handsFree.on) return handsFree.rest ? restHint(handsFree.rest, name) : HANDS_FREE_LIVE_HINT;
       return hasConversation ? `Tap ${name} to reply` : `Tap ${name} and start talking`;
@@ -70,7 +70,7 @@ function mascotLabel(status: VoiceStatus, name: string): string {
     case "thinking":
       return `${name} is thinking`;
     case "speaking":
-      return `${name} is speaking. Tap to interrupt`;
+      return `${name} is speaking. Talk or tap to interrupt`;
     default:
       return `Talk to ${name}`;
   }

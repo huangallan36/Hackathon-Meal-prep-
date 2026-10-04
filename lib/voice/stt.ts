@@ -56,6 +56,11 @@ export interface ListenOptions {
    * still explained with a toast, but Sous's type-to-talk sheet doesn't open.
    */
   quiet?: boolean;
+  /**
+   * Live text as it's heard. When set, the caller owns what's shown (useVoice.interim isn't
+   * touched): listening while Sous talks must not show Sous's own echo as the user's words.
+   */
+  onInterim?: (text: string) => void;
 }
 
 interface ActiveRecognition {
@@ -131,6 +136,7 @@ export function listenOnce(options?: Pick<ListenOptions, "quiet">): Promise<stri
 export function listenOnceDetailed(options?: ListenOptions): Promise<ListenResult> {
   const auto = options?.auto === true;
   const quiet = options?.quiet === true;
+  const onInterim = options?.onInterim;
   /** A mic problem inside a tap: say what happened and (unless quiet) offer typing instead. */
   const openTyping = (message: string) => {
     toast(message, "warning", 3600);
@@ -242,7 +248,8 @@ export function listenOnceDetailed(options?: ListenOptions): Promise<ListenResul
         clearTimeout(noSpeechTimer);
         noSpeechTimer = null;
       }
-      useVoice.getState().setInterim(heard);
+      if (onInterim) onInterim(heard);
+      else useVoice.getState().setInterim(heard);
       if (silenceTimer) clearTimeout(silenceTimer);
       silenceTimer = setTimeout(stop, SILENCE_MS);
     };

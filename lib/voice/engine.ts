@@ -5,7 +5,8 @@
  * the exported signatures of the original contract must not change.
  *
  * State machine (useVoice.status): idle -> listening -> thinking -> speaking -> idle.
- * Half-duplex: the mic is never open while Sous's audio plays. A turn counter makes sure
+ * Barge-in: while Sous talks, the mic stays open and Sous stops when the user talks over it
+ * (its own echo is filtered out, see startBargeIn). A turn counter makes sure
  * a slow, stale response never speaks after a hang up or a newer turn.
  *
  * Hands-free (conversation) mode, usePrefs.handsFree: once Sous has finished talking (or a
@@ -286,6 +287,8 @@ async function voiceLine(display: string): Promise<void> {
     }
     heldLine = null;
     voice().setStatus("speaking");
+    // Listen while talking, so the user can cut in by voice.
+    startBargeIn(display, id);
     // The chosen persona's ElevenLabs voice (Leo's when none was picked).
     await playTts(toSpeech(display), ttsVoiceId(), (engine) => {
       if (id === speechSeq) voice().setTtsEngine(engine);
@@ -294,6 +297,7 @@ async function voiceLine(display: string): Promise<void> {
     console.warn("[voice] speak failed:", err instanceof Error ? err.message : err);
   } finally {
     if (id === speechSeq) {
+      stopBargeIn();
       if (voice().status === "speaking") voice().setStatus(restingStatus());
       // The line is over (audio fully ended): hands-free listens again. Lines inside a
       // turn wait for runTurn to finish; a stopped or replaced line never gets here.
@@ -303,10 +307,130 @@ async function voiceLine(display: string): Promise<void> {
 }
 
 export function stopSpeaking(): void {
+  stopBargeIn();
   speechSeq++;
   heldLine = null;
   stopPlayback();
   if (voice().status === "speaking") voice().setStatus(restingStatus());
+}
+
+/* ------------------------------------------------------------------ */
+/* Barge-in: listening while Sous talks                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * While Sous talks the mic stays open, so the user can interrupt by voice. The mic also hears
+ * Sous through the speakers, so words that are just the line being spoken are ignored; real
+ * new words (or "stop", "wait", the chef's name) cut Sous off and become the next turn.
+ */
+let bargeSeq = 0;
+/** The open barge-in listen hasn't turned into a user turn yet (safe to abort) */
+let bargeWaiting = false;
+const BARGE_WORDS = /^(stop|wait|hold|hey|sous|pause|quiet|shush|sorry|actually|no|nope)$/;
+const BARGE_MIN_NEW_WORDS = 3;
+const MAX_BARGE_RESTARTS = 6;
+
+const wordsOf = (text: string) =>
+  text
+    .toLowerCase()
+    .replace(/[‘’']/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+
+function isAppleTouch(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.userAgent.includes("Mac") && navigator.maxTouchPoints > 1);
+}
+
+function bargeInWanted(): boolean {
+  const v = voice();
+  return (
+    v.sessionActive &&
+    !v.paused &&
+    !v.typing &&
+    !autoBlocked &&
+    isSttSupported() &&
+    // iOS Safari stops audio when the mic opens; a playing recipe video would be heard as the user.
+    !isAppleTouch() &&
+    useVideo.getState().recipeId == null
+  );
+}
+
+/** Heard text minus Sous's own echo at its start */
+function withoutEcho(heard: string, lineWords: Set<string>): string {
+  const words = heard.split(/\s+/).filter(Boolean);
+  let i = 0;
+  while (i < words.length && lineWords.has(wordsOf(words[i])[0] ?? "")) i++;
+  return words.slice(i).join(" ");
+}
+
+/** The user is talking over Sous (not just the mic hearing Sous) */
+function isInterruption(heard: string, lineWords: Set<string>, name: string): boolean {
+  const fresh = wordsOf(heard).filter((w) => !lineWords.has(w));
+  return fresh.length >= BARGE_MIN_NEW_WORDS || fresh.some((w) => BARGE_WORDS.test(w) || w === name);
+}
+
+function startBargeIn(line: string, speech: number, restarts = 0): void {
+  // A new line replaces the last one's barge-in mic (its echo filter is for the old words).
+  stopBargeIn();
+  if (!bargeInWanted() || isListening()) return;
+  const id = ++bargeSeq;
+  const lineWords = new Set([...wordsOf(line), ...wordsOf(toSpeech(line))]);
+  const name = currentPersona().name.toLowerCase();
+  let interrupted = false;
+  let turnAt = 0;
+  bargeWaiting = true;
+
+  void listenOnceDetailed({
+    auto: true,
+    quiet: true,
+    onInterim: (heard) => {
+      if (id !== bargeSeq) return;
+      if (!interrupted) {
+        if (!isInterruption(heard, lineWords, name)) return;
+        // Cut Sous off: this listen is now the user's turn.
+        interrupted = true;
+        bargeWaiting = false;
+        speechSeq++;
+        heldLine = null;
+        turnSeq++;
+        turnAt = turnSeq;
+        stopPlayback();
+        wakeHandsFree();
+        voice().setStatus("listening");
+      }
+      voice().setInterim(withoutEcho(heard, lineWords));
+    },
+  }).then(({ text }) => {
+    if (id !== bargeSeq) return;
+    bargeWaiting = false;
+    if (!interrupted) {
+      // The mic gave up while Sous is still talking (quiet stretch): listen again.
+      if (speech === speechSeq && voice().status === "speaking" && restarts < MAX_BARGE_RESTARTS) {
+        startBargeIn(line, speech, restarts + 1);
+      }
+      return;
+    }
+    if (turnAt !== turnSeq) return; // hung up, paused or tapped meanwhile
+    const said = withoutEcho(text, lineWords);
+    voice().setInterim("");
+    if (!said) {
+      if (voice().status === "listening") voice().setStatus("idle");
+      scheduleAutoListen();
+      return;
+    }
+    silentRounds = 0;
+    void runTurn(said, ++turnSeq);
+  });
+}
+
+/** Close a barge-in mic that hasn't caught the user (the line ended, or Sous was stopped). */
+function stopBargeIn(): void {
+  if (!bargeWaiting) return;
+  bargeWaiting = false;
+  bargeSeq++;
+  abortListening();
 }
 
 /* ------------------------------------------------------------------ */
@@ -328,6 +452,8 @@ export function endSession(): void {
   activeTurn = 0;
   heldLine = null;
   lastLine = { text: "", at: 0 };
+  bargeWaiting = false;
+  bargeSeq++;
   abortListening();
   stopPlayback();
   voice().endSession();
@@ -338,6 +464,7 @@ export function pauseSession(): void {
   const v = voice();
   if (v.paused) return;
   cancelAutoListen();
+  stopBargeIn();
   if (v.status === "listening") {
     turnSeq++;
     abortListening();
