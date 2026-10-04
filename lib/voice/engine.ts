@@ -17,7 +17,7 @@
  */
 import { TIMEOUTS } from "@/lib/config";
 import { postJSON } from "@/lib/http";
-import { afterWakePhrase, fallbackReply, listeningIntent, quickAppIntent, quickCookingIntent, startCookingIntent, stepNumberIntent } from "@/lib/intents";
+import { afterWakePhrase, doneShoppingIntent, fallbackReply, listeningIntent, quickAppIntent, quickCookingIntent, startCookingIntent, stepNumberIntent } from "@/lib/intents";
 import { NEARBY_STORES } from "@/lib/kitchen/groceries";
 import { useMapView } from "@/lib/stores/map";
 import { useVideo } from "@/lib/stores/video";
@@ -709,6 +709,14 @@ function safeQuickIntent(text: string): SousAction["name"] | null {
   }
 }
 
+function safeDoneShopping(text: string): boolean {
+  try {
+    return doneShoppingIntent(text);
+  } catch {
+    return false;
+  }
+}
+
 function safeStartCooking(text: string): boolean {
   try {
     return startCookingIntent(text);
@@ -808,7 +816,8 @@ async function runTurn(text: string, id: number): Promise<void> {
     // Fast path: "yeah let's cook" on the open recipe's page or its shopping list starts the steps.
     const open = useKitchen.getState().activeRecipe;
     const path = getCurrentPath();
-    if (open && (path === `/ai/cook/${open.id}` || path === `/ai/groceries/${open.id}`) && safeStartCooking(text)) {
+    const onList = open && path === `/ai/groceries/${open.id}` && safeDoneShopping(text);
+    if (open && (onList || ((path === `/ai/cook/${open.id}` || path === `/ai/groceries/${open.id}`) && safeStartCooking(text)))) {
       const line = await applyActions([{ name: "start_cooking", args: { recipeId: open.id } }]);
       if (id !== turnSeq) return;
       await speak(line ?? "Okay.", { source: "local" });

@@ -475,6 +475,8 @@ TOOLS
 ${toolsIntro}
 - open_fridge_camera: they're tired, hungry, don't know what to cook, ask what's for dinner, or ask you to check their fridge. Empathize in a few words, then call it right away. Don't ask permission first. Do this even if APP STATE already lists ingredients (they may be stale), unless they ask you to use those.
 - show_recipes: ingredients are known and they want ideas, ask what they can make, or want to see the options again.
+- Stick with the open recipe: when APP STATE shows a recipe being cooked or its grocery list on screen, "let's cook", "start", "I'm done", "got everything", "next", "this one" all mean THAT recipe. Only switch to a different recipe when they clearly name it.
+- On the grocery list screen, "I'm done", "got everything", "ok next", "ready" mean they're ready to cook: call start_cooking with that recipe's id (the app goes straight into the steps).
 - start_cooking: they pick a recipe by position ("the first one" means item one in the recipes on screen), by a word from the title ("let's do teriyaki" = Beef Teriyaki), by name, or with "let's do this", "that one", "make it", "yes" right after you or the screen offered one (the recipe in focus). Pass that recipe's exact id from any APP STATE list. Never search again for a recipe that's already in a list, and only ask which one when two fit equally well.
 - show_groceries: they ask what they're missing, what to buy, whether they need to shop, or where to get groceries. Use the id of the recipe on the grocery screen, the active recipe, or the recipe they mean. For "what do I need" questions, say the main ingredients out loud: what's still on the shopping list if there is one, else the recipe's key ingredients from APP STATE. For "where" questions (which store, closest, cheapest, open late) pass section "stores" and say the answer: the nearest store with its distance and hours, and which one is cheapest with its price, from APP STATE.
 - log_meal: they just finished cooking a dish with Sous and want to snap a photo of it to log it ("that was amazing, log it").
@@ -591,7 +593,7 @@ export function cleanFoodDescription(v: unknown): string {
 }
 
 /** "Let's do this", "that one", "make it", "sounds good": a pick that names no recipe */
-const THIS_ONE = /(this|that|it|that one|this one|sounds (good|great)|yes|yeah|sure|lets go)/i;
+const THIS_ONE = /\b(this|that|it|that one|this one|sounds (good|great)|yes|yeah|sure|lets go)\b/i;
 
 /** A 1-based step number from the model (an integer or a numeric string) */
 function toStepNumber(v: unknown): number | null {
@@ -656,7 +658,13 @@ export function toActions(calls: FunctionCall[] | undefined, ctx: ChatContext, m
     if (screen) continue;
     if (name === "start_cooking") {
       // A named recipe from any list; "let's do this one" means the recipe in focus.
-      const id = argId != null && known.has(argId) ? argId : (pickRecipe(message, pickable) ?? (ctx.focus && THIS_ONE.test(message) ? ctx.focus.id : null));
+      const named = pickRecipe(message, pickable);
+      let id = argId != null && known.has(argId) ? argId : (named ?? (ctx.focus && THIS_ONE.test(message) ? ctx.focus.id : null));
+      // A recipe is open and they didn't name another one: "let's cook", "start", "done" mean THAT
+      // recipe. Never let the model drift to a different dish from context alone.
+      const open = ctx.activeRecipe;
+      const onOpen = open && (ctx.screen === `/ai/cook/${open.id}` || ctx.screen === `/ai/groceries/${open.id}` || open.stepIndex >= 0);
+      if (open && onOpen && id !== open.id && (named == null || named === open.id)) id = open.id;
       if (id == null) dropped.push(name);
       else screen = { name, args: { recipeId: id } };
     } else if (name === "show_groceries") {

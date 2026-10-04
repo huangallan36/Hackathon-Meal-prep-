@@ -556,6 +556,15 @@ export function startCookingIntent(message: string): boolean {
   return START_COOKING.test(normalizeUtterance(message));
 }
 
+/** Done shopping: "I'm done", "got everything", "I have it all", "done with the ingredients", "next" */
+const DONE_SHOPPING =
+  /^(?:(?:ok|okay|alright|yeah|yes|cool|great|perfect)\s+)*(?:(?:im|i am|were|we are)\s+)?(?:done|finished|all set|good to go|set|done shopping)(?:\s+(?:with (?:the |that |my )?(?:ingredients|shopping|groceries|list|that|this)|now|already|here))*$|\b(?:got|have|bought) (?:it all|everything|all of it|all (?:the|my) (?:ingredients|stuff))\b/;
+
+export function doneShoppingIntent(message: string): boolean {
+  const text = normalizeUtterance(message);
+  return DONE_SHOPPING.test(text) || quickCookingIntent(text) === "next_step";
+}
+
 /** "Where can I get groceries?", "which store is closest?", "is anywhere open?" */
 const WHERE_TO_SHOP = /\b(where|which|closest|nearest|nearby|cheapest|open)\b.*\b(grocer(y|ies)|stores?|shop|supermarket|buy)\b|\b(stores?|supermarket)\b.*\b(near|close|open|cheapest)\b/;
 

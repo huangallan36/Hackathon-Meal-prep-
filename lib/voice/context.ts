@@ -138,7 +138,11 @@ export function buildChatContext(): ChatContext {
   const onScreen = new Set(context.recipes.map((r) => r.id));
   const known = [...shownRecipes, ...getCatalog().map((r) => ({ id: r.id, title: r.title, readyInMinutes: r.readyInMinutes }))];
   context.known = known.filter((r) => (onScreen.has(r.id) ? false : (onScreen.add(r.id), true))).slice(0, 24);
-  if (focusRecipe) context.focus = focusRecipe;
+  // On the open recipe's own pages, "this one" is that recipe, whatever was mentioned last.
+  const open = k.activeRecipe;
+  const onOpen = open && (context.screen === `/ai/cook/${open.id}` || context.screen === `/ai/groceries/${open.id}`);
+  if (onOpen) context.focus = { id: open.id, title: open.title };
+  else if (focusRecipe) context.focus = focusRecipe;
   try {
     addShopping(context, k);
     addToday(context);
