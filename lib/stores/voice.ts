@@ -18,6 +18,9 @@ export interface TranscriptLine {
   source?: "gemini" | "fallback" | "local";
 }
 
+/** Which engine actually voiced the last Sous line */
+export type TtsEngine = "elevenlabs" | "browser" | "none";
+
 interface VoiceState {
   /** True between Start and Hang up */
   sessionActive: boolean;
@@ -31,6 +34,9 @@ interface VoiceState {
   interim: string;
   /** Latest Sous line, shown as a caption by the floating orb */
   caption: string | null;
+  /** epoch ms the caption last changed (lets the bubble re-show identical text) */
+  captionAt: number;
+  ttsEngine: TtsEngine | null;
   error: string | null;
 
   setStatus: (status: VoiceStatus) => void;
@@ -39,6 +45,7 @@ interface VoiceState {
   setTyping: (typing: boolean) => void;
   setError: (error: string | null) => void;
   setCaption: (caption: string | null) => void;
+  setTtsEngine: (engine: TtsEngine | null) => void;
   addLine: (role: TranscriptLine["role"], text: string, source?: TranscriptLine["source"]) => void;
   startSession: () => void;
   endSession: () => void;
@@ -52,6 +59,8 @@ export const useVoice = create<VoiceState>()((set) => ({
   transcript: [],
   interim: "",
   caption: null,
+  captionAt: 0,
+  ttsEngine: null,
   error: null,
 
   setStatus: (status) => set({ status }),
@@ -59,13 +68,24 @@ export const useVoice = create<VoiceState>()((set) => ({
   setPaused: (paused) => set({ paused }),
   setTyping: (typing) => set({ typing }),
   setError: (error) => set({ error }),
-  setCaption: (caption) => set({ caption }),
+  setCaption: (caption) => set({ caption, captionAt: Date.now() }),
+  setTtsEngine: (ttsEngine) => set({ ttsEngine }),
   addLine: (role, text, source) =>
     set((s) => ({
       transcript: [...s.transcript, { id: uid("t"), role, text, at: Date.now(), source }].slice(-60),
-      caption: role === "sous" ? text : s.caption,
+      ...(role === "sous" ? { caption: text, captionAt: Date.now() } : {}),
     })),
   startSession: () => set({ sessionActive: true, paused: false, error: null }),
   endSession: () =>
-    set({ sessionActive: false, status: "idle", paused: false, typing: false, interim: "", caption: null, transcript: [] }),
+    set({
+      sessionActive: false,
+      status: "idle",
+      paused: false,
+      typing: false,
+      interim: "",
+      caption: null,
+      captionAt: 0,
+      transcript: [],
+      error: null,
+    }),
 }));
