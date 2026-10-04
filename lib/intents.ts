@@ -455,6 +455,61 @@ const RE = {
   question: /\b(how|what|when|why|which|is it|should i|can i|do i|does it|how long|ready|done yet|substitute|instead)\b/,
 };
 
+/* ------------------------------------------------------------------ */
+/* Jumping to a step                                                   */
+/* ------------------------------------------------------------------ */
+
+const STEP_WORDS: Record<string, number> = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17,
+  eighteen: 18, nineteen: 19, twenty: 20, first: 1, second: 2, third: 3, fourth: 4, fifth: 5,
+  sixth: 6, seventh: 7, eighth: 8, ninth: 9, tenth: 10, "1st": 1, "2nd": 2, "3rd": 3,
+};
+
+const JUMP_LEAD = String.raw`(?:(?:ok|okay|so|um|uh|please|can you|could you|lets|now)\s+)*(?:(?:go|skip|jump|move|take me|bring me|head|back)\s+)?(?:back\s+)?(?:to\s+)?(?:the\s+)?`;
+const JUMP_NUMBER = new RegExp(`^${JUMP_LEAD}step (?:number )?([a-z0-9]+)(?: please)?$`);
+const JUMP_ORDINAL = new RegExp(`^${JUMP_LEAD}([a-z0-9]+) step(?: please)?$`);
+const JUMP_LAST = /^(?:(?:ok|okay|so|lets|now)\s+)*(?:go|skip|jump|move|take me|bring me|head)\s+(?:to\s+)?(?:the\s+)?(?:last|final|very last) step$/;
+
+/**
+ * A whole utterance that only names a step to jump to: "go to step five", "step 3",
+ * "skip to the fourth step", "back to the first step", "jump to the last step", "final step".
+ * Returns the 1-based step, or null (questions like "how hot for step five?" go to Gemini).
+ * A bare "last step" stays "previous step" (see PREVIOUS_PHRASES).
+ */
+export function stepNumberIntent(message: string, total: number): number | null {
+  const text = normalizeUtterance(message);
+  if (!text || total < 1) return null;
+  if (JUMP_LAST.test(text) || text === "final step" || text === "the final step") return total;
+  const m = JUMP_NUMBER.exec(text) ?? JUMP_ORDINAL.exec(text);
+  if (!m) return null;
+  const token = m[1];
+  const n = /^\d{1,2}$/.test(token) ? Number(token) : STEP_WORDS[token];
+  return n && n >= 1 && n <= total ? n : null;
+}
+
+/** What Sous says after jumping to a 1-based step (same shape as stepReply) */
+export function jumpReply(step: number, context: Pick<ChatContext, "activeRecipe">): string {
+  const steps = context.activeRecipe?.steps ?? [];
+  if (!steps.length) return "Pick a recipe first and I'll walk you through it.";
+  const i = Math.max(0, Math.min(step - 1, steps.length - 1));
+  const label = i === steps.length - 1 && i > 0 ? `Last step, step ${i + 1}.` : `Step ${i + 1}.`;
+  return speakable(`${label} ${steps[i]}`);
+}
+
+/** "Where can I get groceries?", "which store is closest?", "is anywhere open?" */
+const WHERE_TO_SHOP = /\b(where|which|closest|nearest|nearby|cheapest|open)\b.*\b(grocer(y|ies)|stores?|shop|supermarket|buy)\b|\b(stores?|supermarket)\b.*\b(near|close|open|cheapest)\b/;
+
+function storesLine(context: ChatContext): string | null {
+  const stores = context.stores ?? [];
+  if (!stores.length) return null;
+  const near = stores[0];
+  const cheap = stores.find((s) => s.cheapest);
+  let line = `${near.name} is closest, about ${near.km} kilometres away and ${near.hours}.`;
+  if (cheap && cheap !== near) line += ` ${cheap.name} is a little further but cheaper${cheap.estimate ? `, ${cheap.estimate} for your list` : ""}.`;
+  return line;
+}
+
 /** "no idea what to cook" must not read as "ideas" (a request for the recipe list). */
 const withoutNoIdea = (text: string) => text.replace(/\bno ideas?\b/g, " ");
 
@@ -472,8 +527,18 @@ export function fallbackReply(message: string, context: ChatContext): ChatRespon
   if (!text) return reply("Sorry, I didn't catch that. Try saying scan my fridge.");
 
   if (cooking) {
+    const jump = stepNumberIntent(text, active?.steps.length ?? 0);
+    if (jump) return { reply: jumpReply(jump, context), actions: [{ name: "go_to_step", args: { step: jump } }], source: "fallback" };
     const step = quickCookingIntent(text) ?? stepCommandIn(text);
     if (step) return { reply: stepReply(step, context), actions: [{ name: step }], source: "fallback" };
+  }
+
+  if (WHERE_TO_SHOP.test(text)) {
+    const line = storesLine(context);
+    const id = context.groceries?.recipeId ?? active?.id ?? recipes[0]?.id;
+    if (line) {
+      return reply(id != null ? `${line} I pulled them up for you.` : line, id != null ? [{ name: "show_groceries", args: { recipeId: id, section: "stores" } }] : []);
+    }
   }
 
   if (RE.thanksOnly.test(text)) return reply("Anytime. Enjoy every bite, you earned it.");

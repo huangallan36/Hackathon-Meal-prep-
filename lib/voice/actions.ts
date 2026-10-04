@@ -13,7 +13,7 @@ import { FRIDGE_SCAN_HREF } from "@/lib/kitchen/routes";
 import { useDiary } from "@/lib/stores/diary";
 import { useKitchen } from "@/lib/stores/kitchen";
 import { toast } from "@/lib/stores/toast";
-import type { MealType, Recipe, SousAction, SousActionName } from "@/lib/types";
+import type { AppScreen, MealType, Recipe, SousAction, SousActionName } from "@/lib/types";
 import { mealForNow, todayISO } from "@/lib/utils";
 import { getCurrentPath, navigateTo } from "./context";
 import { stepSpeech } from "./speech-text";
@@ -28,9 +28,23 @@ const KNOWN: ReadonlySet<SousActionName> = new Set<SousActionName>([
   "next_step",
   "previous_step",
   "repeat_step",
+  "go_to_step",
+  "open_screen",
+  "search_recipes",
 ]);
 
 const MEALS: readonly MealType[] = ["breakfast", "lunch", "dinner", "snack"];
+
+/** Where open_screen goes */
+const SCREEN_HREF: Record<AppScreen, string> = {
+  home: "/ai",
+  planner: "/planner",
+  diary: "/diary",
+  calendar: "/diary/calendar",
+  nutrients: "/me/nutrients",
+  profile: "/me",
+  social: "/social",
+};
 
 export const LAST_STEP_LINE = "That was the last step! Snap a photo of your finished meal and I'll log it for you.";
 export const NO_RECIPE_LINE = "Pick a recipe first and I'll walk you through it.";
@@ -107,6 +121,45 @@ function repeatStep(): string {
   return speakStep(k.stepIndex);
 }
 
+/** "Go to step five": open that step (1-based) and read it */
+function goToStep(step: unknown): string {
+  const k = useKitchen.getState();
+  const r = k.activeRecipe;
+  if (!r || !r.steps.length) return NO_RECIPE_LINE;
+  const n = typeof step === "number" && Number.isInteger(step) ? step : NaN;
+  if (!(n >= 1)) return speakStep(Math.max(0, k.stepIndex));
+  if (n > r.steps.length) return `This one only has ${r.steps.length} steps. Which one do you want?`;
+  showCookScreen(r.id);
+  // Jumping back from the finish card reopens the steps.
+  if (k.finishedRecipeId === r.id) useKitchen.setState({ finishedRecipeId: null });
+  k.goToStep(n - 1);
+  return speakStep(n - 1);
+}
+
+/** Planner search for a dish or ingredient (the planner opens straight into the results) */
+function searchRecipes(query: unknown) {
+  const q = typeof query === "string" ? query.replace(/\s+/g, " ").trim().slice(0, 60) : "";
+  navigateTo(q ? `/planner?q=${encodeURIComponent(q)}` : "/planner");
+}
+
+/**
+ * Bring the grocery screen's "Nearby stores" into view. The screen may still be loading after
+ * a navigation (and the shell scrolls new screens to the top), so look for it for a moment.
+ */
+function scrollToStores() {
+  if (typeof document === "undefined") return;
+  let tries = 0;
+  const tick = () => {
+    const el = document.getElementById("nearby-stores");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (++tries < 25) setTimeout(tick, 120);
+  };
+  setTimeout(tick, 250);
+}
+
 async function startCooking(recipeId: number | null): Promise<void> {
   const k = useKitchen.getState();
   const id = recipeId ?? (k.matches.length === 1 ? k.matches[0].recipe.id : null);
@@ -129,10 +182,11 @@ async function startCooking(recipeId: number | null): Promise<void> {
   navigateTo(`/ai/cook/${recipe.id}`);
 }
 
-function showGroceries(recipeId: number | null) {
+function showGroceries(recipeId: number | null, section?: unknown) {
   const k = useKitchen.getState();
   const id = recipeId ?? k.activeRecipe?.id ?? k.matches[0]?.recipe.id ?? null;
   navigateTo(id == null ? "/ai/recipes" : `/ai/groceries/${id}`);
+  if (id != null && section === "stores") scrollToStores();
 }
 
 function logMeal() {
@@ -194,7 +248,17 @@ async function applyOne(action: SousAction): Promise<string | null> {
       await startCooking(id);
       return null;
     case "show_groceries":
-      showGroceries(id);
+      showGroceries(id, action.args?.section);
+      return null;
+    case "go_to_step":
+      return goToStep(action.args?.step);
+    case "open_screen": {
+      const screen = action.args?.screen;
+      if (screen && screen in SCREEN_HREF) navigateTo(SCREEN_HREF[screen]);
+      return null;
+    }
+    case "search_recipes":
+      searchRecipes(action.args?.query);
       return null;
     case "log_meal":
       logMeal();

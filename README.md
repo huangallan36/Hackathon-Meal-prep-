@@ -64,7 +64,7 @@ If the wifi is bad, keep going: every step has an offline fallback (see below).
 
 | What | Where |
 | --- | --- |
-| **Function calling drives the UI.** Each voice turn returns at most one tool call: `open_fridge_camera`, `show_recipes`, `start_cooking(recipeId)`, `show_groceries`, `log_meal`, `log_food(description, meal)`, `next_step`, `previous_step`, `repeat_step`. The spoken reply comes back in the same ~1 s round trip. Calls are validated against the app state, so recipe ids can't be invented. | `app/api/chat`, `lib/server/chat-prompt.ts` |
+| **Function calling drives the UI.** Each voice turn returns at most one of 12 tool calls: `open_fridge_camera`, `show_recipes`, `start_cooking(recipeId)`, `show_groceries(recipeId, section)`, `log_meal`, `log_food(description, meal)`, `next_step`, `previous_step`, `repeat_step`, `go_to_step(step)`, `open_screen(screen)`, `search_recipes(query)`. The prompt tells Sous to take initiative: when a question is answered on a screen, it opens that screen *and* answers out loud ("where can I get groceries?" scrolls to the nearby stores and names the closest and cheapest). Each turn carries the app state (fridge, recipes, current step, shopping list, nearby stores, today's diary vs goals), so answers use real numbers. The spoken reply comes back in the same ~1 s round trip. Calls are validated against the app state, so recipe ids and step numbers can't be invented. | `app/api/chat`, `lib/server/chat-prompt.ts`, `lib/voice/context.ts` |
 | **Vision to JSON: fridge.** Photo -> `{ ingredients: [{ name, confidence }] }` via `responseJsonSchema`, cleaned into editable chips. The scan is *hedged*: if the first model is slow, the next one starts in parallel and the first valid answer wins. | `app/api/vision/ingredients`, `lib/kitchen/hedge.ts` |
 | **Vision to JSON: nutrition.** Plate photo -> dish, portion, calories, macros and micronutrients, shown as an editable "Estimated" card. | `app/api/vision/meal` |
 | **Text to nutrition.** "Chicken wrap and a latte" -> one item per food with full nutrients, used by voice logging and the Diary's add-food sheet. | `app/api/nutrition/estimate` |
@@ -77,14 +77,14 @@ If the wifi is bad, keep going: every step has an offline fallback (see below).
 | --- | --- |
 | **Four personas** from the design (Maya the tomato, warm; Leo the avocado, calm, the default; Nova the lemon, upbeat; Brock the broccoli, a protein-minded coach), each an ElevenLabs premade voice with its own mascot, colour and speaking style in the chat prompt. Picking one plays an in-character greeting recorded with `eleven_v4` (`npm run voices`), so it's instant and works offline. | `lib/voice/personas.ts`, `public/voices`, `components/mascot` |
 | **Streaming TTS proxy** with `eleven_flash_v2_5`, with first-byte and total timeouts so it can never hang. The key stays on the server. | `app/api/tts`, `lib/server/elevenlabs.ts` |
-| **Hands-free conversation mode**: after Sous speaks, the mic reopens on its own (never while audio plays, so Sous doesn't hear itself) and stops after a few silent rounds. | `lib/voice/engine.ts` |
+| **Hands-free conversation mode**: after Sous speaks, the mic reopens on its own (never while audio plays, so Sous doesn't hear itself) and stops after a few silent rounds. Your turn ends only after a 2.5-second pause, so Sous doesn't cut you off mid-thought (tap the mascot to finish sooner). | `lib/voice/engine.ts`, `lib/voice/stt.ts` |
 | **Browser-voice fallback**: if ElevenLabs fails or is rate limited, Sous keeps talking with `speechSynthesis`. | `lib/voice/audio.ts` |
 
 ### Everything else
 
 - **Voice engine**: tap-to-talk or hands-free, barge-in by tapping the mascot, type instead of
   talking, protection against stale responses. Speech-to-text is the browser's Web Speech API.
-  Instant "next / back / repeat" in cooking mode without a network round trip. `lib/voice/*`
+  Instant "next / back / repeat / go to step five" in cooking mode without a network round trip. `lib/voice/*`
 - **Mascot call screen**: the chosen mascot on soft rings in its colour, with idle, listening,
   thinking and speaking states. It follows the phone: white in light mode, black in dark mode.
 - **Docked bubble**: minimize Sous into a draggable mascot bubble over a simulated phone home

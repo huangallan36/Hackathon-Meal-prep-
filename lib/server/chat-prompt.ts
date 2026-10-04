@@ -11,7 +11,7 @@ import {
   type GenerateContentConfig,
 } from "@google/genai";
 import { fallbackReply, pickRecipe, quickCookingIntent, speakable, stepReply, type StepActionName } from "@/lib/intents";
-import type { ChatContext, ChatRequest, ChatTurn, MealType, SousAction, SousActionName } from "@/lib/types";
+import type { AppScreen, ChatContext, ChatRequest, ChatTurn, MealType, SousAction, SousActionName } from "@/lib/types";
 import { DEFAULT_PERSONA, personaNamed } from "@/lib/voice/personas";
 
 export const CHAT_LIMITS = {
@@ -37,9 +37,15 @@ export const SOUS_ACTIONS: readonly SousActionName[] = [
   "next_step",
   "previous_step",
   "repeat_step",
+  "go_to_step",
+  "open_screen",
+  "search_recipes",
 ];
 
 const MEALS: readonly MealType[] = ["breakfast", "lunch", "dinner", "snack"];
+const SCREENS: readonly AppScreen[] = ["home", "planner", "diary", "calendar", "nutrients", "profile", "social"];
+/** search_recipes queries: a dish or ingredient, not a sentence */
+const QUERY_MAX = 60;
 /** log_food's description is what the client sends to /api/nutrition/estimate */
 export const FOOD_DESCRIPTION_MAX = 200;
 
@@ -81,9 +87,10 @@ export const SOUS_TOOLS: FunctionDeclaration[] = [
   {
     name: "show_groceries",
     description:
-      "Show what the user is missing for a recipe as a shopping checklist. Call when they ask what they're missing, what to buy, or whether they need to go shopping.",
+      "Open the grocery screen for a recipe: the shopping checklist of what they're missing plus the nearby stores with distances and price estimates. Call when they ask what they're missing, what to buy, whether they need to shop, or where to buy or get groceries (which store, closest, cheapest, open now). For store questions pass section \"stores\" and answer with the store names, distances and prices from APP STATE in say. Call it even if they're already on the grocery screen when they ask where to shop: it scrolls to the stores.",
     parametersJsonSchema: params({
-      recipeId: { type: "integer", description: "Id of the active recipe, or of the recipe they mention, from APP STATE" },
+      recipeId: { type: "integer", description: "Id of the recipe on the grocery screen, the active recipe, or the recipe they mention, from APP STATE" },
+      section: { type: "string", enum: ["stores"], description: "\"stores\" when they ask where to shop; leave out for the checklist" },
     }),
   },
   {
@@ -123,6 +130,36 @@ export const SOUS_TOOLS: FunctionDeclaration[] = [
   {
     name: "repeat_step",
     description: "Cooking mode: read the current step again. Call when the user asks you to repeat it, missed it, or asks what the step was.",
+  },
+  {
+    name: "go_to_step",
+    description:
+      'Jump to a specific step of the recipe being cooked and open cooking mode on it: "go to step five", "skip to step three", "show me the last step", "back to the first step", "what\'s step four?". The app reads that step out loud itself.',
+    parametersJsonSchema: {
+      type: "object",
+      properties: {
+        step: { type: "integer", description: "Step number, starting at 1 (the last step is the step count in APP STATE)" },
+      },
+      required: ["step"],
+    },
+  },
+  {
+    name: "open_screen",
+    description:
+      "Open one of the app's main screens: home, planner (meal planner and recipe search), diary (today's food diary with meals, calories and macros), calendar (the month of logged days and the streak), nutrients (this week's vitamins and minerals vs targets), profile (weekly stats and macros), social (the community feed). Call when they ask to see or go to one, or when their question is answered on one (\"how much protein have I had today?\" opens the diary).",
+    parametersJsonSchema: params(
+      { screen: { type: "string", enum: [...SCREENS], description: "Which screen to open" } },
+      ["screen"],
+    ),
+  },
+  {
+    name: "search_recipes",
+    description:
+      'Search all recipes for a dish or ingredient and show the results in the meal planner: "find me a salmon recipe", "any beef ideas?", "show me something with chicken", "I want pasta tonight". Use show_recipes instead when they want ideas from their fridge scan.',
+    parametersJsonSchema: params(
+      { query: { type: "string", description: 'One to three words: the dish or main ingredient, e.g. "salmon", "beef", "pasta"' } },
+      ["query"],
+    ),
   },
 ];
 
@@ -205,7 +242,45 @@ function cleanContext(raw: unknown): ChatContext {
     activeRecipe,
     timer: str(c.timer, 120) || undefined,
     localTime: str(c.localTime, 80),
+    ...cleanExtras(c),
   };
+}
+
+const num = (v: unknown, max: number): number =>
+  typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(Math.round(v * 10) / 10, max)) : 0;
+
+/** Grocery list, stores and today's diary (all optional) */
+function cleanExtras(c: Obj): Pick<ChatContext, "groceries" | "stores" | "today"> {
+  const out: Pick<ChatContext, "groceries" | "stores" | "today"> = {};
+  if (isObj(c.groceries)) {
+    const id = toRecipeId(c.groceries.recipeId);
+    const title = str(c.groceries.title, 120);
+    if (id != null && title) out.groceries = { recipeId: id, title, need: strList(c.groceries.need, 15, 60) };
+  }
+  if (Array.isArray(c.stores)) {
+    const stores: NonNullable<ChatContext["stores"]> = [];
+    for (const s of c.stores.slice(0, 4)) {
+      if (!isObj(s)) continue;
+      const name = str(s.name, 60);
+      if (!name) continue;
+      stores.push({ name, km: num(s.km, 100), hours: str(s.hours, 40), estimate: str(s.estimate, 30) || undefined, cheapest: s.cheapest === true });
+    }
+    if (stores.length) out.stores = stores;
+  }
+  if (isObj(c.today) && isObj(c.today.goals)) {
+    const t = c.today;
+    const g = c.today.goals as Obj;
+    out.today = {
+      calories: num(t.calories, 20_000),
+      protein: num(t.protein, 2000),
+      carbs: num(t.carbs, 2000),
+      fat: num(t.fat, 2000),
+      fiber: num(t.fiber, 500),
+      goals: { calories: num(g.calories, 20_000), protein: num(g.protein, 2000), carbs: num(g.carbs, 2000), fat: num(g.fat, 2000), fiber: num(g.fiber, 500) },
+      meals: strList(t.meals, 12, 80),
+    };
+  }
+  return out;
 }
 
 /** Untrusted JSON -> a bounded ChatRequest. Returns null when there's no usable message. */
@@ -278,6 +353,26 @@ function describeState(ctx: ChatContext): string {
     lines.push("- Cooking: nothing yet.");
   }
   if (ctx.timer) lines.push(`- Timer: ${ctx.timer}.`);
+  if (ctx.groceries) {
+    lines.push(
+      ctx.groceries.need.length
+        ? `- Shopping list for "${ctx.groceries.title}" (id ${ctx.groceries.recipeId}), still to buy: ${ctx.groceries.need.join(", ")}.`
+        : `- Shopping list for "${ctx.groceries.title}" (id ${ctx.groceries.recipeId}): nothing left to buy.`,
+    );
+  }
+  if (ctx.stores?.length) {
+    const list = ctx.stores
+      .map((s) => `${s.name} (${s.km} km away, ${s.hours}${s.estimate ? `, this list ${s.estimate}` : ""}${s.cheapest ? ", cheapest" : ""})`)
+      .join("; ");
+    lines.push(`- Nearby grocery stores, nearest first: ${list}. The grocery screen shows them with directions.`);
+  }
+  const t = ctx.today;
+  if (t) {
+    const g = t.goals;
+    lines.push(
+      `- Today's diary: ${t.calories} of ${g.calories} kcal, protein ${t.protein} of ${g.protein} g, carbs ${t.carbs} of ${g.carbs} g, fat ${t.fat} of ${g.fat} g, fiber ${t.fiber} of ${g.fiber} g. ${t.meals.length ? `Logged: ${t.meals.join("; ")}.` : "Nothing logged yet today."}`,
+    );
+  }
   return lines.join("\n");
 }
 
@@ -331,11 +426,17 @@ ${toolsIntro}
 - open_fridge_camera: they're tired, hungry, don't know what to cook, ask what's for dinner, or ask you to check their fridge. Empathize in a few words, then call it right away. Don't ask permission first. Do this even if APP STATE already lists ingredients (they may be stale), unless they ask you to use those.
 - show_recipes: ingredients are known and they want ideas, ask what they can make, or want to see the options again.
 - start_cooking: they pick a recipe by position ("the first one" means item one in the recipes list), by a word from the title ("the chicken one"), or by name. Pass that recipe's exact id from APP STATE. Never guess or make up an id. If two recipes fit equally, ask which one instead of calling.
-- show_groceries: they ask what they're missing, what to buy, or whether they need to shop. Use the active recipe's id, or the id of the recipe they mean.
+- show_groceries: they ask what they're missing, what to buy, whether they need to shop, or where to get groceries. Use the id of the recipe on the grocery screen, the active recipe, or the recipe they mean. For "where" questions (which store, closest, cheapest, open late) pass section "stores" and say the answer: the nearest store with its distance and hours, and which one is cheapest with its price, from APP STATE.
 - log_meal: they just finished cooking a dish with Sous and want to snap a photo of it to log it ("that was amazing, log it").
 - log_food: they tell you what they ate or drank ("log my lunch, chicken wrap and a latte", "I had two eggs and toast for breakfast", "just had a banana"). Put the foods in description as they said them, with amounts, and pass meal when they name it. The app estimates the nutrition and logs it. Don't use log_meal for this, and don't ask for a photo.
 - next_step, previous_step, repeat_step: while cooking, "next", "done", "continue", "what's next" call next_step; "back", "go back", "previous" call previous_step; "repeat", "say that again", "what was that" call repeat_step. The app reads the step out loud itself, so your text for these is just "Okay."
-- Don't call a tool that opens the screen they're already on, unless they ask.
+- go_to_step: they name a step by number or position ("go to step five", "skip to step three", "what's the last step?", "start over from step one"). Pass the step number, starting at one. The app opens that step and reads it.
+- open_screen: they want to see their diary, planner, calendar or streak, nutrients, profile or the social feed, or they ask something that screen answers (today's calories or protein: diary; vitamins this week: nutrients; their streak: calendar). Answer the question in say too.
+- search_recipes: they ask for a kind of dish or an ingredient ("find me a salmon recipe", "any beef ideas?", "something with chicken"), whether or not they've scanned their fridge. Pass one to three words.
+- Don't reopen the screen they're already on just to talk; but do call the tool when it moves them somewhere useful on it (show_groceries with section "stores" scrolls to the stores).
+
+TAKE INITIATIVE
+You're a hands-on sous-chef, not a search box. When ${name} asks something the app can show, open it in the same turn AND answer the question out loud: don't make them ask twice, and don't only describe where to tap. Answer with the real specifics from APP STATE (store names, distances, prices, step text, today's numbers). Never say you can't see something that's in APP STATE. If the answer isn't there, say what you do know and do the most helpful action anyway.
 
 COOKING HELP
 While cooking, for questions about the current step (doneness, timing, heat, technique, substitutions, what a term means), ${talkOnly} a direct, practical answer from the step text and solid cooking knowledge. No app tool. Example: for chicken, it's done when the juices run clear, there's no pink in the middle, and it reads one hundred sixty-five degrees Fahrenheit inside.
@@ -350,6 +451,10 @@ EXAMPLES
 - "That was amazing, log it." -> log_meal(say: "Love that. Snap a photo of your plate and I'll log it.")
 - "Log my lunch, I had a chicken wrap and a latte." -> log_food(description: "chicken wrap and a latte", meal: "lunch", say: "Nice, logging that now.")
 - "Can I use olive oil instead of butter?" (cooking) -> ${oliveOil}
+- "Go to step five." (cooking) -> go_to_step(step: 5)
+- "Where can I get groceries?" -> show_groceries(recipeId: <grocery or active recipe id>, section: "stores", say: "Walmart's closest, about one point two kilometres away and open till eleven. Superstore's a bit further but cheaper, around seventeen bucks for your list. I pulled them up for you.") Use the real stores and prices from APP STATE.
+- "How much protein have I had today?" -> open_screen(screen: "diary", say: <today's protein and goal from APP STATE, and one easy tip if they're low>)
+- "Find me a salmon recipe." -> search_recipes(query: "salmon", say: "Ooh, good call. Here are a few salmon ideas.")
 
 APP STATE (live, this turn)
 ${describeState(ctx)}
@@ -407,6 +512,9 @@ const CANNED: Record<SousActionName, string> = {
   next_step: "Okay.",
   previous_step: "Okay.",
   repeat_step: "Okay.",
+  go_to_step: "Okay.",
+  open_screen: "Here you go.",
+  search_recipes: "Here's what I found.",
 };
 
 const isStep = (name: SousActionName): name is StepActionName => (STEP_ACTIONS as readonly string[]).includes(name);
@@ -422,6 +530,24 @@ export function cleanFoodDescription(v: unknown): string {
   const cut = text.slice(0, FOOD_DESCRIPTION_MAX);
   const space = cut.lastIndexOf(" ");
   return (space > FOOD_DESCRIPTION_MAX * 0.6 ? cut.slice(0, space) : cut).replace(/[,;:\s]+$/, "");
+}
+
+/** A 1-based step number from the model (an integer or a numeric string) */
+function toStepNumber(v: unknown): number | null {
+  const n = typeof v === "string" && /^\d{1,3}$/.test(v.trim()) ? Number(v) : v;
+  return typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 200 ? n : null;
+}
+
+/** "Salmon!" -> "salmon": a short dish or ingredient for the planner search */
+export function cleanQuery(v: unknown): string {
+  if (typeof v !== "string") return "";
+  return v
+    .toLowerCase()
+    .replace(/[^a-z0-9&' -]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, QUERY_MAX)
+    .trim();
 }
 
 function toMeal(v: unknown): MealType | undefined {
@@ -470,12 +596,26 @@ export function toActions(calls: FunctionCall[] | undefined, ctx: ChatContext, m
       if (id == null) dropped.push(name);
       else screen = { name, args: { recipeId: id } };
     } else if (name === "show_groceries") {
+      if (ctx.groceries) known.add(ctx.groceries.recipeId);
       const id =
         argId != null && known.has(argId)
           ? argId
-          : (ctx.activeRecipe?.id ?? pickRecipe(message, ctx.recipes) ?? ctx.recipes[0]?.id ?? null);
+          : (ctx.groceries?.recipeId ?? ctx.activeRecipe?.id ?? pickRecipe(message, ctx.recipes) ?? ctx.recipes[0]?.id ?? null);
       if (id == null) dropped.push(name);
-      else screen = { name, args: { recipeId: id } };
+      else screen = { name, args: call.args?.section === "stores" ? { recipeId: id, section: "stores" } : { recipeId: id } };
+    } else if (name === "go_to_step") {
+      const total = ctx.activeRecipe?.steps.length ?? 0;
+      const step = toStepNumber(call.args?.step);
+      if (!total || step == null || step > total) dropped.push(name);
+      else screen = { name, args: { step } };
+    } else if (name === "open_screen") {
+      const target = call.args?.screen;
+      if (typeof target === "string" && (SCREENS as readonly string[]).includes(target)) screen = { name, args: { screen: target as AppScreen } };
+      else dropped.push(name);
+    } else if (name === "search_recipes") {
+      const query = cleanQuery(call.args?.query);
+      if (!query) dropped.push(name);
+      else screen = { name, args: { query } };
     } else if (name === "log_food") {
       // The model sometimes drops the description; the user's own words are the next best thing.
       const description = cleanFoodDescription(call.args?.description) || cleanFoodDescription(message);
@@ -588,11 +728,28 @@ export function finalizeReply(rawText: string, parsed: ParsedActions, ctx: ChatC
   const { actions, dropped } = parsed;
   const step = actions.find((a) => isStep(a.name));
   if (step && isStep(step.name)) return stepReply(step.name, ctx);
+  // The client reads the step it jumps to; this line is the same text for history and fallbacks.
+  const jump = actions.find((a) => a.name === "go_to_step");
+  if (jump && ctx.activeRecipe) {
+    const steps = ctx.activeRecipe.steps;
+    const i = Math.max(0, Math.min((jump.args?.step ?? 1) - 1, steps.length - 1));
+    const label = i === steps.length - 1 && i > 0 ? `Last step, step ${i + 1}.` : `Step ${i + 1}.`;
+    return speakable(`${label} ${steps[i]}`);
+  }
 
   if (actions.length === 0 && dropped.length > 0) {
     const first = dropped[0];
     if (first === "start_cooking") return "Which one sounds good? You can say the first one, or tell me the name.";
-    if (first === "show_groceries") return "Pick a recipe first, then I can tell you exactly what you're missing.";
+    if (first === "go_to_step") {
+      const total = ctx.activeRecipe?.steps.length ?? 0;
+      return total ? speakable(`This one has ${total} steps. Which step do you want?`) : "Pick a recipe first and I'll walk you through it.";
+    }
+    if (first === "show_groceries") {
+      // No recipe to open, but a "where can I shop?" answer from the stores is still worth saying.
+      const said = sanitizeReply(parsed.said || rawText);
+      if (said && /\b(stores?|walmart|superstore|shop)\b/i.test(said)) return said;
+      return "Pick a recipe first, then I can tell you exactly what you're missing.";
+    }
     if (first === "log_food") return "Tell me what you had, like a chicken wrap and a latte, and I'll log it.";
     if (isStep(first)) return stepReply(first, ctx);
   }

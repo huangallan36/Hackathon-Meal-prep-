@@ -32,7 +32,8 @@ export function NearbyStores({
 }) {
   const store = NEARBY_STORES[selected] ?? NEARBY_STORES[CHEAPEST_STORE];
   return (
-    <section className="flex flex-col gap-3 px-5 pt-5" aria-label="Nearby stores">
+    // id: Sous scrolls here when asked "where can I get groceries?"
+    <section id="nearby-stores" className="flex scroll-mt-16 flex-col gap-3 px-5 pt-5" aria-label="Nearby stores">
       <SectionHeader
         title="Nearby stores"
         action={

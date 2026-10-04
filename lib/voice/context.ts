@@ -4,9 +4,14 @@
  * What Sous knows about the app right now: the current route (kept fresh by the
  * floating orb), the router, and a ChatContext snapshot built from the stores.
  */
+import { dayTotals, MEAL_LABEL } from "@/lib/diary/stats";
+import { CHEAPEST_STORE, formatDollars, groceryKey, groceryPlan, NEARBY_STORES, storeEstimate } from "@/lib/kitchen/groceries";
+import { getCachedRecipe } from "@/lib/recipes/catalog";
+import { useDiary } from "@/lib/stores/diary";
 import { useKitchen, type KitchenTimer } from "@/lib/stores/kitchen";
 import { usePrefs } from "@/lib/stores/prefs";
-import type { ChatContext } from "@/lib/types";
+import type { ChatContext, Recipe } from "@/lib/types";
+import { todayISO } from "@/lib/utils";
 import { currentPersona } from "./persona";
 
 let currentPath = "";
@@ -90,5 +95,60 @@ export function buildChatContext(): ChatContext {
     };
   }
   if (k.timer) context.timer = formatTimer(k.timer, now);
+  try {
+    addShopping(context, k);
+    addToday(context);
+  } catch (err) {
+    // Extra grounding only; a turn never fails over it.
+    console.warn("[voice] context extras failed:", err instanceof Error ? err.message : err);
+  }
   return context;
+}
+
+/**
+ * The shopping list Sous can talk about: the recipe on the grocery screen, else the one being
+ * cooked. Stores are always included so "where can I get groceries?" has an answer.
+ */
+function addShopping(context: ChatContext, k: ReturnType<typeof useKitchen.getState>): void {
+  const onGroceries = /^\/ai\/groceries\/(\d+)/.exec(context.screen);
+  const id = onGroceries ? Number(onGroceries[1]) : k.activeRecipe?.id;
+  let recipe: Recipe | undefined;
+  if (id != null) {
+    recipe =
+      (k.activeRecipe?.id === id ? k.activeRecipe : undefined) ??
+      k.matches.find((m) => m.recipe.id === id)?.recipe ??
+      getCachedRecipe(id);
+  }
+  const need = recipe
+    ? groceryPlan(recipe, k.ingredients).need.filter((i) => !k.groceryChecked[groceryKey(recipe.id, i.name)])
+    : [];
+  if (recipe) context.groceries = { recipeId: recipe.id, title: recipe.title, need: need.slice(0, 15).map((i) => i.name) };
+  context.stores = NEARBY_STORES.map((s, i) => ({
+    name: s.name,
+    km: s.km,
+    hours: s.hours,
+    estimate: need.length ? `about ${formatDollars(storeEstimate(s, need))}` : undefined,
+    cheapest: i === CHEAPEST_STORE,
+  }));
+}
+
+/** Today's diary vs goals, so "how's my protein?" gets real numbers */
+function addToday(context: ChatContext): void {
+  const { entries, goals } = useDiary.getState();
+  const today = todayISO();
+  const { totals } = dayTotals(entries, today);
+  const meals = entries
+    .filter((e) => e.date === today)
+    .map((e) => `${MEAL_LABEL[e.meal]}: ${e.name}`)
+    .slice(0, 12);
+  const r = Math.round;
+  context.today = {
+    calories: r(totals.calories),
+    protein: r(totals.protein),
+    carbs: r(totals.carbs),
+    fat: r(totals.fat),
+    fiber: r(totals.fiber),
+    goals: { calories: r(goals.calories), protein: r(goals.protein), carbs: r(goals.carbs), fat: r(goals.fat), fiber: r(goals.fiber) },
+    meals,
+  };
 }

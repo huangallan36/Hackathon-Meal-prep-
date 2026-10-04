@@ -197,7 +197,16 @@ export type SousActionName =
   | "previous_step"
   | "repeat_step"
   /** Log foods described by voice ("log my lunch: chicken wrap and a latte"); Gemini estimates the numbers */
-  | "log_food";
+  | "log_food"
+  /** Jump straight to a cooking step ("go to step five") */
+  | "go_to_step"
+  /** Open one of the app's main screens (diary, planner, nutrients...) */
+  | "open_screen"
+  /** Search recipes by dish or ingredient in the planner */
+  | "search_recipes";
+
+/** Screens Sous can open with open_screen */
+export type AppScreen = "home" | "planner" | "diary" | "calendar" | "nutrients" | "profile" | "social";
 
 /** One food item Gemini estimated from a spoken description */
 export interface SpokenFood {
@@ -215,8 +224,21 @@ export interface SpokenFood {
 
 export interface SousAction {
   name: SousActionName;
-  /** log_food: `description` is what the user said they ate; the client estimates it via /api/nutrition/estimate */
-  args?: { recipeId?: number; meal?: MealType; description?: string; items?: SpokenFood[] };
+  /**
+   * log_food: `description` is what the user said they ate; the client estimates it via /api/nutrition/estimate.
+   * go_to_step: `step` is 1-based. open_screen: `screen`. search_recipes: `query`.
+   * show_groceries: `section: "stores"` scrolls to the nearby stores.
+   */
+  args?: {
+    recipeId?: number;
+    meal?: MealType;
+    description?: string;
+    items?: SpokenFood[];
+    step?: number;
+    screen?: AppScreen;
+    query?: string;
+    section?: "stores";
+  };
 }
 
 export interface ChatTurn {
@@ -245,6 +267,20 @@ export interface ChatContext {
   timer?: string;
   /** Local time string so Sous can say "tonight" etc. */
   localTime: string;
+  /** Shopping list for the recipe on the grocery screen (or the active one): what's still to buy */
+  groceries?: { recipeId: number; title: string; need: string[] };
+  /** Nearby stores (demo data), nearest first, with the estimated cost of `groceries.need` */
+  stores?: { name: string; km: number; hours: string; estimate?: string; cheapest: boolean }[];
+  /** Today's food diary so far vs the user's daily goals */
+  today?: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber: number;
+    goals: { calories: number; protein: number; carbs: number; fat: number; fiber: number };
+    meals: string[];
+  };
 }
 
 export interface ChatRequest {

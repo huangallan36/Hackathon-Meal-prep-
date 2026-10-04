@@ -16,7 +16,7 @@
  */
 import { TIMEOUTS } from "@/lib/config";
 import { postJSON } from "@/lib/http";
-import { fallbackReply, quickCookingIntent } from "@/lib/intents";
+import { fallbackReply, quickCookingIntent, stepNumberIntent } from "@/lib/intents";
 import { useKitchen } from "@/lib/stores/kitchen";
 import { usePrefs } from "@/lib/stores/prefs";
 import { toast } from "@/lib/stores/toast";
@@ -552,6 +552,14 @@ function safeQuickIntent(text: string): SousAction["name"] | null {
   }
 }
 
+function safeStepJump(text: string): number | null {
+  try {
+    return stepNumberIntent(text, useKitchen.getState().activeRecipe?.steps.length ?? 0);
+  } catch {
+    return null;
+  }
+}
+
 function offlineReply(message: string, context: ChatContext): ChatResponse {
   try {
     const r = fallbackReply(message, context);
@@ -584,8 +592,15 @@ async function runTurn(text: string, id: number): Promise<void> {
   voice().setInterim("");
   voice().addLine("user", text);
   try {
-    // Fast path: "next", "repeat", "go back" while cooking need no network at all.
+    // Fast path: "next", "repeat", "go back", "go to step five" while cooking need no network at all.
     if (quickPathOn()) {
+      const jump = safeStepJump(text);
+      if (jump) {
+        const line = await applyActions([{ name: "go_to_step", args: { step: jump } }]);
+        if (id !== turnSeq) return;
+        await speak(line ?? "Okay.", { source: "local" });
+        return;
+      }
       const quick = safeQuickIntent(text);
       if (quick) {
         const line = await applyActions([{ name: quick }]);
