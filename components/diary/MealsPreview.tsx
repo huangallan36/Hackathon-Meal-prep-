@@ -78,8 +78,11 @@ export function MealsPreview({
       )}
 
       {hidden > 0 && (
-        <Link href={href} className="mt-1 block text-center text-xs font-semibold text-ink-soft">
-          +{hidden} more
+        <Link
+          href={href}
+          className="-mb-2 flex h-11 items-center justify-center rounded-pill text-xs font-semibold text-ink-soft transition hover:text-ink active:scale-95"
+        >
+          +{hidden} more {hidden === 1 ? "entry" : "entries"}
         </Link>
       )}
 

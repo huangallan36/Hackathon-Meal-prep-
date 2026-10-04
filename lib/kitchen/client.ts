@@ -37,7 +37,7 @@ export async function scanFridge(src: string): Promise<ScanResult> {
 
 /**
  * Small, persistable copy of the scanned photo for the store. Data URLs are
- * re-encoded to a ~480px thumbnail; paths/URLs (the sample) are kept as-is.
+ * re-encoded to a 360px thumbnail; paths/URLs (the sample) are kept as-is.
  */
 export async function fridgeThumbnail(src: string): Promise<string | null> {
   if (!src.startsWith("data:")) return src;

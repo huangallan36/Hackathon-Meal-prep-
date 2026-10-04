@@ -22,8 +22,13 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUT_DIR = path.join(ROOT, "public", "avatars");
 const SOURCES = ["lib/seed/social.ts", "lib/config.ts"];
 
-/** Friendly mouths only (no tongues, frowns or "oh!" faces) */
-const SMILES = ["variant03", "variant14", "variant17", "variant22", "variant23", "variant25", "variant27", "variant30"];
+/**
+ * Friendly faces only: smiling mouths (no tongues, frowns, gritted teeth or "oh!"),
+ * relaxed or raised brows (no scowls) and open or soft eyes (no winks).
+ */
+const SMILES = ["variant03", "variant14", "variant22", "variant23", "variant25"];
+const BROWS = ["variant01", "variant04", "variant05", "variant09", "variant12"];
+const EYES = ["variant01", "variant04", "variant05"];
 
 /** Warm backgrounds that sit well on the cream UI (hex without #) */
 const BACKGROUNDS = ["ffe4d9", "fff3d1", "e2f2e7", "fbefe2", "fde2cf", "f3e8d8"];
@@ -79,6 +84,8 @@ async function main() {
       gestureProbability: 0,
       glassesProbability: 0,
       lips: SMILES,
+      brows: BROWS,
+      eyes: EYES,
       ...look,
     }).toString();
     await writeFile(path.join(OUT_DIR, `${name}.svg`), svg, "utf8");

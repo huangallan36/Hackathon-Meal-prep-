@@ -52,13 +52,15 @@ export function BrowseView({
 
   return (
     <>
-      <PlannerSection id="popular" title="Most Popular" subtitle="What the Sous community keeps cooking" className="mt-8">
-        <Scroller label="Most popular recipes">
-          {popular.map((p, i) => (
-            <PopularCard key={p.recipe.id} recipe={p.recipe} upvotes={p.upvotes} rank={i + 1} index={i} onOpen={onOpen} />
-          ))}
-        </Scroller>
-      </PlannerSection>
+      {popular.length > 0 && (
+        <PlannerSection id="popular" title="Most Popular" subtitle="What the Sous community keeps cooking" className="mt-8">
+          <Scroller label="Most popular recipes">
+            {popular.map((p, i) => (
+              <PopularCard key={p.recipe.id} recipe={p.recipe} upvotes={p.upvotes} rank={i + 1} index={i} onOpen={onOpen} />
+            ))}
+          </Scroller>
+        </PlannerSection>
+      )}
 
       <PlannerSection
         id="week"

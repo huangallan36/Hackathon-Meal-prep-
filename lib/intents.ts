@@ -70,8 +70,23 @@ export function quickCookingIntent(message: string): StepActionName | null {
     if (PREVIOUS_PHRASES.has(c)) return "previous_step";
     if (REPEAT_PHRASES.has(c)) return "repeat_step";
   }
-  // "okay got it" / "got it thanks" reduce to nothing; in cooking mode that means "next".
-  if (/^(ok|okay|alright|got it|great|perfect|cool)( got it)?$/.test(text)) return "next_step";
+  // "okay got it" is all filler words, but after a step it clearly means "next". A bare
+  // "okay" / "perfect" is not: it is often just an ack to an answer, so Gemini decides.
+  if (/^((ok|okay|alright|great|perfect|cool) )?got it$/.test(text)) return "next_step";
+  return null;
+}
+
+/**
+ * Looser step detection for the offline router while cooking: longer phrasings that name
+ * a step ("show me the next step", "can you repeat the last step") or short ones that lead
+ * with the command ("next, please"). Never used to override Gemini.
+ */
+function stepCommandIn(text: string): StepActionName | null {
+  const words = text.split(" ");
+  if (!/\bstep\b/.test(text) && words.length > 4) return null;
+  if (/\b(repeat|again|reread|read (it|that|the step) again)\b/.test(text)) return "repeat_step";
+  if (/\b(go back|back up|previous|step back|one step back|step before)\b/.test(text)) return "previous_step";
+  if (/\b(next|continue|move on|keep going)\b/.test(text)) return "next_step";
   return null;
 }
 
@@ -299,16 +314,25 @@ const ORDINAL_PICKS: [RegExp, number][] = [
   [/\b(fifth|5th|number five|option five)\b/, 4],
 ];
 
-/** Recipe id the user is pointing at ("the first one", "the garlic chicken one"), or null. */
+/**
+ * Recipe id the user is pointing at ("the first one", "the garlic chicken one"), or null.
+ * A unique title match wins over an ordinal, so "first, is the salmon one quick?" means salmon.
+ */
 export function pickRecipe(message: string, recipes: ChatContext["recipes"]): number | null {
   if (recipes.length === 0) return null;
   const text = normalizeUtterance(message);
+  const byTitle = pickByTitle(message, recipes);
+  if (byTitle != null) return byTitle;
 
+  if (/\bstep\b/.test(text)) return null;
   if (/\b(last one|the last recipe|bottom one)\b/.test(text)) return recipes[recipes.length - 1].id;
   for (const [re, index] of ORDINAL_PICKS) {
-    if (re.test(text) && !/\bstep\b/.test(text) && recipes[index]) return recipes[index].id;
+    if (re.test(text) && recipes[index]) return recipes[index].id;
   }
+  return null;
+}
 
+function pickByTitle(message: string, recipes: ChatContext["recipes"]): number | null {
   const said = keywords(message);
   let best: number | null = null;
   let bestScore = 0;
