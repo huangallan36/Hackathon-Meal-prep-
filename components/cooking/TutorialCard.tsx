@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useId, useRef, useState } from "react";
+import videoSteps from "@/data/video-steps.json";
 import type { StepTutorial } from "@/lib/cooking/tutorial";
 import { useVideo } from "@/lib/stores/video";
 import { useVoice } from "@/lib/stores/voice";
@@ -10,6 +11,25 @@ import { cn } from "@/lib/utils";
 import { COOK_ICON } from "./icons";
 
 const VALID_ID = /^[\w-]{6,20}$/;
+
+/** Where each catalog recipe's steps start in its video (scripts/gen-video-steps.mjs) */
+const STEP_TIMES = videoSteps as Record<string, (number | null)[] | undefined>;
+
+/**
+ * Seconds into the recipe video where `step` starts: its own time, else the latest earlier
+ * step's, else 0. null when we have no times for this recipe (play from the start as before).
+ */
+function videoStartFor(recipeId: number | string, step: number | undefined): number | null {
+  const times = STEP_TIMES[String(recipeId)];
+  if (!times || step == null || step < 0) return null;
+  for (let i = Math.min(step, times.length - 1); i >= 0; i--) {
+    const t = times[i];
+    if (typeof t === "number") return t;
+  }
+  return 0;
+}
+
+const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
 
 const youtubeSearch = (query: string) => `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
 
@@ -27,11 +47,14 @@ const youtubeSearch = (query: string) => `https://www.youtube.com/results?search
 export function TutorialCard({
   recipe,
   tutorial,
+  stepIndex,
   className,
 }: {
   recipe: Pick<Recipe, "id" | "title" | "youtubeId">;
   /** The current step's technique, when it has one */
   tutorial?: StepTutorial | null;
+  /** 0-based current step: the video starts where this step happens, when we know it */
+  stepIndex?: number;
   className?: string;
 }) {
   const id = useId();
@@ -46,6 +69,7 @@ export function TutorialCard({
   if (open && !sousSpeaking && !started) setStarted(true);
   const playerRef = useRef<HTMLDivElement>(null);
   const title = tutorial?.title ?? `How to make ${recipe.title}`;
+  const start = videoId ? videoStartFor(recipe.id, stepIndex) : null;
 
   useEffect(() => {
     if (!open) return;
@@ -67,7 +91,9 @@ export function TutorialCard({
           {videoId
             ? open
               ? "Playing below · tap to hide"
-              : tutorial
+              : start != null
+                ? `Plays from this step (${clock(start)})`
+                : tutorial
                 ? "Recipe video · plays right here"
                 : "Video · plays right here"
             : "YouTube · opens in a new tab"}
@@ -95,7 +121,7 @@ export function TutorialCard({
     );
   }
 
-  const src = `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1&autoplay=1`;
+  const src = `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1&autoplay=1${start ? `&start=${start}` : ""}`;
   return (
     <div className={cn("flex w-full flex-col gap-2", className)}>
       <button type="button" aria-expanded={open} aria-controls={`${id}-video`} onClick={() => toggle(recipe.id)} className={cardClass}>

@@ -113,7 +113,7 @@ function CurrentStep({ recipe, index, last, pulse }: { recipe: Recipe; index: nu
             ))}
           </ul>
         )}
-        <TutorialCard recipe={recipe} tutorial={tutorial} />
+        <TutorialCard recipe={recipe} tutorial={tutorial} stepIndex={index} />
         <TimerChips timers={timers} />
       </motion.div>
     </li>

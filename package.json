@@ -9,7 +9,8 @@
     "lint": "eslint",
     "seed": "node scripts/seed-recipes.mjs",
     "avatars": "node scripts/gen-avatars.mjs",
-    "voices": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/gen-voice-samples.mjs"
+    "voices": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/gen-voice-samples.mjs",
+    "video-steps": "node scripts/gen-video-steps.mjs"
   },
   "dependencies": {
     "@google/genai": "2.27.0",
