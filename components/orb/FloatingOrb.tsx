@@ -3,7 +3,7 @@
 /**
  * The floating call button (rendered by AppShell on every screen): the chosen persona's mascot
  * avatar (design rules: the AI's face wherever it speaks), with rings in its tint that follow
- * the voice, and a caption beside it with what's being heard or said. Tap = tap-to-talk; the
+ * the voice, and a caption beside it with what's being heard or said. Tap = back to the full-screen call; the
  * caption opens the call; long-press docks Sous as a bubble over the (simulated) phone home
  * screen.
  * Design v1 has no floating voice button: every screen has its own voice entry (Home's Start
@@ -22,7 +22,7 @@ import { useDock } from "@/lib/stores/dock";
 import { useVoice } from "@/lib/stores/voice";
 import { cn } from "@/lib/utils";
 import { setCurrentPath } from "@/lib/voice/context";
-import { orbTap, setNavigator } from "@/lib/voice/engine";
+import { setNavigator } from "@/lib/voice/engine";
 import { usePersona } from "@/lib/voice/persona";
 import { useOrbCaption, type OrbCaption } from "./useOrbCaption";
 import { VoiceAvatar } from "./VoiceAvatar";
@@ -40,6 +40,7 @@ export function FloatingOrb() {
   const pathname = usePathname();
   const docked = useDock((s) => s.docked);
   const live = useVoice((s) => s.sessionActive);
+  const persona = usePersona();
 
   useEffect(() => {
     setNavigator((href) => router.push(href));
@@ -71,7 +72,7 @@ export function FloatingOrb() {
             transition={{ type: "spring", damping: 18, stiffness: 260 }}
             {...longPress}
           >
-            <VoiceAvatar size={60} status={caption.visual} onClick={orbTap} floating />
+            <VoiceAvatar size={60} status={caption.visual} onClick={() => router.push("/ai/talk")} label={`Open the call with ${persona.name}`} floating />
           </motion.div>
         </div>
       )}
