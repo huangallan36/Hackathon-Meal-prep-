@@ -516,6 +516,34 @@ export function quickAppIntent(message: string): SousAction | null {
   return null;
 }
 
+const SLEEP = new RegExp(
+  `${APP_LEAD}(?:stop listening(?: to me)?|go to sleep|sleep|mute(?: yourself| the mic)?|pause listening|dont listen(?: to me)?|stop the mic|turn off the mic|be quiet and stop listening)(?: please| for now| for a bit| for a sec(?:ond)?)?$`,
+);
+const WAKE = /^(?:(?:ok|okay|hey|um|uh)\s+)*(?:start listening(?: to me)?(?: again)?|listen(?: to me)?(?: again)?|wake up|im back|you can listen(?: again)?|turn on the mic|unmute)\b/;
+
+/**
+ * Turning Sous's listening off and on by voice: "stop listening" / "go to sleep" -> "sleep";
+ * "start listening" / "wake up" / "hey Leo" -> "wake". Null for anything else.
+ */
+export function listeningIntent(message: string, assistantName = ""): "sleep" | "wake" | null {
+  const text = normalizeUtterance(message);
+  if (!text) return null;
+  if (SLEEP.test(text)) return "sleep";
+  if (WAKE.test(text)) return "wake";
+  const name = normalizeUtterance(assistantName);
+  if (new RegExp(`^(?:(?:ok|okay|hey|hi)\\s+)?(?:sous${name ? `|${name}` : ""})\\b`).test(text)) return "wake";
+  return null;
+}
+
+/** What's left after a wake phrase ("hey Leo, what's next?" -> "whats next"), or "" */
+export function afterWakePhrase(message: string, assistantName = ""): string {
+  const name = normalizeUtterance(assistantName);
+  return normalizeUtterance(message)
+    .replace(WAKE, "")
+    .replace(new RegExp(`^(?:(?:ok|okay|hey|hi)\\s+)?(?:sous${name ? `|${name}` : ""})\\b`), "")
+    .trim();
+}
+
 /** "Where can I get groceries?", "which store is closest?", "is anywhere open?" */
 const WHERE_TO_SHOP = /\b(where|which|closest|nearest|nearby|cheapest|open)\b.*\b(grocer(y|ies)|stores?|shop|supermarket|buy)\b|\b(stores?|supermarket)\b.*\b(near|close|open|cheapest)\b/;
 

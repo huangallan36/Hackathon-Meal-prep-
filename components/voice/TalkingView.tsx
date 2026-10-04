@@ -46,9 +46,11 @@ function hint(
   sttOk: boolean,
   handsFree: { on: boolean; rest: HandsFreeRest | null },
   name: string,
+  asleep = false,
 ): string {
   if (!sttOk) return "Voice input isn't available here. Tap Type to chat.";
   if (paused) return "Paused · tap Resume to keep going";
+  if (asleep) return `Not listening · say "start listening" or tap ${name}`;
   switch (status) {
     case "listening":
       return handsFree.on ? "Listening... just talk" : `Listening... tap ${name} when you're done`;
@@ -93,7 +95,8 @@ export function TalkingView() {
   const icons = ICON_DIR[theme];
 
   const visual: VoiceStatus = paused ? "idle" : status;
-  const line = hint(visual, paused, hasConversation, sttOk, handsFree, persona.name);
+  const asleep = useVoice((s) => s.asleep);
+  const line = hint(visual, paused, hasConversation, sttOk, handsFree, persona.name, asleep);
   const liveHint = handsFreeOn && !paused && visual === "idle" && !handsFree.rest;
 
   return (

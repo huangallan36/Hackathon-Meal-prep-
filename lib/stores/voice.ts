@@ -56,6 +56,8 @@ interface VoiceState {
   handsFreeRest: HandsFreeRest | null;
   /** epoch ms handsFreeRest last changed (lets hints fade like captions) */
   handsFreeRestAt: number;
+  /** "Stop listening": the mic stays open but only answers to "start listening" (or a tap) */
+  asleep: boolean;
 
   setStatus: (status: VoiceStatus) => void;
   setInterim: (interim: string) => void;
@@ -65,6 +67,7 @@ interface VoiceState {
   setCaption: (caption: string | null) => void;
   setTtsEngine: (engine: TtsEngine | null) => void;
   setHandsFreeRest: (rest: HandsFreeRest | null) => void;
+  setAsleep: (asleep: boolean) => void;
   addLine: (
     role: TranscriptLine["role"],
     text: string,
@@ -89,6 +92,7 @@ export const useVoice = create<VoiceState>()((set) => ({
   error: null,
   handsFreeRest: null,
   handsFreeRestAt: 0,
+  asleep: false,
 
   setStatus: (status) => set({ status }),
   setInterim: (interim) => set({ interim }),
@@ -98,6 +102,7 @@ export const useVoice = create<VoiceState>()((set) => ({
   setCaption: (caption) => set({ caption, captionAt: Date.now() }),
   setTtsEngine: (ttsEngine) => set({ ttsEngine }),
   setHandsFreeRest: (handsFreeRest) => set({ handsFreeRest, handsFreeRestAt: handsFreeRest ? Date.now() : 0 }),
+  setAsleep: (asleep) => set({ asleep }),
   addLine: (role, text, source, extra) =>
     set((s) => ({
       transcript: [
@@ -116,6 +121,7 @@ export const useVoice = create<VoiceState>()((set) => ({
     })),
   endSession: () =>
     set({
+      asleep: false,
       sessionActive: false,
       sessionStartedAt: null,
       status: "idle",

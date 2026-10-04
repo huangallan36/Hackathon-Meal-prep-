@@ -17,7 +17,7 @@
  */
 import { TIMEOUTS } from "@/lib/config";
 import { postJSON } from "@/lib/http";
-import { fallbackReply, quickAppIntent, quickCookingIntent, stepNumberIntent } from "@/lib/intents";
+import { afterWakePhrase, fallbackReply, listeningIntent, quickAppIntent, quickCookingIntent, stepNumberIntent } from "@/lib/intents";
 import { NEARBY_STORES } from "@/lib/kitchen/groceries";
 import { useMapView } from "@/lib/stores/map";
 import { useVideo } from "@/lib/stores/video";
@@ -510,6 +510,8 @@ async function listenTurn(mode: ListenMode): Promise<void> {
     if (mode === "tap") {
       if (!v.sessionActive) startSession();
       if (v.paused) v.setPaused(false);
+      // A tap always wakes Sous up from "stop listening".
+      if (v.asleep) v.setAsleep(false);
       // Talking again drops anything held from a pause: the user has moved on.
       heldLine = null;
       if (v.status === "speaking" || isPlaying()) stopSpeaking();
@@ -527,7 +529,9 @@ async function listenTurn(mode: ListenMode): Promise<void> {
     v.setError(null);
     v.setInterim("");
     v.setStatus("listening");
-    const { text, outcome } = await listenOnceDetailed({ auto: mode === "auto" });
+    // Asleep ("stop listening"): the mic stays open for "start listening", but shows nothing it hears.
+    const asleep = voice().asleep;
+    const { text, outcome } = await listenOnceDetailed({ auto: mode === "auto", ...(asleep ? { onInterim: () => {} } : {}) });
     if (id !== turnSeq) return; // hung up, paused, or interrupted meanwhile
 
     if (!text) {
@@ -536,6 +540,24 @@ async function listenTurn(mode: ListenMode): Promise<void> {
       return;
     }
     silentRounds = 0;
+    if (voice().asleep) {
+      const name = currentPersona().name;
+      if (safeListeningIntent(text) !== "wake") {
+        // Not for Sous: ignore it and keep waiting for the wake phrase.
+        if (voice().status === "listening") voice().setStatus("idle");
+        scheduleAutoListen();
+        return;
+      }
+      voice().setAsleep(false);
+      const rest = afterWakePhrase(text, name);
+      if (!rest) {
+        voice().setStatus("idle");
+        await speak("I'm listening. Go ahead.", { source: "local" });
+        return;
+      }
+      await runTurn(rest, ++turnSeq);
+      return;
+    }
     await runTurn(text, ++turnSeq);
   } catch (err) {
     console.warn("[voice] listen failed:", err instanceof Error ? err.message : err);
@@ -615,6 +637,8 @@ export async function handleUserText(text: string): Promise<void> {
     if (v.status === "speaking" || isPlaying()) stopSpeaking();
     heldLine = null;
     wakeHandsFree();
+    // Typing to Sous wakes it up from "stop listening".
+    if (v.asleep) v.setAsleep(false);
     await runTurn(clean, ++turnSeq);
   } catch (err) {
     console.warn("[voice] turn failed:", err instanceof Error ? err.message : err);
@@ -685,6 +709,14 @@ function safeQuickIntent(text: string): SousAction["name"] | null {
   }
 }
 
+function safeListeningIntent(text: string): "sleep" | "wake" | null {
+  try {
+    return listeningIntent(text, currentPersona().name);
+  } catch {
+    return null;
+  }
+}
+
 function safeAppIntent(text: string): SousAction | null {
   try {
     return quickAppIntent(text);
@@ -745,6 +777,26 @@ async function runTurn(text: string, id: number): Promise<void> {
   voice().setInterim("");
   voice().addLine("user", text);
   try {
+    // "Stop listening" / "start listening": switch the mic by voice.
+    const control = safeListeningIntent(text);
+    if (control === "sleep") {
+      // Hands-free keeps the mic open so "start listening" can be heard.
+      if (!handsFreeOn()) usePrefs.getState().setHandsFree(true);
+      voice().setAsleep(true);
+      await speak(`Okay, I'll stop listening. Say start listening, or tap me, when you need me.`, { source: "local" });
+      return;
+    }
+    if (control === "wake") {
+      if (!handsFreeOn()) usePrefs.getState().setHandsFree(true);
+      voice().setAsleep(false);
+      const rest = afterWakePhrase(text, currentPersona().name);
+      if (!rest) {
+        await speak("I'm listening. Go ahead.", { source: "local" });
+        return;
+      }
+      text = rest;
+    }
+
     // Fast path: "open map", "show video" and "close the video" need no network at all.
     const app = safeAppIntent(text);
     if (app) {
