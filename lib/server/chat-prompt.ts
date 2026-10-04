@@ -244,6 +244,9 @@ function cleanContext(raw: unknown): ChatContext {
         steps,
         stepIndex: Math.max(-1, Math.min(idx, steps.length - 1)),
         video: a.video === true,
+        servings: typeof a.servings === "number" && a.servings > 0 && a.servings < 50 ? Math.round(a.servings) : undefined,
+        ingredients: strList(a.ingredients, 25, 100),
+        nutrition: str(a.nutrition, 160) || undefined,
       };
     }
   }
@@ -367,6 +370,14 @@ function describeState(ctx: ChatContext): string {
       : " It's open in the background; they're not on the cooking screen right now.";
     const video = a.video ? " It has a demonstration video you can play with show_video." : " It has no video.";
     lines.push(`- Cooking: "${a.title}" (id ${a.id}), ${where}.${background}${video}`);
+    if (a.ingredients?.length) {
+      lines.push(`  Ingredients${a.servings ? ` (serves ${a.servings})` : ""}: ${a.ingredients.join("; ")}.`);
+    }
+    lines.push(
+      a.nutrition
+        ? `  Nutrition per serving: ${a.nutrition}.`
+        : "  Nutrition: not listed. If asked, estimate it per serving from the ingredient amounts above and say it's a rough estimate.",
+    );
   } else {
     lines.push("- Cooking: nothing yet.");
   }

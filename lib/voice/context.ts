@@ -96,6 +96,9 @@ export function buildChatContext(): ChatContext {
       steps: k.activeRecipe.steps.slice(0, MAX_STEPS).map((s) => s.text.slice(0, MAX_STEP_CHARS)),
       stepIndex: k.stepIndex,
       video: Boolean(k.activeRecipe.youtubeId),
+      servings: k.activeRecipe.servings,
+      ingredients: k.activeRecipe.ingredients.slice(0, 25).map((i) => (i.original || i.name).slice(0, 100)),
+      nutrition: nutritionLine(k.activeRecipe),
     };
   }
   if (k.timer) context.timer = formatTimer(k.timer, now);
@@ -134,6 +137,14 @@ function addShopping(context: ChatContext, k: ReturnType<typeof useKitchen.getSt
     estimate: need.length ? `about ${formatDollars(storeEstimate(s, need))}` : undefined,
     cheapest: i === CHEAPEST_STORE,
   }));
+}
+
+/** "540 kcal, 50 g protein, ..." per serving, when the recipe has nutrition */
+function nutritionLine(recipe: Recipe): string | undefined {
+  const n = recipe.nutrition;
+  if (!n || !(n.calories > 0)) return undefined;
+  const r = Math.round;
+  return `${r(n.calories)} kcal, ${r(n.protein)} g protein, ${r(n.carbs)} g carbs, ${r(n.fat)} g fat, ${r(n.fiber ?? 0)} g fiber`;
 }
 
 /** Today's diary vs goals, so "how's my protein?" gets real numbers */

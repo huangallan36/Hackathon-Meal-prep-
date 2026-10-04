@@ -271,6 +271,11 @@ export interface ChatContext {
     stepIndex: number;
     /** It has a demonstration video Sous can play (show_video) */
     video?: boolean;
+    servings?: number;
+    /** Ingredient lines with amounts ("2 cups jasmine rice") */
+    ingredients?: string[];
+    /** Per-serving nutrition when known, e.g. "540 kcal, 50 g protein, 45 g carbs, 18 g fat, 3 g fiber" */
+    nutrition?: string;
   };
   /** e.g. "12:30 left on pasta timer" */
   timer?: string;
