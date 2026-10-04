@@ -224,7 +224,25 @@ async function startCooking(recipeId: number | null): Promise<string | null> {
     return groceriesLine(recipe, missing);
   }
   navigateTo(`/ai/cook/${recipe.id}`);
-  return null;
+  return ingredientsLine(recipe);
+}
+
+/**
+ * What Sous says when a recipe opens: what it takes. "Beef Teriyaki, twenty-five minutes. You'll
+ * need flank steak, soy sauce, honey and ginger, plus pantry basics. You've got all of it."
+ */
+function ingredientsLine(recipe: Recipe): string {
+  const k = useKitchen.getState();
+  const main = groceryPlan(recipe, k.ingredients);
+  const items = [...main.have, ...main.need].map((i) => i.name);
+  const shown = items.slice(0, 6);
+  const list = shown.length > 1 ? `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}` : (shown[0] ?? "");
+  const extra = items.length > 6 ? `, ${items.length - 6} more` : "";
+  const pantry = main.pantry.length ? ", plus pantry basics" : "";
+  const intro = `${recipe.title}, about ${recipe.readyInMinutes} minutes.`;
+  const need = list ? ` You'll need ${list}${extra}${pantry}.` : "";
+  const have = main.noScan ? "" : main.need.length === 0 ? " You've got all of it." : "";
+  return `${intro}${need}${have} Say next when you're ready for step one.`;
 }
 
 /** Recipes whose missing ingredients Sous already pointed out this session */
