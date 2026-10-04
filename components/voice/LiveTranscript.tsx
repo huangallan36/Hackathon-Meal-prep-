@@ -7,7 +7,7 @@
  * read them). While listening the "YOU" line is the live transcript; while thinking the
  * reply is three dots.
  */
-import { Camera } from "lucide-react";
+import { Camera, WifiOff } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import { usePrefs } from "@/lib/stores/prefs";
@@ -32,6 +32,8 @@ interface Exchange {
   earlier: TranscriptLine[];
   user: string | null;
   sous: string | null;
+  /** The reply came from the offline keyword router, not Gemini */
+  offline?: boolean;
   /** Key that changes whenever a new exchange starts (scrolls it into place) */
   key: string;
 }
@@ -44,10 +46,11 @@ function splitExchange(transcript: TranscriptLine[], listening: boolean, interim
     return { earlier: transcript.slice(0, -1), user: last.text, sous: null, key: last.id };
   }
   const prev = transcript[transcript.length - 2];
+  const offline = last.source === "fallback";
   if (prev?.role === "user") {
-    return { earlier: transcript.slice(0, -2), user: prev.text, sous: last.text, key: prev.id };
+    return { earlier: transcript.slice(0, -2), user: prev.text, sous: last.text, offline, key: prev.id };
   }
-  return { earlier: transcript.slice(0, -1), user: null, sous: last.text, key: last.id };
+  return { earlier: transcript.slice(0, -1), user: null, sous: last.text, offline, key: last.id };
 }
 
 export function LiveTranscript({ className }: { className?: string }) {
@@ -74,12 +77,13 @@ export function LiveTranscript({ className }: { className?: string }) {
     if (el && block) el.scrollTo({ top: block.offsetTop, behavior: ex.earlier.length ? "smooth" : "auto" });
   }, [ex.key, ex.earlier.length]);
 
-  // A long reply that grows past the fold stays readable from its first line.
+  // The exchange grew (the reply or its quick actions arrived): keep it pinned to the top.
+  const actionKey = actions.map((a) => a.kind).join();
   useEffect(() => {
     const el = scroller.current;
     const block = latest.current;
-    if (el && block && el.scrollTop > block.offsetTop) el.scrollTo({ top: block.offsetTop });
-  }, [ex.sous]);
+    if (el && block && Math.abs(el.scrollTop - block.offsetTop) > 1) el.scrollTo({ top: block.offsetTop });
+  }, [ex.sous, thinking, actionKey]);
 
   function tryStarter(text: string) {
     unlockAudio();
@@ -108,7 +112,7 @@ export function LiveTranscript({ className }: { className?: string }) {
       )}
 
       {/* The latest exchange is at least as tall as the area, so it can always sit at the top */}
-      <div ref={latest} className="flex min-h-full flex-col px-7 pb-4 pt-2" aria-live="polite">
+      <div ref={latest} className="flex min-h-full flex-col px-7 pb-3 pt-2" aria-live="polite">
         {empty ? (
           <>
             <Label tone="sous">{name}</Label>
@@ -137,7 +141,15 @@ export function LiveTranscript({ className }: { className?: string }) {
               <>
                 {/* Figma: 8px gap + 10px spacer + 8px gap */}
                 {ex.user !== null && <span aria-hidden className="block h-[26px] shrink-0" />}
-                <Label tone="sous">{name}</Label>
+                <Label tone="sous">
+                  {name}
+                  {ex.offline && !thinking && (
+                    <span className="ml-2 inline-flex items-center gap-1 rounded-pill bg-white/12 px-2 py-px align-middle text-micro tracking-normal text-white/70">
+                      <WifiOff aria-hidden className="size-3" />
+                      Offline mode
+                    </span>
+                  )}
+                </Label>
                 {ex.sous && !thinking ? (
                   <p className="mt-2 font-display text-heading font-normal leading-[1.3] text-white">{ex.sous}</p>
                 ) : (

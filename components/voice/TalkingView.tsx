@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { isSttSupported, openTyping, orbTap, togglePause } from "@/lib/voice/engine";
 import { usePersona } from "@/lib/voice/persona";
 import { AudioSheet } from "./AudioSheet";
+import { HangUpIcon } from "./HangUpIcon";
 import { HANDS_FREE_LIVE_HINT, HandsFreeSwitch, REST_HINTS, useHandsFree } from "./HandsFree";
 import { LiveTranscript } from "./LiveTranscript";
 import { useCallNav, useCallTimer } from "./useCall";
@@ -108,7 +109,7 @@ export function TalkingView() {
 
       <LiveTranscript className="min-h-0 flex-1" />
 
-      <div className="flex shrink-0 flex-col items-center gap-4 pb-[calc(var(--safe-bottom)+28px)] pt-3">
+      <div className="flex shrink-0 flex-col items-center gap-3.5 pb-[calc(var(--safe-bottom)+38px)] pt-1.5">
         <HandsFreeSwitch dark />
         <div className="flex items-start gap-9">
           <CallControl
@@ -148,23 +149,6 @@ function HeaderButton({ label, onClick, children }: { label: string; onClick: ()
     >
       {children}
     </button>
-  );
-}
-
-/** Figma hang-up glyph: the phone handset rotated 135° in a 26px box */
-export function HangUpIcon({ size = 26 }: { size?: number }) {
-  const glyph = size * (23.3693 / 26);
-  return (
-    <span aria-hidden className="relative block shrink-0 overflow-hidden" style={{ width: size, height: size }}>
-      <img
-        src="/figma/screens/2-139/group.svg"
-        alt=""
-        width={glyph}
-        height={glyph}
-        className="absolute left-1/2 top-1/2 block max-w-none rotate-135"
-        style={{ width: glyph, height: glyph, marginLeft: -glyph / 2, marginTop: -glyph / 2 }}
-      />
-    </span>
   );
 }
 

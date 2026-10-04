@@ -45,10 +45,10 @@ const REPEAT_PHRASES = new Set([
   "i missed that", "didnt catch that", "i didnt catch that", "pardon", "sorry", "huh", "what",
 ]);
 
-/** Leading/trailing filler that doesn't change the command ("okay next", "next please, Sous"). */
+/** Leading/trailing filler that doesn't change the command ("okay next", "next please, Maya"). */
 const FILLER = new Set([
   "ok", "okay", "alright", "right", "sure", "yes", "yeah", "yep", "cool", "great", "nice", "perfect",
-  "awesome", "please", "sous", "hey", "um", "uh", "so", "now", "thanks", "thank", "you", "and", "got", "it",
+  "awesome", "please", "sous", "maya", "leo", "nova", "hey", "um", "uh", "so", "now", "thanks", "thank", "you", "and", "got", "it",
 ]);
 
 function stripFiller(words: string[]): string[] {
@@ -433,10 +433,10 @@ export function foodLogIntent(text: string): { description: string; meal?: MealT
 // No lookbehind anywhere in this file: it is a parse-time SyntaxError on Safari < 16.4,
 // and this module ships in the client bundle.
 const RE = {
-  thanksOnly: /^(ok |okay |great |awesome |perfect )?(thanks|thank you|thank you so much|thanks so much|cheers|thx|ty)( sous)?( so much)?$/,
-  bye: /\b(bye|goodbye|good night|see you|see ya|talk later|later sous)\b/,
+  thanksOnly: /^(ok |okay |great |awesome |perfect )?(thanks|thank you|thank you so much|thanks so much|cheers|thx|ty)( sous| maya| leo| nova)?( so much)?$/,
+  bye: /\b(bye|goodbye|good night|see you|see ya|talk later|later (sous|maya|leo|nova))\b/,
   thanks: /\b(thanks|thank you|cheers|appreciate it)\b/,
-  greeting: /^(hi|hey|hello|yo|hiya|good (morning|afternoon|evening))( there)?( sous)?$/,
+  greeting: /^(hi|hey|hello|yo|hiya|good (morning|afternoon|evening))( there)?( sous| maya| leo| nova)?$/,
   help: /\b(help|what can you do|how does this work|what do you do)\b/,
   log: /\b(log (it|this|that|my|the|meal|dinner|lunch|breakfast)|log$|track (it|this|that)|add (it|this|that) to (my )?diary|i ate|ive eaten|i just ate|done eating|finished eating|all done|im full|that was (so )?(delicious|good|great|amazing|tasty)|(snap|photo|picture of) (my|the) (meal|plate|dish|food))\b/,
   // "do I need to flip it?" is a cooking question, not a shopping trip.

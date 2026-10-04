@@ -25,7 +25,8 @@ export default function NutrientsPage() {
 
   const summary = useMemo(() => weekSummary(entries, week.end), [entries, week.end]);
   const rows = useMemo(() => weeklyNutrientRows(summary.averages, goals), [summary, goals]);
-  const insight = useMemo(() => nutrientInsight(rows), [rows]);
+  const period = week.canNext ? "that week" : "this week";
+  const insight = useMemo(() => nutrientInsight(rows, period), [rows, period]);
   const empty = summary.loggedDays.length === 0;
   const note = empty ? null : estimateNote(summary);
 

@@ -7,7 +7,7 @@ import { LoggedCard } from "@/components/cooking/snap/LoggedCard";
 import { EstimateSkeleton, ScanningPhoto } from "@/components/cooking/snap/ScanningPhoto";
 import { BackToCooked, CookedRecipeCard, MealPhoto, SnapViewfinder } from "@/components/cooking/snap/SnapPrompt";
 import { PhotoPicker } from "@/components/ui/PhotoPicker";
-import { ScreenHeader } from "@/components/ui/ScreenHeader";
+import { PageTitle, ScreenHeader } from "@/components/ui/ScreenHeader";
 import { say } from "@/lib/cooking/actions";
 import { draftNutrition, patchDraft, toDraft, type EstimateDraft } from "@/lib/cooking/draft";
 import { fallbackEstimate, microsForCalories, sanitizeEstimate } from "@/lib/cooking/meal";
@@ -196,13 +196,14 @@ export default function SnapPage() {
 
   return (
     <div className="pb-nav">
-      <ScreenHeader
-        back={cooked ? `/ai/cook/${cooked.id}` : "/ai"}
+      <ScreenHeader back={cooked ? `/ai/cook/${cooked.id}` : "/ai"} />
+      <PageTitle
         title="How did it turn out?"
-        subtitle={recipe ? recipe.title : "Snap any meal"}
+        subtitle={recipe ? "Snap your plate and Sous estimates the nutrition" : "Snap any meal to log it"}
+        className="pt-1"
       />
 
-      <div className="flex flex-col gap-5 px-5 pt-1">
+      <div className="flex flex-col gap-4 px-5 pt-4">
         {phase === "pick" && (
           <>
             {recipe && <CookedRecipeCard recipe={recipe} onClear={() => setOtherMeal(true)} />}
@@ -210,7 +211,7 @@ export default function SnapPage() {
             <SnapViewfinder />
             <PhotoPicker
               onPick={(src) => void estimate(src)}
-              sampleSrc={recipe?.image || GENERIC_SAMPLE_MEAL}
+              sampleSrc={recipe?.image && !recipe.image.includes("placeholder-dish") ? recipe.image : GENERIC_SAMPLE_MEAL}
               sampleLabel="Use sample photo"
               // Two lg buttons share 350px: keep "Take photo" on one line.
               className="animate-fade-up [animation-delay:120ms] [&_button]:whitespace-nowrap [&_button]:px-4"

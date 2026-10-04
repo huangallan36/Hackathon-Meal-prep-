@@ -84,7 +84,6 @@ export function Composer({
       }}
       className={cn(
         "flex h-[52px] items-center gap-2 rounded-[26px] border border-line bg-surface py-1.5 pl-4 pr-1.5",
-        "focus-within:border-accent/60",
         className,
       )}
     >

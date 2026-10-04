@@ -17,13 +17,14 @@ export function CookedRecipeCard({
   recipe: Pick<Recipe, "id" | "title" | "image" | "readyInMinutes" | "nutrition">;
   onClear: () => void;
 }) {
-  const meta = ["You just cooked", `${recipe.readyInMinutes} min`];
+  const meta = ["Just cooked"];
   if (recipe.nutrition?.calories) meta.push(`${Math.round(recipe.nutrition.calories)} kcal`);
+  else meta.push(`${recipe.readyInMinutes} min`);
   return (
     <div className="flex w-full items-center gap-3 rounded-tile border border-line bg-surface py-2 pl-2 pr-1.5 animate-fade-up">
       <Plate slot="thumb" index={recipe.id} size={60} shape="thumb" src={recipe.image} />
       <div className="flex min-w-0 flex-1 flex-col gap-[3px] leading-[normal]">
-        <p className="truncate text-body font-semibold text-ink">{recipe.title}</p>
+        <p className="line-clamp-2 text-body font-semibold leading-tight text-ink">{recipe.title}</p>
         <p className="truncate text-xs text-ink-soft">{meta.join(" · ")}</p>
       </div>
       <button

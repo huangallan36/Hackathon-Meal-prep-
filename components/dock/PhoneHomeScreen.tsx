@@ -4,7 +4,8 @@
  * A pretend phone home screen, drawn inside the phone frame while Sous is docked, to show
  * how Sous would live as a floating bubble over other apps (a web page can't really do that).
  * Generic app tiles only; they just bounce when tapped. The Sous tile and Escape go back
- * to the app; the bubble opens the conversation.
+ * to the app; the bubble opens the conversation. While a call is running, a Live Activity
+ * card (persona, live step, pause / type / end) sits above the dock.
  */
 import {
   BookOpen,
@@ -34,7 +35,9 @@ import { useEffect, useRef, useState } from "react";
 import { useDock } from "@/lib/stores/dock";
 import { useVoice } from "@/lib/stores/voice";
 import { cn } from "@/lib/utils";
-import { endSession } from "@/lib/voice/engine";
+import { endSession, unlockAudio } from "@/lib/voice/engine";
+import { usePersona } from "@/lib/voice/persona";
+import { LiveActivity } from "./LiveActivity";
 import { SousBubble } from "./SousBubble";
 
 /* Wallpaper and app tiles are the one place raw colors are allowed: brand green -> amber glow. */
@@ -77,10 +80,16 @@ const DOCK_APPS: App[] = [
   { name: "Music", icon: Music, bg: tile("#ff7a8f", "#ec3b58") },
 ];
 
+/** Apps shown above the live activity card (3 rows with the Sous tile) */
+const GRID_WITH_ACTIVITY = 11;
+
 export function PhoneHomeScreen() {
   const ref = useRef<HTMLElement>(null);
+  const restZone = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const present = useIsPresent();
+  const live = useVoice((s) => s.sessionActive);
+  const apps = live ? GRID_APPS.slice(0, GRID_WITH_ACTIVITY) : GRID_APPS;
 
   // Escape = back to the app (the type sheet, if open, closes first).
   useEffect(() => {
@@ -100,6 +109,12 @@ export function PhoneHomeScreen() {
     useDock.getState().undock();
   }
 
+  function openCall() {
+    unlockAudio();
+    router.push("/ai/talk");
+    useDock.getState().undock();
+  }
+
   return (
     <motion.section
       ref={ref}
@@ -115,17 +130,22 @@ export function PhoneHomeScreen() {
     >
       <div className="flex h-full flex-col px-4 pb-[calc(var(--safe-bottom)+10px)] pt-[calc(var(--safe-top)+22px)]">
         <ul className="grid grid-cols-4 gap-y-[18px]" aria-label="Apps">
-          {GRID_APPS.map((app, i) => (
+          {apps.map((app, i) => (
             <li key={app.name} className="flex justify-center">
               <AppIcon app={app} index={i} />
             </li>
           ))}
           <li className="flex justify-center">
-            <SousTile index={GRID_APPS.length} />
+            <SousTile index={apps.length} />
           </li>
         </ul>
 
-        <div className="mt-auto flex justify-center gap-2 pb-3" aria-hidden>
+        {/* Plain wallpaper between the apps and the dock: where the bubble rests by default */}
+        <div ref={restZone} aria-hidden className="min-h-4 flex-1" />
+
+        {live && <LiveActivity onOpen={openCall} onEnd={hangUp} className="mb-4 animate-fade-up" />}
+
+        <div className="flex justify-center gap-2 pb-3" aria-hidden>
           <span className="size-[7px] rounded-full bg-white" />
           <span className="size-[7px] rounded-full bg-white/40" />
         </div>
@@ -142,7 +162,7 @@ export function PhoneHomeScreen() {
         </ul>
       </div>
 
-      <SousBubble containerRef={ref} />
+      <SousBubble containerRef={ref} restZoneRef={restZone} />
 
       {/* Keyboard / screen reader way out (dragging to End is pointer-only) */}
       <button
@@ -195,6 +215,7 @@ function AppIcon({ app, index = 0, bare = false }: { app: App; index?: number; b
 /** Sous's own app icon: opens the app again (where you left it). */
 function SousTile({ index }: { index: number }) {
   const reduce = useReducedMotion() ?? false;
+  const persona = usePersona();
   return (
     <motion.button
       type="button"
@@ -210,7 +231,7 @@ function SousTile({ index }: { index: number }) {
       whileTap={reduce ? undefined : { scale: 0.9 }}
     >
       <span className="flex size-[60px] items-center justify-center rounded-[16px] bg-cream shadow-[0_6px_14px_-8px_rgb(0_0_0/0.55)]">
-        <img src="/figma/voices/orb-maya.svg" alt="" width={40} height={40} className="size-10" />
+        <img src={persona.orb} alt="" width={40} height={40} className="size-10" />
       </span>
       <span className="max-w-full truncate text-[11px] font-medium leading-tight text-white [text-shadow:0_1px_2px_rgb(0_0_0/0.45)]">
         Sous

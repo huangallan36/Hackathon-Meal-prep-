@@ -26,6 +26,7 @@ import { useOrbCaption } from "@/components/orb/useOrbCaption";
 import { useDock, type DockSide } from "@/lib/stores/dock";
 import { cn } from "@/lib/utils";
 import { endSession, orbTap, unlockAudio } from "@/lib/voice/engine";
+import { usePersona } from "@/lib/voice/persona";
 
 const SIZE = 64;
 /** Gap between the resting bubble and the phone's side edge */
@@ -66,10 +67,18 @@ function measure(el: HTMLElement, safeTop: number, safeBottom: number): Bounds {
   };
 }
 
-export function SousBubble({ containerRef }: { containerRef: RefObject<HTMLElement | null> }) {
+export function SousBubble({
+  containerRef,
+  restZoneRef,
+}: {
+  containerRef: RefObject<HTMLElement | null>;
+  /** Plain wallpaper to rest on by default (centered in it); without it, under the app grid */
+  restZoneRef?: RefObject<HTMLElement | null>;
+}) {
   const router = useRouter();
   const reduce = useReducedMotion() ?? false;
   const caption = useOrbCaption();
+  const persona = usePersona();
   const controls = useDragControls();
   const x = useMotionValue(0);
   const y = useMotionValue(0);
@@ -103,13 +112,15 @@ export function SousBubble({ containerRef }: { containerRef: RefObject<HTMLEleme
       if (draggingRef.current || endingRef.current) return;
       const saved = useDock.getState();
       x.set(saved.side === "left" ? b.minX : b.maxX);
-      // Default spot: just under the app grid, over plain wallpaper.
-      y.set(clamp(saved.y ?? b.minY + (b.maxY - b.minY) * 0.62, b.minY, b.maxY));
+      // Default spot: over plain wallpaper, between the apps and the dock.
+      const zone = restZoneRef?.current;
+      const fallback = zone ? zone.offsetTop + (zone.offsetHeight - SIZE) / 2 : b.minY + (b.maxY - b.minY) * 0.62;
+      y.set(clamp(saved.y ?? fallback, b.minY, b.maxY));
     };
     const ro = new ResizeObserver(place);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [containerRef, x, y]);
+  }, [containerRef, restZoneRef, x, y]);
 
   useEffect(() => {
     const t = setTimeout(() => setCoach(false), COACH_MS);
@@ -226,7 +237,7 @@ export function SousBubble({ containerRef }: { containerRef: RefObject<HTMLEleme
 
   const showCaption = !dragging && (caption.show || coach);
   const captionMaxWidth = bounds ? Math.max(120, Math.min(232, bounds.width - SIZE - EDGE * 2 - 24)) : 232;
-  const captionLabel = caption.show ? caption.label : "Sous";
+  const captionLabel = caption.show ? caption.label : persona.name;
   const captionText = caption.show ? caption.text : "Drag me anywhere · tap to open";
   const listening = caption.visual === "listening";
 
@@ -302,11 +313,11 @@ export function SousBubble({ containerRef }: { containerRef: RefObject<HTMLEleme
             type="button"
             onClick={open}
             onContextMenu={(e) => e.preventDefault()}
-            aria-label="Open Sous conversation"
-            title="Open Sous (drag to move, drop on End to hang up)"
-            className="relative block size-full rounded-full shadow-lift outline-none focus-visible:ring-4 focus-visible:ring-white/70"
+            aria-label={`Open the call with ${persona.name}`}
+            title={`Open ${persona.name} (drag to move, drop on End to hang up)`}
+            className="relative block size-full rounded-full outline-none focus-visible:ring-4 focus-visible:ring-white/70"
           >
-            <Orb size={SIZE} status={caption.visual} activity={caption.interim.length} />
+            <Orb size={SIZE} status={caption.visual} activity={caption.interim.length} floating />
           </button>
 
           {/* Tap-to-talk without leaving the home screen */}
@@ -318,10 +329,10 @@ export function SousBubble({ containerRef }: { containerRef: RefObject<HTMLEleme
               listening
                 ? "Done talking"
                 : caption.visual === "speaking"
-                  ? "Interrupt and talk to Sous"
+                  ? `Interrupt and talk to ${persona.name}`
                   : caption.visual === "thinking"
-                    ? "Sous is thinking"
-                    : "Talk to Sous"
+                    ? `${persona.name} is thinking`
+                    : `Talk to ${persona.name}`
             }
             className={cn(
               "absolute -bottom-1 flex size-[26px] items-center justify-center rounded-full ring-2 ring-white/90 transition active:scale-90",

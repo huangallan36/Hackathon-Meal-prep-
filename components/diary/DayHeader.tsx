@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { IconButton } from "@/components/ui/Button";
-import { dayHeading, fullDayLabel } from "@/lib/diary/stats";
+import { dayHeading, daySubheading, fullDayLabel } from "@/lib/diary/stats";
 import type { ISODate } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -34,7 +34,7 @@ export function DayHeader({
       >
         <h1 className="truncate font-display text-xl font-semibold text-ink">{dayHeading(date, today)}</h1>
         <span className="flex max-w-full items-center gap-1">
-          <span className="truncate text-xs text-ink-soft">{fullDayLabel(date, today)}</span>
+          <span className="truncate text-xs text-ink-soft">{daySubheading(date, today)}</span>
           <img src="/figma/screens/2-161/icon-cal.svg" alt="" width={12} height={12} className="block size-3 shrink-0" />
         </span>
       </Link>

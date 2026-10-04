@@ -148,7 +148,7 @@ function SheetBody({ entry, onClose }: { entry: DiaryEntry; onClose: () => void 
 
       {entry.estimated && (
         <p className="mt-3 text-xs leading-relaxed text-ink-faint">
-          Sous estimated these numbers from your photo. They are a best guess, not a lab result.
+          Sous estimated these numbers from your {entry.image ? "photo" : "description"}. They are a best guess, not a lab result.
         </p>
       )}
 

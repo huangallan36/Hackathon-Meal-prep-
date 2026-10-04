@@ -43,19 +43,20 @@ const OVER: Partial<Record<NutrientKey, Suggestion>> = {
   cholesterol: { noun: "cholesterol", plan: "plant-forward dinners — like a chickpea curry or bean burritos", query: "chickpea" },
 };
 
-export function nutrientInsight(rows: NutrientRow[]): NutrientInsight {
+/** `period`: "this week" for the last 7 days, "that week" for an earlier one */
+export function nutrientInsight(rows: NutrientRow[], period = "this week"): NutrientInsight {
   const low = rows
     .filter((r) => r.def.kind === "goal" && r.def.key !== "calories" && (r.status === "low" || r.status === "a-bit-low") && LOW[r.def.key])
     .sort((a, b) => a.ratio - b.ratio)[0];
   if (low) {
     const s = LOW[low.def.key] as Suggestion;
     const how = low.status === "low" ? "low on" : "a bit low on";
-    return { key: low.def.key, text: `You’re ${how} ${s.noun} this week. Want me to plan two ${s.plan}?`, query: s.query };
+    return { key: low.def.key, text: `You’re ${how} ${s.noun} ${period}. Want me to plan two ${s.plan}?`, query: s.query };
   }
   const over = rows.filter((r) => r.def.kind === "limit" && r.status === "over" && OVER[r.def.key]).sort((a, b) => b.ratio - a.ratio)[0];
   if (over) {
     const s = OVER[over.def.key] as Suggestion;
-    return { key: over.def.key, text: `Your ${s.noun} ran high this week. Want me to plan two ${s.plan}?`, query: s.query };
+    return { key: over.def.key, text: `Your ${s.noun} ran high ${period}. Want me to plan two ${s.plan}?`, query: s.query };
   }
-  return { key: null, text: "You hit your nutrient targets this week. Want me to plan a few more dinners like these?", query: null };
+  return { key: null, text: `You hit your nutrient targets ${period}. Want me to plan a few more dinners like these?`, query: null };
 }

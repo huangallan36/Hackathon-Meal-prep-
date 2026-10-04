@@ -17,6 +17,7 @@ export function ScreenHeader({
   eyebrow,
   subtitle,
   back,
+  left,
   right,
   className,
 }: {
@@ -24,6 +25,8 @@ export function ScreenHeader({
   eyebrow?: ReactNode;
   subtitle?: ReactNode;
   back?: boolean | string;
+  /** Replaces the back button (e.g. a day-navigation chevron) */
+  left?: ReactNode;
   right?: ReactNode;
   className?: string;
 }) {
@@ -36,14 +39,15 @@ export function ScreenHeader({
       )}
     >
       <div className="flex">
-        {back && (
+        {left}
+        {!left && back && (
           <IconButton label="Back" onClick={() => (typeof back === "string" ? router.push(back) : router.back())}>
             <img src="/figma/icons/chevron-left.svg" alt="" width={20} height={20} className="block size-5" />
           </IconButton>
         )}
       </div>
       <div className="min-w-0 text-center">
-        {eyebrow && <p className="truncate text-xs font-medium tracking-[0.06em] text-ink-soft">{eyebrow}</p>}
+        {eyebrow && <p className="truncate text-xs font-semibold tracking-[0.72px] text-ink-soft">{eyebrow}</p>}
         {title && <h1 className="truncate font-display text-lead font-semibold leading-tight text-ink">{title}</h1>}
         {subtitle && <p className="truncate text-xs text-ink-soft">{subtitle}</p>}
       </div>

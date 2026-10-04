@@ -6,7 +6,14 @@ import { Button } from "@/components/ui/Button";
 import { SmartImage } from "@/components/ui/Misc";
 import type { MealType, Nutrition } from "@/lib/types";
 
-/** Success state after logging: animated check, what was logged, and the next hops. */
+/** Macro chips like the diary's "P 146g · C 228g · F 68g" */
+const CHIPS = [
+  { key: "protein", letter: "P", tint: "bg-accent-soft text-accent" },
+  { key: "carbs", letter: "C", tint: "bg-butter-soft text-butter-ink" },
+  { key: "fat", letter: "F", tint: "bg-flame-soft text-flame" },
+] as const;
+
+/** Success state after logging: animated check, what was logged (a "Similar"-style row), and the next hops. */
 export function LoggedCard({
   name,
   image,
@@ -27,15 +34,16 @@ export function LoggedCard({
       initial={{ opacity: 0, y: 14, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 28 }}
-      className="rounded-card bg-surface p-6 text-center shadow-card"
+      className="rounded-card bg-surface p-5 text-center shadow-card"
+      aria-labelledby="snap-logged-title"
     >
       <motion.div
         initial={{ scale: 0.4 }}
         animate={{ scale: 1 }}
         transition={{ type: "spring", stiffness: 320, damping: 14 }}
-        className="mx-auto flex size-20 items-center justify-center rounded-full bg-herb text-white shadow-lift"
+        className="mx-auto flex size-16 items-center justify-center rounded-full bg-accent text-white"
       >
-        <svg viewBox="0 0 24 24" className="size-10" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <svg viewBox="0 0 24 24" className="size-8" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <motion.path
             d="M5 12.5l4.5 4.5L19 7.5"
             initial={{ pathLength: 0 }}
@@ -45,26 +53,24 @@ export function LoggedCard({
         </svg>
       </motion.div>
 
-      <h2 className="mt-4 font-display text-[28px] font-semibold leading-tight text-ink">Logged to your diary</h2>
+      <h2 id="snap-logged-title" className="mt-4 font-display text-heading font-semibold leading-tight text-ink">
+        Logged to your diary
+      </h2>
       <p className="mt-1 text-sm text-ink-soft">Nice cooking. Want to show it off?</p>
 
-      <div className="mt-5 flex items-center gap-3 rounded-tile bg-cream p-3 text-left">
-        <SmartImage src={image} alt={name} className="size-16 shrink-0 rounded-tile" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-semibold text-ink">{name}</p>
-          <p className="text-sm text-ink-soft">
-            <span className="capitalize">{meal}</span> &middot; <span className="tabular-nums">{nutrition.calories}</span> kcal
+      <div className="mt-4 flex items-center gap-3 rounded-tile border border-line bg-surface py-2 pl-2 pr-3 text-left">
+        <SmartImage src={image} alt={name} className="size-[60px] shrink-0 rounded-thumb" />
+        <div className="flex min-w-0 flex-1 flex-col gap-[3px] leading-[normal]">
+          <p className="truncate text-body font-semibold text-ink">{name}</p>
+          <p className="truncate text-xs text-ink-soft">
+            <span className="capitalize">{meal}</span> · <span className="tabular-nums">{nutrition.calories}</span> kcal
           </p>
-          <div className="mt-1 flex gap-2.5 text-[11px] font-semibold tabular-nums text-ink-soft">
-            <span className="flex items-center gap-1">
-              <span className="size-1.5 rounded-full bg-protein" />P {Math.round(nutrition.protein)}g
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="size-1.5 rounded-full bg-carbs" />C {Math.round(nutrition.carbs)}g
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="size-1.5 rounded-full bg-fat" />F {Math.round(nutrition.fat)}g
-            </span>
+          <div className="mt-0.5 flex flex-wrap gap-1">
+            {CHIPS.map((c) => (
+              <span key={c.key} className={`rounded-pill px-2 py-0.5 text-caption font-semibold tabular-nums ${c.tint}`}>
+                {c.letter} {Math.round(nutrition[c.key])}g
+              </span>
+            ))}
           </div>
         </div>
       </div>

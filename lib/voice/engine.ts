@@ -499,20 +499,26 @@ function plainWords(text: string): string {
 
 /**
  * The recipe a Sous line is about: the one an action opened (start cooking, groceries), else
- * a suggested or active recipe whose title the line says out loud. Undefined when none.
+ * a suggested or active recipe whose title the line says out loud, else the one the user's
+ * message asked about. Undefined when none.
  */
-function recipeFor(actions: SousAction[], line: string): number | undefined {
+function recipeFor(actions: SousAction[], line: string, asked: string): number | undefined {
   try {
     for (const a of actions) {
       const id = a.args?.recipeId;
       if ((a.name === "start_cooking" || a.name === "show_groceries") && typeof id === "number" && id > 0) return id;
     }
-    const said = ` ${plainWords(line)} `;
     const k = useKitchen.getState();
     const candidates = [...(k.activeRecipe ? [k.activeRecipe] : []), ...k.matches.map((m) => m.recipe)];
-    for (const r of candidates) {
-      const title = plainWords(r.title);
-      if (title.length >= 4 && said.includes(` ${title} `)) return r.id;
+    for (const text of [line, asked]) {
+      const said = ` ${plainWords(text)} `;
+      for (const r of candidates) {
+        const title = plainWords(r.title);
+        // "Lemon Garlic Salmon with Broccoli" is usually said as "the lemon garlic salmon".
+        const core = title.split(/ (?:with|in|on|over) /)[0];
+        const names = core.split(" ").length >= 2 ? [title, core] : [title];
+        if (names.some((n) => n.length >= 4 && said.includes(` ${n} `))) return r.id;
+      }
     }
   } catch {
     /* a card is a nice-to-have */
@@ -599,7 +605,7 @@ async function runTurn(text: string, id: number): Promise<void> {
     if (id !== turnSeq) return;
     awaitingTurn = 0;
     const line = override ?? res.reply;
-    await speak(line, { source: res.source, recipeId: recipeFor(res.actions, line) });
+    await speak(line, { source: res.source, recipeId: recipeFor(res.actions, line, text) });
   } catch (err) {
     console.warn("[voice] turn failed:", err instanceof Error ? err.message : err);
     if (id === turnSeq) {

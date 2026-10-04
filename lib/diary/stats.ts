@@ -1,7 +1,8 @@
 /**
- * Pure helpers for the Diary tab: day totals for every tracked nutrient (with estimates
- * for entries that carry no data for some of them), weekly averages, nutrient status rows,
- * streaks, calendar grids and display formatting.
+ * Pure helpers for the Diary and Me tabs: day totals for every tracked nutrient (with
+ * estimates for entries that carry no data for some of them), weekly averages, nutrient
+ * status rows, day status (on target / over / partial), streaks, calendar grids and
+ * display formatting.
  */
 import { heuristicMicros, type FullMicros } from "@/lib/diary/micros";
 import { emptyTotals, MICRO_KEYS, NUTRIENTS, nutrientStatus, type NutrientDef, type NutrientStatus, type NutrientTotals } from "@/lib/nutrients";
@@ -34,23 +35,6 @@ export function fmt(n: number, decimals = 0): string {
 /** value / goal as 0..∞ (0 when the goal is missing) */
 export function ratio(value: number, goal: number): number {
   return goal > 0 && Number.isFinite(value) ? Math.max(0, value) / goal : 0;
-}
-
-/** Whole percentages of the total that always add up to 100 (largest remainder) */
-export function splitPercents(values: number[]): number[] {
-  const safe = values.map((v) => (Number.isFinite(v) && v > 0 ? v : 0));
-  const total = safe.reduce((a, b) => a + b, 0);
-  if (total <= 0) return safe.map(() => 0);
-  const raw = safe.map((v) => (v / total) * 100);
-  const out = raw.map(Math.floor);
-  let short = 100 - out.reduce((a, b) => a + b, 0);
-  const order = raw.map((v, i) => [v - Math.floor(v), i] as const).sort((a, b) => b[0] - a[0]);
-  for (const [, i] of order) {
-    if (short <= 0) break;
-    out[i]++;
-    short--;
-  }
-  return out;
 }
 
 /* ------------------------------------------------------------------ */
@@ -270,23 +254,6 @@ export function nutrientRows(totals: NutrientTotals, goals: Partial<NutritionGoa
   return NUTRIENTS.filter((n) => groups.includes(n.group)).map((n) => nutrientRow(n, totals, goals));
 }
 
-/**
- * The 4-6 rows worth a glance: the goals furthest from their target (fiber, vitamins,
- * minerals), then any limit that's over. Lowest first, like Figma's "Highlighted nutrients".
- */
-export function highlightedNutrients(totals: NutrientTotals, goals?: Partial<NutritionGoals>): NutrientRow[] {
-  const over = NUTRIENTS.filter((n) => n.kind === "limit")
-    .map((n) => nutrientRow(n, totals, goals))
-    .filter((r) => r.status === "over")
-    .sort((a, b) => b.ratio - a.ratio)
-    .slice(0, 2);
-  const lows = NUTRIENTS.filter((n) => n.kind === "goal" && (n.key === "fiber" || n.group === "vitamin" || n.group === "mineral"))
-    .map((n) => nutrientRow(n, totals, goals))
-    .sort((a, b) => a.ratio - b.ratio)
-    .slice(0, over.length ? 4 : 5);
-  return [...lows, ...over];
-}
-
 /** Figma 3.2's rows, in its order; the rest of the registry follows */
 export const FEATURED_NUTRIENTS: NutrientDef["key"][] = ["iron", "fiber", "vitaminA", "calcium", "vitaminC", "sodium"];
 
@@ -295,25 +262,6 @@ export function weeklyNutrientRows(totals: NutrientTotals, goals?: Partial<Nutri
   const featured = FEATURED_NUTRIENTS.map((k) => NUTRIENTS.find((n) => n.key === k)).filter((n): n is NutrientDef => !!n);
   const rest = NUTRIENTS.filter((n) => n.key !== "calories" && !FEATURED_NUTRIENTS.includes(n.key));
   return [...featured, ...rest].map((n) => nutrientRow(n, totals, goals));
-}
-
-/** Calories per logged date, one pass */
-export function kcalByDate(entries: DiaryEntry[]): Record<ISODate, number> {
-  const out: Record<ISODate, number> = {};
-  for (const e of entries) out[e.date] = (out[e.date] ?? 0) + (e.nutrition.calories || 0);
-  return out;
-}
-
-/**
- * Average kcal per logged day of a week. Today is still in progress, so it only counts
- * when it is the only logged day (otherwise a half-eaten today drags the average down).
- */
-export function weekAverage(days: ISODate[], kcalByDay: Record<ISODate, number>, today: ISODate): { avg: number; days: number } {
-  const logged = days.filter((d) => d <= today && (kcalByDay[d] ?? 0) > 0);
-  const complete = logged.filter((d) => d !== today);
-  const use = complete.length ? complete : logged;
-  if (!use.length) return { avg: 0, days: 0 };
-  return { avg: use.reduce((a, d) => a + (kcalByDay[d] ?? 0), 0) / use.length, days: use.length };
 }
 
 /** Entries of one day grouped by meal slot, each slot sorted by time */
@@ -328,17 +276,6 @@ export function groupByMeal(entries: DiaryEntry[], date: ISODate): Record<MealTy
 /* Streaks                                                             */
 /* ------------------------------------------------------------------ */
 
-/** Consecutive logged days ending today, or yesterday if today is not logged yet */
-export function currentStreak(logged: Set<ISODate>, today: ISODate): number {
-  let day = logged.has(today) ? today : addDays(today, -1);
-  let n = 0;
-  while (logged.has(day)) {
-    n++;
-    day = addDays(day, -1);
-  }
-  return n;
-}
-
 /** Consecutive logged days ending on `date` (0 when `date` itself has nothing logged) */
 export function streakEndingOn(logged: Set<ISODate>, date: ISODate): number {
   let n = 0;
@@ -348,21 +285,6 @@ export function streakEndingOn(logged: Set<ISODate>, date: ISODate): number {
     day = addDays(day, -1);
   }
   return n;
-}
-
-export function longestStreak(logged: Set<ISODate>): number {
-  let best = 0;
-  for (const d of logged) {
-    if (logged.has(addDays(d, -1))) continue; // only start counting at the first day of a run
-    let n = 0;
-    let day = d;
-    while (logged.has(day)) {
-      n++;
-      day = addDays(day, 1);
-    }
-    best = Math.max(best, n);
-  }
-  return best;
 }
 
 /* ------------------------------------------------------------------ */
@@ -384,13 +306,6 @@ export function longDayLabel(iso: ISODate): string {
   return formatDay(iso, { weekday: "long", month: "short", day: "numeric" });
 }
 
-/** "Today" / "Yesterday" / "Thursday, Oct 2" */
-export function relativeDayLabel(iso: ISODate, today: ISODate): string {
-  if (iso === today) return "Today";
-  if (iso === addDays(today, -1)) return "Yesterday";
-  return longDayLabel(iso);
-}
-
 /** "Saturday, October 3" (with the year when it isn't this year) */
 export function fullDayLabel(iso: ISODate, today: ISODate): string {
   const sameYear = iso.slice(0, 4) === today.slice(0, 4);
@@ -402,6 +317,13 @@ export function dayHeading(iso: ISODate, today: ISODate): string {
   if (iso === today) return "Today";
   if (iso === addDays(today, -1)) return "Yesterday";
   return formatDay(iso, { weekday: "long" });
+}
+
+/** The line under dayHeading: "Saturday, October 3" under Today / Yesterday, "September 30" under a weekday */
+export function daySubheading(iso: ISODate, today: ISODate): string {
+  if (iso === today || iso === addDays(today, -1)) return fullDayLabel(iso, today);
+  const sameYear = iso.slice(0, 4) === today.slice(0, 4);
+  return formatDay(iso, { month: "long", day: "numeric", ...(sameYear ? {} : { year: "numeric" }) });
 }
 
 /** "S", "M", ... (Sunday-start, like Figma's calendars) */

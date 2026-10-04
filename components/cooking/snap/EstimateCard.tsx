@@ -1,28 +1,40 @@
 "use client";
 
-import { ChevronDown, NotebookPen, Pencil, Sparkles } from "lucide-react";
+import { ChevronDown, NotebookPen, Pencil } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useId, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { SectionLabel } from "@/components/ui/Card";
 import { FallbackNote } from "@/components/ui/Misc";
 import { cleanNumberInput, draftNutrition, type EstimateDraft } from "@/lib/cooking/draft";
-import { formatAmount, MICRO_KEYS, NUTRIENTS, type NutrientUnit } from "@/lib/nutrients";
+import { formatAmount, MICRO_KEYS, NUTRIENTS, type NutrientDef, type NutrientUnit } from "@/lib/nutrients";
 import type { MealEstimate, MealType, Micros } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { SPARKLE_GREEN } from "../icons";
+import { ProgressRing } from "../ProgressRing";
 import { MacroDonut, MacroLegend } from "./MacroDonut";
 import { MealTypePicker } from "./MealTypePicker";
 
+/** Macro chips in the design's status tints: protein green, carbs amber, fat orange, fiber blue */
 const MACROS = [
-  { key: "protein", label: "Protein", dot: "bg-protein" },
-  { key: "carbs", label: "Carbs", dot: "bg-carbs" },
-  { key: "fat", label: "Fat", dot: "bg-fat" },
-  { key: "fiber", label: "Fiber", dot: "bg-fiber" },
+  { key: "protein", label: "Protein", tint: "bg-accent-soft", ink: "text-accent", ring: "focus-within:ring-accent" },
+  { key: "carbs", label: "Carbs", tint: "bg-butter-soft", ink: "text-butter-ink", ring: "focus-within:ring-butter" },
+  { key: "fat", label: "Fat", tint: "bg-flame-soft", ink: "text-flame", ring: "focus-within:ring-flame" },
+  { key: "fiber", label: "Fiber", tint: "bg-sky-soft", ink: "text-sky", ring: "focus-within:ring-sky" },
 ] as const;
 
 const CONFIDENCE_DOT: Record<MealEstimate["confidence"], string> = {
-  high: "bg-herb",
+  high: "bg-accent",
   medium: "bg-butter",
-  low: "bg-accent",
+  low: "bg-flame",
 };
+
+/** Inputs hug their number (so the unit sits right after it) where field-sizing is supported */
+const hug = "w-full min-w-[1ch] supports-[field-sizing:content]:w-auto supports-[field-sizing:content]:[field-sizing:content]";
+
+/** Figma search / input field: white, 1px line; 1.5px green when focused */
+const field =
+  "border border-line bg-surface transition focus-within:border-accent focus-within:ring-[0.5px] focus-within:ring-accent";
 
 /** Gemini's estimate as an editable form: every number can be corrected before logging. */
 export function EstimateCard({
@@ -53,29 +65,28 @@ export function EstimateCard({
   const nutrition = draftNutrition(draft);
 
   return (
-    <section className="rounded-card bg-surface p-5 shadow-card animate-fade-up">
+    <section className="rounded-card bg-surface p-4 shadow-card animate-fade-up" aria-label="Nutrition estimate">
       <div className="flex items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-1.5 rounded-pill bg-accent-soft px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] text-accent-strong">
-          <Sparkles className="size-3.5" />
+        <span className="inline-flex items-center gap-1.5 rounded-pill bg-accent-soft px-2.5 py-1 text-caption font-medium leading-[normal] text-accent">
+          <img src={SPARKLE_GREEN} alt="" width={12} height={12} className="block size-3" />
           Estimated
         </span>
-        <span className="flex items-center gap-1.5 text-xs font-medium text-ink-faint">
-          <span className={cn("size-2 rounded-full", CONFIDENCE_DOT[confidence])} />
-          {source === "gemini" ? `by Gemini · ${confidence} confidence` : `${confidence} confidence`}
+        <span className="flex min-w-0 items-center gap-1.5 text-xs text-ink-soft">
+          <span className={cn("size-2 shrink-0 rounded-full", CONFIDENCE_DOT[confidence])} />
+          <span className="truncate">{source === "gemini" ? `by Gemini · ${confidence} confidence` : `${confidence} confidence`}</span>
         </span>
       </div>
 
-      {/* Dish name */}
+      {/* Dish name: a textarea so long names wrap instead of being cut off; newlines are not allowed. */}
       <label htmlFor={`${id}-name`} className="sr-only">
         Dish name
       </label>
-      <div className="group mt-3 flex items-start gap-2 border-b border-transparent pb-1 focus-within:border-accent">
-        {/* A textarea so long dish names wrap instead of being cut off; newlines are not allowed. */}
+      <div className={cn("group mt-3 flex items-start gap-2 rounded-tile px-3.5 py-2.5", field)}>
         <textarea
           id={`${id}-name`}
           value={draft.dishName}
           maxLength={60}
-          rows={Math.min(3, Math.max(1, Math.ceil(draft.dishName.length / 20)))}
+          rows={Math.min(3, Math.max(1, Math.ceil(draft.dishName.length / 22)))}
           onChange={(e) => onChange({ dishName: e.target.value.replace(/[\r\n]+/g, " ") })}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -83,20 +94,20 @@ export function EstimateCard({
               e.currentTarget.blur();
             }
           }}
-          className="min-w-0 flex-1 resize-none bg-transparent font-display text-[24px] font-semibold leading-tight text-ink outline-none placeholder:text-ink-faint"
+          className="min-w-0 flex-1 resize-none bg-transparent font-display text-heading font-semibold leading-tight text-ink outline-none placeholder:text-ink-faint"
           placeholder="What did you make?"
         />
-        <Pencil className="mt-2 size-4 shrink-0 text-ink-faint transition group-focus-within:text-accent" aria-hidden />
+        <Pencil className="mt-1.5 size-4 shrink-0 text-ink-faint transition group-focus-within:text-accent" aria-hidden />
       </div>
 
       {/* Portion */}
-      <label className="mt-2 flex items-center gap-2 text-sm text-ink-soft">
-        <span className="shrink-0 font-medium">Portion</span>
+      <label className={cn("mt-2 flex h-11 items-center gap-2.5 rounded-pill pl-4 pr-2", field)}>
+        <span className="shrink-0 text-meta font-medium text-ink-soft">Portion</span>
         <input
           value={draft.portion}
           maxLength={60}
           onChange={(e) => onChange({ portion: e.target.value })}
-          className="h-11 min-w-0 flex-1 rounded-tile border border-line bg-cream/60 px-3 text-base text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
+          className="h-full min-w-0 flex-1 bg-transparent text-body font-medium text-ink outline-none placeholder:text-ink-faint"
           placeholder="1 plate"
         />
       </label>
@@ -108,38 +119,32 @@ export function EstimateCard({
       )}
 
       {/* Calories + macro split */}
-      <div className="mt-5 flex items-center gap-4">
+      <div className="mt-4 flex items-center gap-4">
         <MacroDonut nutrition={nutrition} />
         <div className="min-w-0 flex-1">
-          <label className="block rounded-tile border border-line bg-cream/60 px-3 py-2 transition focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20">
-            <span className="text-xs font-semibold text-ink-soft">Calories</span>
+          <label className={cn("block rounded-tile px-3 py-2", field)}>
+            <span className="text-xs font-medium text-ink-soft">Calories</span>
             <span className="flex items-baseline gap-1">
               <input
                 inputMode="numeric"
                 value={draft.calories}
                 onChange={(e) => onChange({ calories: cleanNumberInput(e.target.value, true) })}
                 aria-label="Calories"
-                className="w-full min-w-0 bg-transparent font-display text-[26px] font-semibold tabular-nums text-ink outline-none"
+                className={cn(hug, "bg-transparent font-display text-[24px] font-semibold leading-tight tabular-nums text-ink outline-none")}
               />
-              <span className="text-sm font-medium text-ink-faint">kcal</span>
+              <span className="text-meta font-medium text-ink-soft">kcal</span>
             </span>
           </label>
-          <MacroLegend nutrition={nutrition} className="mt-3" />
+          <MacroLegend nutrition={nutrition} className="mt-2.5 px-1" />
         </div>
       </div>
 
-      {/* Macros */}
-      <div className="mt-4 grid grid-cols-2 gap-2.5">
+      {/* Macro chips (P / C / F + fiber) */}
+      <div className="mt-3 grid grid-cols-4 gap-2">
         {MACROS.map((m) => (
-          <label
-            key={m.key}
-            className="block rounded-tile border border-line bg-cream/60 px-3 py-2 transition focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20"
-          >
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-ink-soft">
-              <span className={cn("size-2.5 rounded-full", m.dot)} />
-              {m.label}
-            </span>
-            <span className="flex items-baseline gap-1">
+          <label key={m.key} className={cn("block rounded-thumb px-2.5 py-2 transition focus-within:ring-[1.5px]", m.tint, m.ring)}>
+            <span className={cn("block text-caption font-semibold leading-[normal]", m.ink)}>{m.label}</span>
+            <span className="flex items-baseline gap-0.5">
               <input
                 inputMode="decimal"
                 value={draft[m.key]}
@@ -149,9 +154,9 @@ export function EstimateCard({
                   onChange(patch);
                 }}
                 aria-label={`${m.label} in grams`}
-                className="w-full min-w-0 bg-transparent text-[20px] font-semibold tabular-nums text-ink outline-none"
+                className={cn(hug, "bg-transparent text-lead font-semibold leading-tight tabular-nums text-ink outline-none")}
               />
-              <span className="text-sm font-medium text-ink-faint">g</span>
+              <span className={cn("text-xs font-medium", m.ink)}>g</span>
             </span>
           </label>
         ))}
@@ -160,11 +165,11 @@ export function EstimateCard({
       {micros && Object.keys(micros).length > 0 && <AllNutrients micros={micros} />}
 
       <div className="mt-5">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-ink-faint">Log as</p>
+        <SectionLabel className="mb-2">Log as</SectionLabel>
         <MealTypePicker value={meal} onChange={onMealChange} />
       </div>
 
-      <Button size="lg" full className="mt-5" onClick={onLog} loading={logging} icon={<NotebookPen className="size-5" />}>
+      <Button size="lg" full className="mt-4" onClick={onLog} loading={logging} icon={<NotebookPen className="size-5" />}>
         Log to diary
       </Button>
       <p className="mt-2 text-center text-xs text-ink-faint">AI estimates can be off. Edit anything; calories follow your macros.</p>
@@ -180,7 +185,15 @@ function microAmount(value: number, unit: NutrientUnit): string {
   return formatAmount(value, unit);
 }
 
-/** Collapsed by default: vitamins, minerals and limits for this portion (follows calorie edits) */
+/** Ring color: green for goals; limits turn orange once this one plate uses 40% of the day */
+function ringClass(def: NutrientDef, ratio: number): string {
+  return def.kind === "limit" && ratio >= 0.4 ? "stroke-flame" : "stroke-accent";
+}
+
+/**
+ * Collapsed by default: vitamins, minerals and limits for this portion (follows calorie
+ * edits), as compact Figma 3.2 ring rows: the ring is this plate's share of the daily target.
+ */
 function AllNutrients({ micros }: { micros: Partial<Micros> }) {
   const [open, setOpen] = useState(false);
   const id = useId();
@@ -192,23 +205,43 @@ function AllNutrients({ micros }: { micros: Partial<Micros> }) {
         aria-expanded={open}
         aria-controls={`${id}-nutrients`}
         onClick={() => setOpen((o) => !o)}
-        className="flex h-11 w-full items-center justify-between gap-2 rounded-tile px-3 text-left text-sm font-semibold text-ink transition hover:bg-cream/60"
+        className="flex h-11 w-full items-center justify-between gap-2 rounded-tile px-3.5 text-left text-sm font-semibold text-ink transition hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         <span>
-          All nutrients <span className="font-medium text-ink-faint">(estimated)</span>
+          All nutrients <span className="font-normal text-ink-soft">· % of your day</span>
         </span>
-        <ChevronDown className={cn("size-4 shrink-0 text-ink-faint transition-transform duration-200", open && "rotate-180")} aria-hidden />
+        <ChevronDown className={cn("size-4 shrink-0 text-ink-soft transition-transform duration-200", open && "rotate-180")} aria-hidden />
       </button>
-      {open && (
-        <ul id={`${id}-nutrients`} className="grid animate-fade-up grid-cols-2 gap-x-4 border-t border-line px-3 py-1.5">
-          {rows.map((n) => (
-            <li key={n.key} className="flex min-w-0 items-baseline justify-between gap-2 py-1.5 text-[13px]">
-              <span className="truncate text-ink-soft">{n.label}</span>
-              <span className="shrink-0 font-semibold tabular-nums text-ink">{microAmount(micros[n.key as keyof Micros] ?? 0, n.unit)}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.ul
+            id={`${id}-nutrients`}
+            key="list"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="grid grid-cols-2 gap-x-3 overflow-hidden border-t border-line px-3"
+          >
+            {rows.map((n) => {
+              const value = micros[n.key as keyof Micros] ?? 0;
+              const ratio = n.target > 0 ? value / n.target : 0;
+              const pct = Math.round(ratio * 100);
+              return (
+                <li key={n.key} className="flex min-w-0 items-center gap-2 py-2">
+                  <ProgressRing progress={ratio} size={34} stroke={4} trackClassName="stroke-line" barClassName={ringClass(n, ratio)}>
+                    <span className="relative text-[9px] font-bold leading-none tabular-nums text-ink">{pct}%</span>
+                  </ProgressRing>
+                  <span className="min-w-0 leading-[normal]">
+                    <span className="block truncate text-meta font-semibold text-ink">{n.label}</span>
+                    <span className="block truncate text-xs tabular-nums text-ink-soft">{microAmount(value, n.unit)}</span>
+                  </span>
+                </li>
+              );
+            })}
+          </motion.ul>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
