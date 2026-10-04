@@ -34,7 +34,7 @@ export function GlobalTimer() {
   const href = recipeId != null ? `/ai/cook/${recipeId}` : null;
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[calc(var(--safe-top)+76px)] z-[55] flex justify-center sm:top-[5px]">
+    <div className="pointer-events-none absolute bottom-[calc(var(--nav-height)+var(--safe-bottom)+86px)] right-4 z-[55] flex justify-end sm:inset-x-0 sm:bottom-auto sm:right-auto sm:top-[5px] sm:justify-center">
       <AnimatePresence>
         {timer && !onCookPage && (
           <motion.div

@@ -50,7 +50,11 @@ export function FloatingOrb() {
   }, [captionAt, status]);
 
   const visual: VoiceStatus = paused ? "idle" : status;
-  const showCaption = sessionActive && (visual !== "idle" || paused || (!!caption && captionAt !== expiredAt));
+  // The feed's Skip / Yum buttons sit where the caption would be: there, only show it while Sous is listening or thinking.
+  const busy = visual === "listening" || visual === "thinking";
+  const showCaption =
+    sessionActive &&
+    (pathname === "/social" ? busy : visual !== "idle" || paused || (!!caption && captionAt !== expiredAt));
   const hidden = HIDDEN_ON.has(pathname);
 
   return (
