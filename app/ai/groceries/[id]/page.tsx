@@ -16,6 +16,7 @@ import { extrasFor, useGroceryExtras } from "@/lib/kitchen/extras";
 import { capitalize, groceryLine, groceryText, naturalList, plural } from "@/lib/kitchen/format";
 import { CHEAPEST_STORE, groceryKey, groceryPlan, quantityLabel } from "@/lib/kitchen/groceries";
 import { beginSteps } from "@/lib/cooking/actions";
+import { useGoBack } from "@/lib/useGoBack";
 import { cookHref, FRIDGE_SCAN_HREF, RECIPES_HREF } from "@/lib/kitchen/routes";
 import { dedupeKey } from "@/lib/kitchen/sanitize";
 import { loadRecipe } from "@/lib/recipes/client";
@@ -61,10 +62,10 @@ export default function GroceriesPage() {
 
 /** Figma 2.4 header row: 40px white back + share circles */
 function GroceryHeader({ onShare }: { onShare?: () => void }) {
-  const router = useRouter();
+  const goBack = useGoBack();
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between bg-cream/90 px-5 pb-2 pt-[calc(var(--safe-top)+6px)] backdrop-blur-md">
-      <IconButton label="Back" onClick={() => router.back()}>
+      <IconButton label="Back" onClick={() => goBack()}>
         <img src={ICON_BACK} alt="" width={20} height={20} className="size-5" />
       </IconButton>
       {onShare && (

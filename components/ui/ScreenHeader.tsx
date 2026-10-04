@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
+import { useGoBack } from "@/lib/useGoBack";
 import { cn } from "@/lib/utils";
 import { IconButton } from "./Button";
 
@@ -10,7 +10,7 @@ import { IconButton } from "./Button";
  * an optional right button, and an optional centred title (Fraunces 17) with a small
  * eyebrow above or a subtitle below. Large left-aligned page titles are separate
  * (see PageTitle) and sit under this bar.
- * `back` = true uses history; a string navigates to that path.
+ * `back`: steps back through the screens you came from; with none left, `back` (a path) or Home.
  */
 export function ScreenHeader({
   title,
@@ -30,7 +30,7 @@ export function ScreenHeader({
   right?: ReactNode;
   className?: string;
 }) {
-  const router = useRouter();
+  const goBack = useGoBack();
   return (
     <header
       className={cn(
@@ -41,7 +41,7 @@ export function ScreenHeader({
       <div className="flex">
         {left}
         {!left && back && (
-          <IconButton label="Back" onClick={() => (typeof back === "string" ? router.push(back) : router.back())}>
+          <IconButton label="Back" onClick={() => goBack(typeof back === "string" ? back : undefined)}>
             <img src="/figma/v2/2014-1436/icon-chev-l.svg" alt="" width={20} height={20} className="block size-5" />
           </IconButton>
         )}

@@ -19,10 +19,21 @@ let currentPath = "";
 let previousPath = "";
 let routerPush: ((href: string) => void) | null = null;
 
+/** Screens visited in this tab, oldest first (a step back pops one): lets Back know when to go Home */
+const visits: string[] = [];
+
+/** There's an earlier screen in this app session to go back to */
+export function canGoBackInApp(): boolean {
+  return visits.length > 1;
+}
+
 export function setCurrentPath(path: string): void {
   if (path === currentPath) return;
   previousPath = currentPath;
   currentPath = path;
+  const bare = path.split("?")[0];
+  if (visits.length >= 2 && visits[visits.length - 2] === bare) visits.pop();
+  else if (visits[visits.length - 1] !== bare) visits.push(bare);
   // Leaving cooking mode closes its video (hands-free listening waits while one is open).
   if (!path.startsWith("/ai/cook/") && useVideo.getState().recipeId != null) useVideo.getState().hide();
 }
