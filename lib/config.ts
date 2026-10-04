@@ -45,3 +45,8 @@ export const TIMEOUTS = {
 
 /** Spoonacular attribution required by their terms on the free/hackathon plan */
 export const SPOONACULAR_BACKLINK = "https://spoonacular.com/food-api";
+
+/** Live Spoonacular recipes use its image CDN; the bundled catalog's photos live in /public */
+export function fromSpoonacular(recipe: { image: string }): boolean {
+  return /^https?:\/\/([a-z0-9-]+\.)*spoonacular\.com\//i.test(recipe.image);
+}

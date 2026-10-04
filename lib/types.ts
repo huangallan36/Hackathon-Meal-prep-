@@ -76,6 +76,8 @@ export interface Recipe {
   servings: number;
   sourceName?: string;
   sourceUrl?: string;
+  /** Credit for a bundled catalog photo (public/CREDITS.md); Spoonacular photos have none */
+  imageCredit?: ImageCredit;
   /** Plain-text one or two sentence summary (HTML stripped) */
   summary?: string;
   ingredients: Ingredient[];
@@ -87,6 +89,13 @@ export interface Recipe {
   nutrition?: Nutrition & Partial<Micros>;
   /** Hardcoded tutorial for cached demo recipes (data/youtube.json) */
   youtubeId?: string;
+}
+
+export interface ImageCredit {
+  /** Ready to show: “Title” by Author, licence */
+  text: string;
+  /** The photo's source page (Wikimedia Commons) */
+  url?: string;
 }
 
 export interface RecipeMatch {

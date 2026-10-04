@@ -16,6 +16,8 @@ export interface SpoonacularRecipeInfo {
   sourceName?: string | null;
   creditsText?: string | null;
   sourceUrl?: string | null;
+  /** Not Spoonacular: our catalog's photo credit (data/recipes.json) */
+  imageCredit?: { text?: string | null; url?: string | null } | null;
   summary?: string | null;
   instructions?: string | null;
   analyzedInstructions?: {
@@ -177,6 +179,7 @@ export function normalizeRecipe(info: SpoonacularRecipeInfo, youtubeId?: string)
     servings: info.servings ?? 2,
     sourceName: info.sourceName || info.creditsText || undefined,
     sourceUrl: info.sourceUrl || undefined,
+    imageCredit: info.imageCredit?.text ? { text: info.imageCredit.text, url: info.imageCredit.url || undefined } : undefined,
     summary: shortSummary(info.summary),
     ingredients: ingredients(info),
     steps: steps(info),
