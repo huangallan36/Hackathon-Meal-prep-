@@ -6,7 +6,7 @@
  */
 import { dayTotals, MEAL_LABEL } from "@/lib/diary/stats";
 import { CHEAPEST_STORE, formatDollars, groceryKey, groceryPlan, NEARBY_STORES, storeEstimate } from "@/lib/kitchen/groceries";
-import { getCachedRecipe } from "@/lib/recipes/catalog";
+import { getCachedRecipe, getCatalog } from "@/lib/recipes/catalog";
 import { useDiary } from "@/lib/stores/diary";
 import { useKitchen, type KitchenTimer } from "@/lib/stores/kitchen";
 import { usePrefs } from "@/lib/stores/prefs";
@@ -39,6 +39,38 @@ export function getPreviousPath(): string {
 
 export function setRouterPush(push: (href: string) => void): void {
   routerPush = push;
+}
+
+/** Recipes recently shown outside the fridge matches (planner search), newest first */
+let shownRecipes: { id: number; title: string; readyInMinutes: number }[] = [];
+
+/** The recipe "this one" means: the one Sous last mentioned or the user last opened */
+let focusRecipe: { id: number; title: string } | null = null;
+
+export function setFocusRecipe(recipe: { id: number; title: string } | null): void {
+  focusRecipe = recipe ? { id: recipe.id, title: recipe.title } : null;
+}
+
+/** Recipes Sous may name outside the fridge matches: the planner's last results, then the catalog */
+export function knownRecipeTitles(): { id: number; title: string }[] {
+  return [...shownRecipes, ...getCatalog()].map((r) => ({ id: r.id, title: r.title }));
+}
+
+/** Focus the recipe with this id ("let's do this one" will mean it) */
+export function focusOn(id: number): void {
+  const k = useKitchen.getState();
+  const hit =
+    (k.activeRecipe?.id === id ? k.activeRecipe : undefined) ??
+    k.matches.find((m) => m.recipe.id === id)?.recipe ??
+    knownRecipeTitles().find((r) => r.id === id);
+  if (hit) setFocusRecipe(hit);
+}
+
+/** The planner calls this with what it's showing, so Sous can start any of them by name. */
+export function rememberShownRecipes(list: Recipe[]): void {
+  const fresh = list.slice(0, 12).map((r) => ({ id: r.id, title: r.title, readyInMinutes: r.readyInMinutes }));
+  const ids = new Set(fresh.map((r) => r.id));
+  shownRecipes = [...fresh, ...shownRecipes.filter((r) => !ids.has(r.id))].slice(0, 16);
 }
 
 /** Client-side navigation; a no-op when already there. */
@@ -102,6 +134,11 @@ export function buildChatContext(): ChatContext {
     };
   }
   if (k.timer) context.timer = formatTimer(k.timer, now);
+  // Recipes Sous can start by name beyond the fridge matches: what the planner showed, then the catalog.
+  const onScreen = new Set(context.recipes.map((r) => r.id));
+  const known = [...shownRecipes, ...getCatalog().map((r) => ({ id: r.id, title: r.title, readyInMinutes: r.readyInMinutes }))];
+  context.known = known.filter((r) => (onScreen.has(r.id) ? false : (onScreen.add(r.id), true))).slice(0, 24);
+  if (focusRecipe) context.focus = focusRecipe;
   try {
     addShopping(context, k);
     addToday(context);

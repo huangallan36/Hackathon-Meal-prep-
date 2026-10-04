@@ -598,13 +598,16 @@ export function fallbackReply(message: string, context: ChatContext): ChatRespon
   const onCookingScreen = /^\/ai\/(cook|talk)(\/|$)/.test(context.screen ?? "");
   const midCook = active && cooking && active.stepIndex >= 0 && onCookingScreen ? active : null;
   const wantsList = RE.showRecipes.test(listText);
-  if (recipes.length > 0 && !wantsList && !(cooking && /\bstep\b/.test(text))) {
+  // Recipes on screen first, then the others Sous knows by name; "this one" = the recipe in focus.
+  const pickable = [...recipes, ...(context.known ?? []).map((r) => ({ ...r, missing: [] as string[] }))];
+  if (pickable.length > 0 && !wantsList && !(cooking && /\bstep\b/.test(text))) {
     const cued = midCook
       ? RE.switchCue.test(text)
-      : RE.pickCue.test(text) || /\b(first|second|third|fourth|fifth|last one)\b/.test(text);
-    const id = cued ? pickRecipe(text, recipes) : null;
+      : RE.pickCue.test(text) || /\b(first|second|third|fourth|fifth|last one|give me)\b/.test(text);
+    const focus = context.focus && /\b(this|that|it|this one|that one)\b/.test(text) ? context.focus.id : null;
+    const id = cued ? (pickRecipe(text, recipes) ?? pickRecipe(text, pickable) ?? focus) : null;
     if (id != null) {
-      const title = recipes.find((r) => r.id === id)?.title ?? "that one";
+      const title = pickable.find((r) => r.id === id)?.title ?? (context.focus?.id === id ? context.focus.title : "that one");
       return reply(`Great pick. Let's make ${title}. Say next when you're ready for step one.`, [
         { name: "start_cooking", args: { recipeId: id } },
       ]);

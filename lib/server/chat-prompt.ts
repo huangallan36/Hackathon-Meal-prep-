@@ -80,7 +80,7 @@ export const SOUS_TOOLS: FunctionDeclaration[] = [
   {
     name: "start_cooking",
     description:
-      "Open step-by-step cooking mode for one recipe. Call when the user picks a recipe by position (the first one), by a word from its title (the chicken one), or by name. recipeId must be copied exactly from the APP STATE recipes list. Never invent an id; if the choice is ambiguous, ask instead of calling.",
+      "Open one recipe to cook it. Call when the user picks a recipe by position (the first one), by a word from its title (the teriyaki one, chicken), by name, or by saying \"let's do this / that one / it\" about the recipe in focus. recipeId must be copied exactly from APP STATE: the recipes on screen, the other recipes list, or the recipe in focus. Never invent an id.",
     parametersJsonSchema: params(
       { recipeId: { type: "integer", description: "Exact id of the chosen recipe from the APP STATE recipes list" } },
       ["recipeId"],
@@ -269,9 +269,25 @@ function cleanContext(raw: unknown): ChatContext {
 const num = (v: unknown, max: number): number =>
   typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(Math.round(v * 10) / 10, max)) : 0;
 
-/** Grocery list, stores and today's diary (all optional) */
-function cleanExtras(c: Obj): Pick<ChatContext, "groceries" | "stores" | "today"> {
-  const out: Pick<ChatContext, "groceries" | "stores" | "today"> = {};
+/** Known recipes, grocery list, stores and today's diary (all optional) */
+function cleanExtras(c: Obj): Pick<ChatContext, "known" | "focus" | "groceries" | "stores" | "today"> {
+  const out: Pick<ChatContext, "known" | "focus" | "groceries" | "stores" | "today"> = {};
+  if (isObj(c.focus)) {
+    const id = toRecipeId(c.focus.id);
+    const title = str(c.focus.title, 120);
+    if (id != null && title) out.focus = { id, title };
+  }
+  if (Array.isArray(c.known)) {
+    const known: NonNullable<ChatContext["known"]> = [];
+    for (const r of c.known.slice(0, 30)) {
+      if (!isObj(r)) continue;
+      const id = toRecipeId(r.id);
+      const title = str(r.title, 120);
+      if (id == null || !title) continue;
+      known.push({ id, title, readyInMinutes: typeof r.readyInMinutes === "number" && r.readyInMinutes > 0 ? Math.round(r.readyInMinutes) : 0 });
+    }
+    if (known.length) out.known = known;
+  }
   if (isObj(c.groceries)) {
     const id = toRecipeId(c.groceries.recipeId);
     const title = str(c.groceries.title, 120);
@@ -358,6 +374,11 @@ function describeState(ctx: ChatContext): string {
   } else {
     lines.push("- Recipes on screen: none yet.");
   }
+  if (ctx.known?.length) {
+    const list = ctx.known.map((r) => `"${r.title}" (id ${r.id}${r.readyInMinutes ? `, ${r.readyInMinutes} min` : ""})`).join("; ");
+    lines.push(`- Other recipes you can suggest and start by name: ${list}.`);
+  }
+  if (ctx.focus) lines.push(`- Recipe in focus (the one "this", "that one" or "it" means): "${ctx.focus.title}" (id ${ctx.focus.id}).`);
   const a = ctx.activeRecipe;
   if (a) {
     const where =
@@ -454,7 +475,7 @@ TOOLS
 ${toolsIntro}
 - open_fridge_camera: they're tired, hungry, don't know what to cook, ask what's for dinner, or ask you to check their fridge. Empathize in a few words, then call it right away. Don't ask permission first. Do this even if APP STATE already lists ingredients (they may be stale), unless they ask you to use those.
 - show_recipes: ingredients are known and they want ideas, ask what they can make, or want to see the options again.
-- start_cooking: they pick a recipe by position ("the first one" means item one in the recipes list), by a word from the title ("the chicken one"), or by name. Pass that recipe's exact id from APP STATE. Never guess or make up an id. If two recipes fit equally, ask which one instead of calling.
+- start_cooking: they pick a recipe by position ("the first one" means item one in the recipes on screen), by a word from the title ("let's do teriyaki" = Beef Teriyaki), by name, or with "let's do this", "that one", "make it", "yes" right after you or the screen offered one (the recipe in focus). Pass that recipe's exact id from any APP STATE list. Never search again for a recipe that's already in a list, and only ask which one when two fit equally well.
 - show_groceries: they ask what they're missing, what to buy, whether they need to shop, or where to get groceries. Use the id of the recipe on the grocery screen, the active recipe, or the recipe they mean. For "where" questions (which store, closest, cheapest, open late) pass section "stores" and say the answer: the nearest store with its distance and hours, and which one is cheapest with its price, from APP STATE.
 - log_meal: they just finished cooking a dish with Sous and want to snap a photo of it to log it ("that was amazing, log it").
 - log_food: they tell you what they ate or drank ("log my lunch, chicken wrap and a latte", "I had two eggs and toast for breakfast", "just had a banana"). Put the foods in description as they said them, with amounts, and pass meal when they name it. The app estimates the nutrition and logs it. Don't use log_meal for this, and don't ask for a photo.
@@ -467,6 +488,7 @@ ${toolsIntro}
 - Don't reopen the screen they're already on just to talk; but do call the tool when it moves them somewhere useful on it (show_groceries with section "stores" scrolls to the stores).
 
 TAKE INITIATIVE
+Keep the cooking flow moving: suggest, then cook, then log. When ${name}'s intent is clear, act on it in the same turn instead of asking or searching again. When you suggest recipes, only name ones from APP STATE so they can pick one, and once they pick, call start_cooking right away.
 You're a hands-on sous-chef, not a search box. When ${name} asks something the app can show, open it in the same turn AND answer the question out loud: don't make them ask twice, and don't only describe where to tap. Answer with the real specifics from APP STATE (store names, distances, prices, step text, today's numbers). Never say you can't see something that's in APP STATE. If the answer isn't there, say what you do know and do the most helpful action anyway.
 
 COOKING HELP
@@ -477,6 +499,7 @@ ${chatLine}
 EXAMPLES
 - "I'm exhausted and starving, no clue what to make." -> open_fridge_camera(say: "Oof, long day. Let's see what you've got, snap a quick photo of your fridge.")
 - "What can I make with all this?" (ingredients known) -> show_recipes(say: "You've got plenty to work with. Here are a few ideas.")
+- "Let's do teriyaki." or "Oh, let's do this." (Beef Teriyaki in a list or in focus) -> start_cooking(recipeId: <its id>, say: "Beef teriyaki, great choice.")
 - "The salmon one sounds good." or "Let's do the second one." (recipes on screen) -> start_cooking(recipeId: <that recipe's id from APP STATE>, say: <a short excited line naming the dish>). Never just reply in text when they pick a recipe.
 - "Next." (cooking) -> next_step()
 - "That was amazing, log it." -> log_meal(say: "Love that. Snap a photo of your plate and I'll log it.")
@@ -567,6 +590,9 @@ export function cleanFoodDescription(v: unknown): string {
   return (space > FOOD_DESCRIPTION_MAX * 0.6 ? cut.slice(0, space) : cut).replace(/[,;:\s]+$/, "");
 }
 
+/** "Let's do this", "that one", "make it", "sounds good": a pick that names no recipe */
+const THIS_ONE = /(this|that|it|that one|this one|sounds (good|great)|yes|yeah|sure|lets go)/i;
+
 /** A 1-based step number from the model (an integer or a numeric string) */
 function toStepNumber(v: unknown): number | null {
   const n = typeof v === "string" && /^\d{1,3}$/.test(v.trim()) ? Number(v) : v;
@@ -606,8 +632,10 @@ export interface ParsedActions {
  * the snap screen and then jump straight back to cooking mode.
  */
 export function toActions(calls: FunctionCall[] | undefined, ctx: ChatContext, message: string): ParsedActions {
-  const known = new Set<number>(ctx.recipes.map((r) => r.id));
+  const known = new Set<number>([...ctx.recipes, ...(ctx.known ?? [])].map((r) => r.id));
   if (ctx.activeRecipe) known.add(ctx.activeRecipe.id);
+  if (ctx.focus) known.add(ctx.focus.id);
+  const pickable = [...ctx.recipes, ...(ctx.known ?? []).map((r) => ({ ...r, missing: [] as string[] }))];
   let screen: SousAction | null = null;
   let step: SousAction | null = null;
   const dropped: SousActionName[] = [];
@@ -627,7 +655,8 @@ export function toActions(calls: FunctionCall[] | undefined, ctx: ChatContext, m
     }
     if (screen) continue;
     if (name === "start_cooking") {
-      const id = argId != null && known.has(argId) ? argId : pickRecipe(message, ctx.recipes);
+      // A named recipe from any list; "let's do this one" means the recipe in focus.
+      const id = argId != null && known.has(argId) ? argId : (pickRecipe(message, pickable) ?? (ctx.focus && THIS_ONE.test(message) ? ctx.focus.id : null));
       if (id == null) dropped.push(name);
       else screen = { name, args: { recipeId: id } };
     } else if (name === "show_groceries") {

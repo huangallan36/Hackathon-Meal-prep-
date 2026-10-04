@@ -263,6 +263,10 @@ export interface ChatContext {
   ingredients: string[];
   /** Recipes currently on screen / last suggested */
   recipes: { id: number; title: string; readyInMinutes: number; missing: string[] }[];
+  /** Other recipes Sous can start by name: what the planner showed, then the bundled catalog */
+  known?: { id: number; title: string; readyInMinutes: number }[];
+  /** The recipe "this one" / "let's do it" means: the one Sous last mentioned or the user last opened */
+  focus?: { id: number; title: string };
   activeRecipe?: {
     id: number;
     title: string;

@@ -13,7 +13,7 @@ import { useVoice } from "@/lib/stores/voice";
 import { currentPersona } from "./persona";
 
 /** The turn ends after this much quiet following the last thing heard */
-const SILENCE_MS = 2500;
+const SILENCE_MS = 1500;
 /** A browser that ends the session on its own mid-sentence is restarted at most this often per turn */
 const MAX_RESTARTS = 3;
 /** Give up if nothing at all is heard after the mic opens */

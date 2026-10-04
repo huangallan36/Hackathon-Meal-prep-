@@ -28,7 +28,7 @@ import { useVoice, type HandsFreeRest, type TranscriptLine } from "@/lib/stores/
 import type { ChatContext, ChatRequest, ChatResponse, ChatTurn, SousAction } from "@/lib/types";
 import { applyActions } from "./actions";
 import { isPlaying, pausePlayback, playTts, resumePlayback, stopPlayback, unlockAudio as unlockAudioElement } from "./audio";
-import { buildChatContext, getCurrentPath, setRouterPush } from "./context";
+import { buildChatContext, focusOn, getCurrentPath, knownRecipeTitles, setRouterPush } from "./context";
 import { currentPersona, ttsVoiceId } from "./persona";
 import { toDisplay, toSpeech } from "./speech-text";
 import { abortListening, isListening, isSttSupported, listenOnceDetailed, stopListening, type ListenOutcome } from "./stt";
@@ -640,7 +640,7 @@ function recipeFor(actions: SousAction[], line: string, asked: string): number |
       if ((a.name === "start_cooking" || a.name === "show_groceries") && typeof id === "number" && id > 0) return id;
     }
     const k = useKitchen.getState();
-    const candidates = [...(k.activeRecipe ? [k.activeRecipe] : []), ...k.matches.map((m) => m.recipe)];
+    const candidates = [...(k.activeRecipe ? [k.activeRecipe] : []), ...k.matches.map((m) => m.recipe), ...knownRecipeTitles()];
     for (const text of [line, asked]) {
       const said = ` ${plainWords(text)} `;
       for (const r of candidates) {
@@ -780,7 +780,9 @@ async function runTurn(text: string, id: number): Promise<void> {
     if (id !== turnSeq) return;
     awaitingTurn = 0;
     const line = override ?? res.reply;
-    await speak(line, { source: res.source, recipeId: recipeFor(res.actions, line, text) });
+    const mentioned = recipeFor(res.actions, line, text);
+    if (mentioned) focusOn(mentioned);
+    await speak(line, { source: res.source, recipeId: mentioned });
   } catch (err) {
     console.warn("[voice] turn failed:", err instanceof Error ? err.message : err);
     if (id === turnSeq) {

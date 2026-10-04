@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MascotAvatar } from "@/components/mascot/Mascot";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, FallbackNote } from "@/components/ui/Misc";
@@ -16,6 +16,7 @@ import {
 } from "@/lib/planner/search";
 import type { Recipe } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { rememberShownRecipes } from "@/lib/voice/context";
 import { usePersona } from "@/lib/voice/persona";
 import { PlannerSection, Scroller } from "./PlannerSection";
 import { RecipeRow } from "./RecipeRow";
@@ -67,6 +68,10 @@ export function ResultsView({
     () => (data ? relatedIngredients(data.query, [...data.matches, ...data.combinations]) : []),
     [data],
   );
+  // Sous can start any recipe on screen by name ("let's do the teriyaki one").
+  useEffect(() => {
+    if (all.length) rememberShownRecipes(all);
+  }, [all]);
 
   if (!result || !data) return <ResultsSkeleton />;
 

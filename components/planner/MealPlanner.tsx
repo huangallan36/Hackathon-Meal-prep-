@@ -17,6 +17,7 @@ import { usePlannerSession } from "@/lib/planner/session";
 import { useVoiceSearch } from "@/lib/planner/voice";
 import { toast } from "@/lib/stores/toast";
 import type { ISODate, Recipe } from "@/lib/types";
+import { setFocusRecipe } from "@/lib/voice/context";
 import { BrowseView } from "./BrowseView";
 import { ActiveFilters, DietPanel, FilterChips } from "./FilterChips";
 import { FilteredView } from "./FilteredView";
@@ -134,6 +135,8 @@ export function MealPlanner({ initialQuery }: { initialQuery?: string }) {
     pendingId.current = null;
     setBusyId(null);
     setSelected(recipe);
+    // "Let's do this one" now means this recipe.
+    setFocusRecipe(recipe);
   }
 
   function openRecent(item: RecentItem) {
