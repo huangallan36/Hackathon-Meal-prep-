@@ -1,6 +1,5 @@
 "use client";
 
-import { ChefHat, Sparkles } from "lucide-react";
 import { SmartImage } from "@/components/ui/Misc";
 import { FOOD_ICONS, foodIconKey, MEAL_TINT } from "@/lib/diary/food";
 import { fmt } from "@/lib/diary/stats";
@@ -48,35 +47,27 @@ export function MacroLine({ n, className }: { n: Pick<Nutrition, "protein" | "ca
   );
 }
 
+/** Small Figma status pill (10px semibold) */
+const badge = "inline-flex h-[18px] shrink-0 items-center gap-1 whitespace-nowrap rounded-pill px-1.5 text-micro font-semibold leading-none";
+
 export function EstimatedBadge({ className }: { className?: string }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-pill bg-butter-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[color-mix(in_oklab,var(--color-butter),black_45%)]",
-        className,
-      )}
-    >
-      <Sparkles className="size-3" />
+    <span className={cn(badge, "bg-butter-soft text-butter-ink", className)} title="Sous estimated these numbers">
       Estimated
     </span>
   );
 }
 
 export function SousTag({ className }: { className?: string }) {
-  return (
-    <span className={cn("inline-flex items-center gap-1 text-[11px] font-semibold text-accent", className)}>
-      <ChefHat className="size-3.5" />
-      via Sous
-    </span>
-  );
+  return <span className={cn(badge, "bg-accent-soft text-accent", className)}>via Sous</span>;
 }
 
 export function JustLoggedTag({ className }: { className?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-1.5 rounded-pill bg-herb-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-herb", className)}>
-      <span className="relative flex size-1.5">
-        <span className="absolute inline-flex size-full animate-ping rounded-full bg-herb opacity-60" />
-        <span className="relative inline-flex size-1.5 rounded-full bg-herb" />
+    <span className={cn(badge, "bg-flame-soft text-flame", className)}>
+      <span className="relative flex size-1.5" aria-hidden>
+        <span className="absolute inline-flex size-full animate-ping rounded-full bg-flame opacity-60" />
+        <span className="relative inline-flex size-1.5 rounded-full bg-flame" />
       </span>
       Just logged
     </span>

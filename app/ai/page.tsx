@@ -1,243 +1,248 @@
 "use client";
 
-import { FRIDGE_SCAN_HREF } from "@/lib/kitchen/routes";
-import { CalendarDays, ChevronRight, Flame, Mic, Refrigerator, Settings2 } from "lucide-react";
+/**
+ * Figma 1.1 "home": greeting, "Pick your sous-chef" (Maya / Leo / Nova), Start talking,
+ * and "Try asking" rows that start a call with that line. "Continue cooking" joins the rows
+ * while a recipe is in progress; the settings sheet (hands-free, floating bubble, reset demo)
+ * sits behind a small link at the bottom.
+ */
+import { Settings2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { Orb } from "@/components/orb/Orb";
-import { Button, IconButton } from "@/components/ui/Button";
-import { SectionHeader } from "@/components/ui/Card";
 import { SmartImage } from "@/components/ui/Misc";
-import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { REST_HINTS, useHandsFree } from "@/components/voice/HandsFree";
+import { PersonaPicker, stopPersonaSample } from "@/components/voice/PersonaPicker";
 import { SettingsSheet } from "@/components/voice/SettingsSheet";
-import { VoicePicker } from "@/components/voice/VoicePicker";
 import { DEMO_USER } from "@/lib/config";
+import { cookHref } from "@/lib/kitchen/routes";
 import { useKitchen } from "@/lib/stores/kitchen";
 import { usePrefs } from "@/lib/stores/prefs";
-import { userByHandle, useSocial } from "@/lib/stores/social";
 import { useVoice } from "@/lib/stores/voice";
-import type { VoiceStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { listen, startSession, unlockAudio } from "@/lib/voice/engine";
+import { handleUserText, listen, startSession, unlockAudio } from "@/lib/voice/engine";
+import { useAssistantName } from "@/lib/voice/persona";
 
-function timeOfDayCopy(date: Date): { greeting: string; subtitle: string } {
+const TRY_ASKING = [
+  { text: "What can I make with what’s in my fridge?", icon: "/figma/icons/utensils.svg", tile: "bg-butter-soft" },
+  { text: "Log my lunch — chicken wrap and a latte", icon: "/figma/icons/flame.svg", tile: "bg-flame-soft" },
+] as const;
+
+function greetingFor(date: Date): { greeting: string; question: string } {
   const h = date.getHours();
-  if (h >= 5 && h < 11) return { greeting: "Good morning", subtitle: "Morning! Want a quick breakfast idea?" };
-  if (h >= 11 && h < 14) return { greeting: "Good afternoon", subtitle: "Lunch break? Let's make something good." };
-  if (h >= 14 && h < 17) return { greeting: "Good afternoon", subtitle: "Afternoon slump? Let's plan tonight's dinner." };
-  if (h >= 17 && h < 22) return { greeting: "Good evening", subtitle: "Rough day? Let's figure out dinner together." };
-  return { greeting: "Hey, night owl", subtitle: "Late-night hunger? I've got you." };
+  if (h >= 5 && h < 12) return { greeting: "Good morning", question: "What are we cooking this morning?" };
+  if (h >= 12 && h < 17) return { greeting: "Good afternoon", question: "What are we cooking today?" };
+  return { greeting: "Good evening", question: "What are we cooking tonight?" };
+}
+
+/** "SAT · OCTOBER 3" */
+function dateEyebrow(date: Date): string {
+  const day = date.toLocaleDateString("en-US", { weekday: "short" });
+  const month = date.toLocaleDateString("en-US", { month: "long" });
+  return `${day} · ${month} ${date.getDate()}`.toUpperCase();
 }
 
 export default function AiHomePage() {
   const router = useRouter();
-  const userName = usePrefs((s) => s.userName);
+  const userName = usePrefs((s) => s.userName) || DEMO_USER.name;
   const status = useVoice((s) => s.status);
-  const paused = useVoice((s) => s.paused);
   const sessionActive = useVoice((s) => s.sessionActive);
-  const streak = useSocial((s) => userByHandle(s.users, DEMO_USER.handle)?.streak ?? 5);
-  const [copy] = useState(() => timeOfDayCopy(new Date()));
+  const [now] = useState(() => new Date());
   const [settingsOpen, setSettingsOpen] = useState(false);
-
-  const visual: VoiceStatus = paused ? "idle" : status;
+  const copy = greetingFor(now);
   const midTurn = sessionActive && status !== "idle";
 
-  function start() {
-    // The tap is the gesture: unlock audio and open the mic before navigating.
+  /** Open the call. The tap is the gesture: unlock audio (and the mic) before navigating. */
+  function openCall(): void {
+    stopPersonaSample();
     unlockAudio();
     startSession();
     router.push("/ai/talk");
-    // Mid-turn: just go back to the conversation instead of interrupting Sous.
+  }
+
+  function start() {
+    openCall();
+    // Mid-turn: just go back to the conversation instead of interrupting.
     if (!midTurn) void listen();
   }
 
+  function ask(text: string) {
+    openCall();
+    void handleUserText(text);
+  }
+
   return (
-    <>
-      <ScreenHeader
-        title={
-          <span className="flex items-center gap-2">
-            <span
-              aria-hidden
-              className="size-5 rounded-full bg-[radial-gradient(circle_at_30%_25%,#ffd2a6,#f2542d_60%,#c93c18)] shadow-accent"
-            />
-            Sous
+    <div className="pb-nav pt-[var(--safe-top)]">
+      {/* Top bar */}
+      <header className="flex items-center justify-between px-5 py-1.5">
+        <div className="flex items-center gap-2">
+          <span className="flex size-[30px] items-center justify-center rounded-[15px] bg-accent">
+            <img src="/figma/icons/sparkle.svg" alt="" width={16} height={16} className="block size-4" />
           </span>
-        }
-        right={
-          <IconButton label="Settings" onClick={() => setSettingsOpen(true)} className="size-11">
-            <Settings2 className="size-5" />
-          </IconButton>
-        }
-      />
+          <span className="font-display text-[21px] font-semibold text-ink">Sous</span>
+        </div>
+        <Link
+          href="/me"
+          aria-label="Your profile"
+          className="flex size-[38px] items-center justify-center rounded-[20px] bg-butter-soft text-body font-semibold text-butter-ink transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          {userName.trim().charAt(0).toUpperCase() || "A"}
+        </Link>
+      </header>
 
-      <div className="px-5 pb-nav">
-        <section className="pt-2 animate-fade-up">
-          <p className="text-sm font-medium text-ink-soft">{copy.greeting}</p>
-          <h2 className="mt-1 font-display text-[34px] font-semibold leading-[1.08] tracking-tight text-ink">
-            Welcome back,
-            <br />
-            <span className="text-accent">{userName || DEMO_USER.name}</span>
-          </h2>
-          <p className="mt-2 max-w-[300px] text-[15px] leading-snug text-ink-soft">{copy.subtitle}</p>
-          <span className="mt-4 inline-flex items-center gap-1.5 rounded-pill bg-butter-soft px-3 py-1.5 text-sm font-semibold text-ink">
-            <Flame className="size-4 fill-accent/25 text-accent" />
-            {streak}-day cooking streak
-          </span>
-        </section>
+      {/* Greeting */}
+      <section className="flex flex-col gap-1 px-5 pt-[18px] animate-fade-up">
+        <p className="whitespace-nowrap text-xs font-semibold tracking-[0.08em] text-ink-soft">{dateEyebrow(now)}</p>
+        <h1 className="font-display text-title font-semibold text-ink">
+          {copy.greeting}, {userName}
+        </h1>
+        <p className="text-body text-ink-soft">{copy.question}</p>
+      </section>
 
-        <section className="relative mt-6 flex flex-col items-center animate-fade-up [animation-delay:80ms]">
-          <div className="py-4">
-            <Orb size={170} status={visual} onClick={start} label="Start talking to Sous" />
+      {/* Voice picker + Start */}
+      <section className="flex flex-col gap-3 px-5 pt-[22px] animate-fade-up [animation-delay:60ms]">
+        <div className="flex w-full flex-col gap-[14px] rounded-[24px] border border-line bg-surface p-4">
+          <div className="flex items-center justify-between whitespace-nowrap">
+            <h2 className="text-body font-semibold text-ink">Pick your sous-chef</h2>
+            <p className="text-caption text-ink-soft">Voices by ElevenLabs</p>
           </div>
-          <Button size="lg" full className="mt-6" icon={<Mic className="size-5" />} onClick={start}>
-            {sessionActive ? "Back to conversation" : "Start"}
-          </Button>
-          <LiveLine />
-        </section>
+          <PersonaPicker />
+        </div>
+        <button
+          type="button"
+          onClick={start}
+          className="flex h-14 w-full items-center justify-center gap-2.5 rounded-pill bg-accent text-base font-semibold text-white transition hover:bg-accent-strong active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
+        >
+          <img src="/figma/icons/mic-white.svg" alt="" width={20} height={20} className="block size-5" />
+          {sessionActive ? "Back to conversation" : "Start talking"}
+        </button>
+        {sessionActive && <LiveLine />}
+      </section>
 
-        <section className="mt-8 grid grid-cols-2 gap-3 animate-fade-up [animation-delay:160ms]">
-          <ContinueCooking />
-          <Tile
-            href={FRIDGE_SCAN_HREF}
-            icon={<Refrigerator className="size-5" />}
-            title="Scan my fridge"
-            body="Snap a photo, get recipes"
-          />
-          <Tile
-            href="/ai/plan"
-            icon={<CalendarDays className="size-5" />}
-            title="Plan meals"
-            body="Your week, sorted"
-            tone="herb"
-          />
-        </section>
+      <ContinueCooking />
 
-        <section className="mt-9 animate-fade-up [animation-delay:240ms]">
-          <SectionHeader
-            title="Sous's voice"
-            action={<span className="text-xs font-medium text-ink-faint">Powered by ElevenLabs</span>}
-          />
-          <p className="mt-1 text-sm text-ink-soft">Pick who talks you through dinner. Tap play to hear them.</p>
-          <VoicePicker className="mt-3" />
-        </section>
+      {/* Try asking */}
+      <section className="flex flex-col gap-2.5 px-5 pt-[22px] animate-fade-up [animation-delay:120ms]">
+        <h2 className="text-xs font-semibold tracking-[0.08em] text-ink-soft">TRY ASKING</h2>
+        {TRY_ASKING.map((row) => (
+          <Row
+            key={row.text}
+            onClick={() => ask(row.text)}
+            lead={
+              <span className={cn("flex size-9 items-center justify-center rounded-[10px]", row.tile)}>
+                <img src={row.icon} alt="" width={18} height={18} className="block size-[18px]" />
+              </span>
+            }
+          >
+            <span className="block text-sm font-medium text-ink">{row.text}</span>
+          </Row>
+        ))}
+      </section>
+
+      <div className="flex justify-center pt-5">
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(true)}
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-pill px-4 text-meta font-medium text-ink-soft transition hover:bg-cream-deep active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          <Settings2 aria-hidden className="size-4" />
+          Settings
+        </button>
       </div>
 
       <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-    </>
+    </div>
   );
 }
 
-/**
- * Under the Start button: a prompt to try, or (mid-session) what Sous is hearing or just said.
- * The floating orb is hidden here, so this is the AI home's live caption.
- */
+/** Figma "Try asking" row: 36px tinted icon tile, 14px label, chevron. Also used for Continue cooking. */
+function Row({
+  lead,
+  children,
+  onClick,
+  href,
+}: {
+  lead: ReactNode;
+  children: ReactNode;
+  onClick?: () => void;
+  href?: string;
+}) {
+  const className =
+    "flex w-full items-center gap-3 rounded-[16px] border border-line bg-surface py-3 pl-3 pr-3.5 text-left transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent";
+  const body = (
+    <>
+      <span className="shrink-0">{lead}</span>
+      <span className="min-w-px flex-1">{children}</span>
+      <img src="/figma/icons/chevron-right.svg" alt="" width={18} height={18} className="block size-[18px] shrink-0" />
+    </>
+  );
+  if (href) {
+    return (
+      <Link href={href} className={className}>
+        {body}
+      </Link>
+    );
+  }
+  return (
+    <button type="button" onClick={onClick} className={className}>
+      {body}
+    </button>
+  );
+}
+
+/** A recipe in progress: the same row style, with the recipe photo as the tile. */
+function ContinueCooking() {
+  const recipe = useKitchen((s) => s.activeRecipe);
+  const stepIndex = useKitchen((s) => s.stepIndex);
+  const finishedId = useKitchen((s) => s.finishedRecipeId);
+  if (!recipe || finishedId === recipe.id) return null;
+  const total = recipe.steps.length;
+
+  return (
+    <section className="flex flex-col gap-2.5 px-5 pt-[22px] animate-fade-up [animation-delay:90ms]">
+      <h2 className="text-xs font-semibold tracking-[0.08em] text-ink-soft">CONTINUE COOKING</h2>
+      <Row href={cookHref(recipe.id)} lead={<SmartImage src={recipe.image} alt="" className="size-9 rounded-[10px]" />}>
+        <span className="block truncate text-sm font-medium text-ink">{recipe.title}</span>
+        <span className="mt-0.5 block text-xs text-ink-soft">
+          {stepIndex < 0 ? `${total} steps · not started` : `Step ${stepIndex + 1} of ${total}`}
+        </span>
+      </Row>
+    </section>
+  );
+}
+
+/** Mid-session (back on home with a call running): what the assistant is hearing or just said. */
 function LiveLine() {
-  const sessionActive = useVoice((s) => s.sessionActive);
+  const name = useAssistantName();
   const status = useVoice((s) => s.status);
   const interim = useVoice((s) => s.interim);
   const caption = useVoice((s) => s.caption);
   const paused = useVoice((s) => s.paused);
   const handsFree = useHandsFree();
 
-  let text: ReactNode = <>Try &ldquo;I&apos;m wiped, no idea what to cook&rdquo;</>;
+  let text: ReactNode = `${name} is on the line. Tap to keep talking.`;
   let live = false;
-  if (sessionActive && status === "listening") {
+  if (paused) {
+    text = `${name} is paused.`;
+  } else if (status === "listening") {
     text = interim || "Listening...";
     live = true;
-  } else if (sessionActive && status === "thinking") {
+  } else if (status === "thinking") {
     text = "Thinking...";
     live = true;
-  } else if (sessionActive && status === "idle" && !paused && handsFree.rest) {
-    // Hands-free stopped listening by itself: say why and what to do.
+  } else if (status === "idle" && handsFree.rest) {
     text = REST_HINTS[handsFree.rest];
-  } else if (sessionActive && caption) {
+  } else if (caption) {
     text = <>&ldquo;{caption}&rdquo;</>;
-    live = true;
+    live = status === "speaking";
   }
 
   return (
     <p
       aria-live="polite"
-      className={cn(
-        "mt-3 line-clamp-2 min-h-10 max-w-[320px] text-center text-sm leading-5",
-        live ? "italic text-ink-soft" : "text-ink-faint",
-      )}
+      className={cn("line-clamp-2 px-2 text-center text-sm leading-5", live ? "italic text-ink-soft" : "text-ink-faint")}
     >
       {text}
     </p>
-  );
-}
-
-function ContinueCooking() {
-  const recipe = useKitchen((s) => s.activeRecipe);
-  const stepIndex = useKitchen((s) => s.stepIndex);
-  const finishedId = useKitchen((s) => s.finishedRecipeId);
-  if (!recipe || finishedId === recipe.id) return null;
-
-  const total = recipe.steps.length;
-  const progress = total ? Math.max(0, stepIndex + 1) / total : 0;
-
-  return (
-    <Link
-      href={`/ai/cook/${recipe.id}`}
-      className="col-span-2 flex items-center gap-3 rounded-card bg-surface p-3 pr-4 shadow-card transition active:scale-[0.99]"
-    >
-      <SmartImage src={recipe.image} alt="" className="size-16 shrink-0 rounded-tile" />
-      <span className="min-w-0 flex-1">
-        <span className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-accent">Continue cooking</span>
-        <span className="block truncate font-display text-[17px] font-semibold leading-tight text-ink">
-          {recipe.title}
-        </span>
-        <span className="mt-1.5 flex items-center gap-2">
-          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-cream-deep">
-            <span
-              className="block h-full rounded-full bg-accent transition-[width] duration-500"
-              style={{ width: `${Math.round(progress * 100)}%` }}
-            />
-          </span>
-          <span className="shrink-0 text-xs text-ink-soft">
-            {stepIndex < 0 ? "Not started" : `Step ${stepIndex + 1} of ${total}`}
-          </span>
-        </span>
-      </span>
-      <ChevronRight className="size-5 shrink-0 text-ink-faint" />
-    </Link>
-  );
-}
-
-function Tile({
-  href,
-  icon,
-  title,
-  body,
-  tone = "accent",
-}: {
-  href: string;
-  icon: ReactNode;
-  title: string;
-  body: string;
-  tone?: "accent" | "herb";
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex min-h-[132px] flex-col justify-between rounded-card bg-surface p-4 shadow-card transition hover:shadow-lift active:scale-[0.98]"
-    >
-      <span
-        className={
-          tone === "herb"
-            ? "flex size-10 items-center justify-center rounded-full bg-herb-soft text-herb"
-            : "flex size-10 items-center justify-center rounded-full bg-accent-soft text-accent-strong"
-        }
-      >
-        {icon}
-      </span>
-      <span>
-        <span className="block font-display text-[17px] font-semibold leading-tight text-ink">{title}</span>
-        <span className="mt-0.5 block text-xs text-ink-soft">{body}</span>
-      </span>
-    </Link>
   );
 }

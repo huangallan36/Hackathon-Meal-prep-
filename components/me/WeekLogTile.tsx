@@ -24,10 +24,9 @@ export function WeekLogTile({
   className?: string;
 }) {
   const logged = days.filter((d) => (info.get(d)?.status ?? "none") !== "none").length;
-  const last = days[days.length - 1];
   return (
     <Link
-      href={last ? `/diary/calendar?d=${last}` : "/diary/calendar"}
+      href="/diary/calendar"
       aria-label={`Calendar: ${logged} of ${days.length} days logged. Open the diary calendar`}
       className={cn(
         "flex min-w-0 flex-1 flex-col items-start gap-2.5 rounded-card bg-surface px-4 py-3.5 shadow-card transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",

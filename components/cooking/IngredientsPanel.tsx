@@ -2,13 +2,13 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useMemo } from "react";
-import { SectionLabel } from "@/components/ui/Card";
+import { SectionHeader } from "@/components/ui/Card";
 import { useKitchen } from "@/lib/stores/kitchen";
 import type { Recipe } from "@/lib/types";
 import { availabilityOf, IngredientList } from "./IngredientList";
 
-/** Inline, collapsible ingredient list for step mode (inline so it never covers the video). */
-export function IngredientsPanel({ recipe, open }: { recipe: Recipe; open: boolean }) {
+/** Inline, collapsible ingredient card for step mode (opened from the header's "more" menu) */
+export function IngredientsPanel({ recipe, open, onClose }: { recipe: Recipe; open: boolean; onClose: () => void }) {
   const fridge = useKitchen((s) => s.ingredients);
   const availability = useMemo(() => availabilityOf(recipe.ingredients, fridge), [recipe.ingredients, fridge]);
 
@@ -16,15 +16,29 @@ export function IngredientsPanel({ recipe, open }: { recipe: Recipe; open: boole
     <AnimatePresence initial={false}>
       {open && (
         <motion.section
+          id="cook-ingredients"
           key="ingredients"
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
           exit={{ opacity: 0, height: 0 }}
           transition={{ duration: 0.25, ease: "easeOut" }}
-          className="-mx-1 overflow-hidden px-1"
+          className="overflow-hidden px-5"
+          aria-label="Ingredients"
         >
-          <div className="mb-1 rounded-card border border-line bg-surface/80 px-4 pb-2 pt-3.5">
-            <SectionLabel>Ingredients &middot; serves {recipe.servings}</SectionLabel>
+          <div className="mt-4 rounded-card bg-surface px-4 pb-1.5 pt-3.5 shadow-card">
+            <SectionHeader
+              title={`Ingredients · serves ${recipe.servings}`}
+              action={
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="-mr-2 inline-flex h-11 items-center rounded-pill px-2 text-meta font-semibold text-accent"
+                >
+                  Hide
+                </button>
+              }
+              className="-my-2"
+            />
             <IngredientList ingredients={recipe.ingredients} availability={availability} compact />
           </div>
         </motion.section>

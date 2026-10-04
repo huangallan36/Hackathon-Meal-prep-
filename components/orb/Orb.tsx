@@ -1,13 +1,16 @@
 "use client";
 
 /**
- * Sous's signature orb: a warm glassy sphere (tomato -> peach -> butter) with an inner
- * swirl. One rAF loop drives scale, spin and glow through motion values (no re-renders),
- * easing smoothly between states:
- *   idle      slow breathing
- *   listening brighter, larger, ripple rings
- *   thinking  fast swirl + shimmer sweep
- *   speaking  lively noise-driven pulse + soft ripples
+ * The voice orb from the Figma file: a flat radial gradient (Maya #f7cf7a -> #e0603a; Leo
+ * and Nova use their own colors) with a white seven-bar waveform. It is the animated
+ * version of the /figma/voices/orb-*.svg assets, used wherever the orb reacts to the voice:
+ * the call screen, the floating orb and the docked bubble. One rAF loop drives the bars
+ * and the body scale through motion values (no re-renders), easing between states:
+ *   idle      the design's waveform, barely breathing
+ *   listening taller lively bars that jump with what you say, ripple rings
+ *   thinking  bars shrink to dots and a wave runs through them, a sheen spins round
+ *   speaking  bars dance like a voice meter, the body pulses
+ * Reduced motion: the static design waveform (dots while thinking).
  */
 import {
   AnimatePresence,
@@ -15,59 +18,59 @@ import {
   useAnimationFrame,
   useMotionValue,
   useReducedMotion,
-  useTransform,
+  type MotionValue,
 } from "motion/react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef } from "react";
 import type { VoiceStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { usePersona, type Persona } from "@/lib/voice/persona";
 
-const LABELS: Record<VoiceStatus, string> = {
-  idle: "Talk to Sous",
-  listening: "Listening. Tap when you're done",
-  thinking: "Sous is thinking",
-  speaking: "Sous is speaking. Tap to interrupt",
-};
+/** Figma voice-orb waveform: 7 bars, as fractions of the orb's diameter (same in every size) */
+const BAR_HEIGHTS = [0.121, 0.22, 0.341, 0.44, 0.341, 0.22, 0.121] as const;
+const BAR_WIDTH = 0.045;
+const BAR_STEP = 0.0855;
+/** Speaking: louder in the middle, like the design's shape */
+const ENVELOPE = [0.55, 0.75, 0.9, 1, 0.9, 0.75, 0.55] as const;
 
-interface Tuning {
-  /** resting scale */
-  scale: number;
-  /** swirl speed, degrees per second */
-  spin: number;
-  /** outer glow opacity */
-  glow: number;
-  /** speech-like noise amplitude added to scale */
-  wobble: number;
-  /** breathing amplitude */
-  breathe: number;
-}
-
-const TUNING: Record<VoiceStatus, Tuning> = {
-  idle: { scale: 1, spin: 9, glow: 0.5, wobble: 0, breathe: 0.022 },
-  listening: { scale: 1.07, spin: 26, glow: 0.95, wobble: 0.012, breathe: 0.012 },
-  thinking: { scale: 0.98, spin: 150, glow: 0.7, wobble: 0, breathe: 0.008 },
-  speaking: { scale: 1, spin: 48, glow: 0.85, wobble: 0.08, breathe: 0 },
-};
-
-// Gradients are the one place raw colors are allowed: tomato, peach and butter from the palette.
-const BODY =
-  "radial-gradient(circle at 30% 24%, #ffe2b0 0%, #ffbb84 16%, #ff8a5c 36%, #f2542d 62%, #c93c18 100%)";
-const SWIRL =
-  "conic-gradient(from 0deg, #ffc76e, #ff7a45 18%, #f2542d 34%, #ff9e6b 52%, #ffd98a 68%, #ff6a3d 84%, #ffc76e)";
-const BLOB = "radial-gradient(circle at 68% 34%, rgba(255,214,128,0.95) 0%, rgba(255,214,128,0) 46%)";
-const BLOB_2 = "radial-gradient(circle at 30% 72%, rgba(214,55,22,0.85) 0%, rgba(214,55,22,0) 50%)";
-const SHIMMER = "conic-gradient(from 0deg, transparent 0 64%, rgba(255,255,255,0.75) 78%, transparent 90%)";
-const HIGHLIGHT =
-  "radial-gradient(circle at 32% 22%, rgba(255,251,240,0.95) 0%, rgba(255,240,214,0.55) 11%, rgba(255,230,190,0) 32%), radial-gradient(circle at 70% 85%, rgba(120,24,6,0.38) 0%, rgba(120,24,6,0) 52%)";
-/** Shading scales with the orb so the 60px floating orb isn't muddy */
-const innerShade = (size: number) =>
-  `inset 0 ${-Math.round(size * 0.06)}px ${Math.round(size * 0.14)}px rgba(140,30,10,0.3), inset 0 ${Math.round(size * 0.05)}px ${Math.round(size * 0.12)}px rgba(255,240,214,0.35)`;
-const dropShadow = (size: number) =>
-  `0 ${Math.round(size * 0.1)}px ${Math.round(size * 0.22)}px -${Math.round(size * 0.08)}px rgba(242,84,45,0.7)`;
-const GLOW = "radial-gradient(circle, rgba(242,84,45,0.5) 0%, rgba(255,138,92,0.28) 36%, rgba(255,199,110,0) 68%)";
+const BODY_SCALE: Record<VoiceStatus, number> = { idle: 1, listening: 1.035, thinking: 0.975, speaking: 1 };
 
 /** Smooth pseudo-noise in [-1, 1] from a few incommensurate sines */
 function noise(s: number): number {
   return (Math.sin(s * 7.3) + 0.6 * Math.sin(s * 11.9 + 1.7) + 0.35 * Math.sin(s * 17.3 + 0.4)) / 1.95;
+}
+
+/** Bar height (fraction of the diameter) for a status at time `s` seconds */
+function barTarget(status: VoiceStatus, i: number, s: number, bump: number): number {
+  const base = BAR_HEIGHTS[i];
+  switch (status) {
+    case "listening": {
+      const wave = (Math.sin(s * 4.2 + i * 0.9) + 1) / 2;
+      return Math.min(0.6, base * (0.7 + 0.35 * wave + bump * 0.6));
+    }
+    case "thinking": {
+      const wave = Math.max(0, Math.sin(s * 5.2 - i * 0.75));
+      return BAR_WIDTH + wave * 0.11;
+    }
+    case "speaking": {
+      const n = (noise(s * 1.25 + i * 1.71) + 1) / 2;
+      return 0.07 + 0.45 * ENVELOPE[i] * (0.3 + 0.7 * n);
+    }
+    default:
+      return base * (1 + 0.05 * Math.sin((s * 2 * Math.PI) / 3.6 + i * 0.45));
+  }
+}
+
+function labelFor(status: VoiceStatus, name: string): string {
+  switch (status) {
+    case "listening":
+      return "Listening. Tap when you're done";
+    case "thinking":
+      return `${name} is thinking`;
+    case "speaking":
+      return `${name} is speaking. Tap to interrupt`;
+    default:
+      return `Talk to ${name}`;
+  }
 }
 
 export interface OrbProps {
@@ -78,32 +81,55 @@ export interface OrbProps {
   className?: string;
   /** Overrides the default status label for screen readers */
   label?: string;
-  /** Bump the orb whenever this changes (e.g. interim transcript length) */
+  /** Bump the bars whenever this changes (e.g. interim transcript length) */
   activity?: number;
-  /** Optional glyph centered on the orb (the compact floating orb uses an icon) */
-  children?: ReactNode;
+  /** Whose colors (defaults to the chosen persona) */
+  persona?: Persona;
+  /** Ripple rings while listening/speaking (off on the call screen, where the discs pulse) */
+  ripples?: boolean;
+  /** Soft colored shadow, for orbs that float over content */
+  floating?: boolean;
 }
 
-export function Orb({ status = "idle", size = 120, onClick, className, label, activity, children }: OrbProps) {
+export function Orb({
+  status = "idle",
+  size = 124,
+  onClick,
+  className,
+  label,
+  activity,
+  persona: personaProp,
+  ripples = true,
+  floating = false,
+}: OrbProps) {
+  const chosen = usePersona();
+  const persona = personaProp ?? chosen;
   const reduce = useReducedMotion() ?? false;
-  const scale = useMotionValue(TUNING[status].scale);
-  const rotate = useMotionValue(0);
-  const glow = useMotionValue(TUNING[status].glow);
-  const counterRotate = useTransform(rotate, (r) => -r * 1.6);
-  const shimmerRotate = useTransform(rotate, (r) => r * 2);
-  const glowScale = useTransform(scale, (s) => 0.92 + (s - 1) * 1.8);
+
+  const scale = useMotionValue(1);
+  const spin = useMotionValue(0);
+  const b0 = useMotionValue(1);
+  const b1 = useMotionValue(1);
+  const b2 = useMotionValue(1);
+  const b3 = useMotionValue(1);
+  const b4 = useMotionValue(1);
+  const b5 = useMotionValue(1);
+  const b6 = useMotionValue(1);
+  const bars: MotionValue<number>[] = [b0, b1, b2, b3, b4, b5, b6];
 
   const statusRef = useRef(status);
   const bump = useRef(0);
-  const live = useRef<Tuning>({ ...TUNING[status] });
+  const heights = useRef<number[]>([...BAR_HEIGHTS]);
+  const bodyScale = useRef(1);
 
   useEffect(() => {
     statusRef.current = status;
-    if (reduce) {
-      scale.set(TUNING[status].scale);
-      glow.set(TUNING[status].glow);
-    }
-  }, [status, reduce, scale, glow]);
+    if (!reduce) return;
+    // Reduced motion: hold the state's resting pose.
+    scale.set(1);
+    BAR_HEIGHTS.forEach((h, i) => bars[i].set(status === "thinking" ? BAR_WIDTH / h : 1));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the bar motion values are stable
+  }, [status, reduce, scale]);
 
   useEffect(() => {
     if (activity) bump.current = 1;
@@ -112,37 +138,31 @@ export function Orb({ status = "idle", size = 120, onClick, className, label, ac
   useAnimationFrame((time, delta) => {
     if (reduce) return;
     const dt = Math.min(delta, 64);
-    const target = TUNING[statusRef.current];
-    const L = live.current;
-    const k = 1 - Math.exp(-dt / 280);
-    L.scale += (target.scale - L.scale) * k;
-    L.spin += (target.spin - L.spin) * k;
-    L.glow += (target.glow - L.glow) * k;
-    L.wobble += (target.wobble - L.wobble) * k;
-    L.breathe += (target.breathe - L.breathe) * k;
-
     const s = time / 1000;
-    const breath = Math.sin((s * 2 * Math.PI) / 3.6) * L.breathe;
-    const talk = ((noise(s) + 1) / 2) * L.wobble;
-    bump.current *= Math.exp(-dt / 200);
+    const st = statusRef.current;
+    bump.current *= Math.exp(-dt / 220);
+    const kBars = 1 - Math.exp(-dt / 110);
+    const kBody = 1 - Math.exp(-dt / 280);
 
-    scale.set(L.scale + breath + talk + bump.current * 0.035);
-    // Wrap at 3600 so the x1.6 and x2 derived rotations also land on whole turns (no visible jump).
-    rotate.set((rotate.get() + (L.spin * dt) / 1000) % 3600);
-    glow.set(Math.min(1, L.glow + talk * 2.5));
+    const h = heights.current;
+    for (let i = 0; i < 7; i++) {
+      h[i] += (barTarget(st, i, s, bump.current) - h[i]) * kBars;
+      bars[i].set(h[i] / BAR_HEIGHTS[i]);
+    }
+
+    bodyScale.current += (BODY_SCALE[st] - bodyScale.current) * kBody;
+    const breathe = st === "idle" ? 0.012 * Math.sin((s * 2 * Math.PI) / 3.6) : 0;
+    const talk = st === "speaking" ? 0.03 * ((noise(s * 0.9) + 1) / 2) : 0;
+    scale.set(bodyScale.current + breathe + talk + bump.current * 0.025);
+    if (st === "thinking") spin.set((spin.get() + (dt * 300) / 1000) % 360);
   });
 
-  const showRipples = !reduce && (status === "listening" || status === "speaking");
+  const showRipples = ripples && !reduce && (status === "listening" || status === "speaking");
   const rippleDuration = status === "listening" ? 2.2 : 1.6;
+  const barWidth = size * BAR_WIDTH;
 
   const visual = (
     <>
-      <motion.span
-        aria-hidden
-        className="pointer-events-none absolute -inset-[30%] rounded-full blur-md"
-        style={{ background: GLOW, opacity: glow, scale: glowScale }}
-      />
-
       <AnimatePresence>
         {showRipples && (
           <motion.span
@@ -156,64 +176,54 @@ export function Orb({ status = "idle", size = 120, onClick, className, label, ac
             {[0, 1, 2].map((i) => (
               <motion.span
                 key={i}
-                className={cn(
-                  "absolute inset-0 rounded-full border-2",
-                  status === "listening" ? "border-accent/45" : "border-accent/25",
-                )}
+                className="absolute inset-0 rounded-full border-2"
+                style={{ borderColor: `${persona.orbTo}${status === "listening" ? "73" : "40"}` }}
                 initial={{ scale: 1, opacity: 0.7 }}
-                animate={{ scale: 1.7, opacity: 0 }}
-                transition={{
-                  duration: rippleDuration,
-                  delay: (i * rippleDuration) / 3,
-                  repeat: Infinity,
-                  ease: "easeOut",
-                }}
+                animate={{ scale: 1.6, opacity: 0 }}
+                transition={{ duration: rippleDuration, delay: (i * rippleDuration) / 3, repeat: Infinity, ease: "easeOut" }}
               />
             ))}
           </motion.span>
         )}
       </AnimatePresence>
 
+      {/* The mask keeps Safari clipping the spinning sheen to the circle */}
       <motion.span
         aria-hidden
-        className="absolute inset-0 rounded-full"
-        style={{ scale, boxShadow: dropShadow(size) }}
-      />
-      {/* The mask forces Safari to clip the composited swirl layers to the circle */}
-      <motion.span
-        aria-hidden
-        className="absolute inset-0 overflow-hidden rounded-full will-change-transform [mask-image:radial-gradient(white,black)]"
-        style={{ scale, background: BODY }}
+        className="absolute inset-0 overflow-hidden rounded-full [mask-image:radial-gradient(white,black)]"
+        style={{
+          scale,
+          background: `radial-gradient(circle closest-side, ${persona.orbFrom} 0%, ${persona.orbTo} 100%)`,
+          boxShadow: floating
+            ? `0 ${Math.round(size * 0.1)}px ${Math.round(size * 0.26)}px -${Math.round(size * 0.1)}px ${persona.orbTo}a6`
+            : undefined,
+        }}
       >
         <motion.span
-          className="absolute -inset-[30%] opacity-70 mix-blend-soft-light will-change-transform"
-          style={{ background: SWIRL, rotate, filter: `blur(${Math.round(size * 0.08)}px)` }}
-        />
-        <motion.span
-          className="absolute -inset-[15%] will-change-transform"
-          style={{ background: BLOB, rotate, filter: `blur(${Math.round(size * 0.05)}px)` }}
-        />
-        <motion.span
-          className="absolute -inset-[15%] opacity-80 will-change-transform"
-          style={{ background: BLOB_2, rotate: counterRotate, filter: `blur(${Math.round(size * 0.06)}px)` }}
-        />
-        <motion.span
-          className="absolute -inset-[10%] mix-blend-overlay will-change-transform"
-          style={{ background: SHIMMER, rotate: shimmerRotate, filter: `blur(${Math.round(size * 0.04)}px)` }}
+          className="absolute -inset-[10%] mix-blend-soft-light"
+          style={{
+            rotate: spin,
+            background: "conic-gradient(from 0deg, transparent 0 62%, rgba(255,255,255,0.9) 82%, transparent 96%)",
+          }}
           initial={false}
-          animate={{ opacity: status === "thinking" ? 1 : 0 }}
-          transition={{ duration: 0.5 }}
+          animate={{ opacity: status === "thinking" && !reduce ? 1 : 0 }}
+          transition={{ duration: 0.4 }}
         />
-        <span className="absolute inset-0 rounded-full" style={{ background: HIGHLIGHT }} />
-        <span className="absolute inset-0 rounded-full" style={{ boxShadow: innerShade(size) }} />
-        <span className="absolute inset-0 rounded-full ring-1 ring-inset ring-white/25" />
       </motion.span>
 
-      {children && (
-        <span className="pointer-events-none relative z-10 flex size-full items-center justify-center text-white drop-shadow-[0_1px_2px_rgba(120,24,6,0.45)]">
-          {children}
-        </span>
-      )}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 flex items-center justify-center"
+        style={{ gap: size * (BAR_STEP - BAR_WIDTH) }}
+      >
+        {BAR_HEIGHTS.map((h, i) => (
+          <motion.span
+            key={i}
+            className="block shrink-0 rounded-full bg-white/95"
+            style={{ width: barWidth, height: size * h, scaleY: bars[i] }}
+          />
+        ))}
+      </span>
     </>
   );
 
@@ -227,16 +237,18 @@ export function Orb({ status = "idle", size = 120, onClick, className, label, ac
     );
   }
 
+  const text = label ?? labelFor(status, persona.name);
   return (
     <motion.button
       type="button"
       onClick={onClick}
-      aria-label={label ?? LABELS[status]}
-      title={label ?? LABELS[status]}
+      aria-label={text}
+      title={text}
       whileTap={reduce ? undefined : { scale: 0.94 }}
       className={cn(
         "relative isolate shrink-0 cursor-pointer select-none rounded-full outline-none",
-        "focus-visible:ring-4 focus-visible:ring-accent/35 focus-visible:ring-offset-2 focus-visible:ring-offset-cream",
+        // Amber reads on both the cream screens and the dark call screen
+        "focus-visible:ring-4 focus-visible:ring-butter/70",
         className,
       )}
       style={box}

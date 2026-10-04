@@ -4,14 +4,14 @@
  * The always-there tap-to-talk orb (rendered by AppShell on every screen).
  * Also the voice engine's bridge to the router: it registers router.push and keeps the
  * engine's notion of the current screen fresh, so it stays mounted even where hidden
- * (the AI home, the conversation screen, and while Sous is docked on the home screen).
+ * (the AI home, the full-screen call and cooking mode, and while Sous is docked).
+ * Drawn as the Figma voice orb (persona gradient + white waveform that follows the voice).
  * Long-press docks Sous as a bubble over the (simulated) phone home screen.
  */
 import { Maximize2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
-import { StatusGlyph } from "@/components/voice/StatusGlyph";
 import { TypeSheet } from "@/components/voice/TypeSheet";
 import { useDock } from "@/lib/stores/dock";
 import { cn } from "@/lib/utils";
@@ -20,8 +20,13 @@ import { orbTap, setNavigator } from "@/lib/voice/engine";
 import { Orb } from "./Orb";
 import { useOrbCaption, type OrbCaption } from "./useOrbCaption";
 
-/** The AI home has its own hero orb; the conversation screen is the orb. */
-const HIDDEN_ON = new Set(["/ai", "/ai/talk"]);
+/**
+ * The AI home has its own Start button; the call screen is the orb; cooking mode has its own
+ * mic in its bottom sheet.
+ */
+function hiddenOn(pathname: string): boolean {
+  return pathname === "/ai" || pathname === "/ai/talk" || pathname.startsWith("/ai/cook/");
+}
 /** Hold this long (without moving) to dock Sous */
 const LONG_PRESS_MS = 550;
 const MOVE_TOLERANCE_PX = 10;
@@ -42,7 +47,7 @@ export function FloatingOrb() {
   // The feed's Skip / Yum buttons sit where the caption would be: there, only show it while Sous is listening or thinking.
   const caption = useOrbCaption(pathname === "/social");
   const longPress = useLongPress(() => useDock.getState().dock());
-  const hidden = HIDDEN_ON.has(pathname) || docked;
+  const hidden = hiddenOn(pathname) || docked;
 
   return (
     <>
@@ -61,9 +66,7 @@ export function FloatingOrb() {
             transition={{ type: "spring", damping: 18, stiffness: 260 }}
             {...longPress}
           >
-            <Orb size={60} status={caption.visual} onClick={orbTap} activity={caption.interim.length}>
-              <StatusGlyph status={caption.visual} />
-            </Orb>
+            <Orb size={60} status={caption.visual} onClick={orbTap} activity={caption.interim.length} floating />
           </motion.div>
         </div>
       )}

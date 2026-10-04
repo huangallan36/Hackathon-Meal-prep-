@@ -23,7 +23,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type RefObject } from "react";
 import { Orb } from "@/components/orb/Orb";
 import { useOrbCaption } from "@/components/orb/useOrbCaption";
-import { StatusGlyph } from "@/components/voice/StatusGlyph";
 import { useDock, type DockSide } from "@/lib/stores/dock";
 import { cn } from "@/lib/utils";
 import { endSession, orbTap, unlockAudio } from "@/lib/voice/engine";
@@ -307,12 +306,7 @@ export function SousBubble({ containerRef }: { containerRef: RefObject<HTMLEleme
             title="Open Sous (drag to move, drop on End to hang up)"
             className="relative block size-full rounded-full shadow-lift outline-none focus-visible:ring-4 focus-visible:ring-white/70"
           >
-            <Orb size={SIZE} status={caption.visual} activity={caption.interim.length}>
-              {/* The mic badge already says "talk": the orb only shows thinking dots / speaking bars */}
-              {(caption.visual === "thinking" || caption.visual === "speaking") && (
-                <StatusGlyph status={caption.visual} size={22} />
-              )}
-            </Orb>
+            <Orb size={SIZE} status={caption.visual} activity={caption.interim.length} />
           </button>
 
           {/* Tap-to-talk without leaving the home screen */}

@@ -1,12 +1,14 @@
 "use client";
 
-import { EllipsisVertical } from "lucide-react";
-import { fmt, isFresh, timeLabel } from "@/lib/diary/stats";
+import { fmt, isFresh } from "@/lib/diary/stats";
 import type { DiaryEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { EstimatedBadge, FoodThumb, JustLoggedTag, MacroLine, SousTag } from "./EntryBits";
+import { EstimatedBadge, JustLoggedTag, SousTag } from "./EntryBits";
 
-/** One logged food. The whole row is a button that opens the entry sheet. */
+/**
+ * Figma 3.3 food row: name, portion (13px, right-aligned) and kcal (14px semibold). The row
+ * is a button that opens the entry sheet; "Just logged / Estimated / via Sous" sit under the name.
+ */
 export function EntryRow({ entry, onOpen, className }: { entry: DiaryEntry; onOpen: (id: string) => void; className?: string }) {
   const fresh = isFresh(entry);
   const showTags = fresh || entry.estimated || entry.source === "ai";
@@ -15,36 +17,25 @@ export function EntryRow({ entry, onOpen, className }: { entry: DiaryEntry; onOp
       type="button"
       onClick={() => onOpen(entry.id)}
       data-entry-id={entry.id}
-      aria-label={`${entry.name}, ${fmt(entry.nutrition.calories)} kcal. Open details`}
+      aria-label={`${entry.name}${entry.portion ? `, ${entry.portion}` : ""}, ${fmt(entry.nutrition.calories)} kcal. Open details`}
       className={cn(
-        "flex w-full items-start gap-3 rounded-tile p-2 text-left transition hover:bg-cream active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
-        fresh && "bg-herb-soft/50",
+        "-mx-2 flex w-[calc(100%+16px)] items-center gap-2 rounded-thumb px-2 py-2 text-left leading-[normal] transition hover:bg-cream active:bg-cream-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+        fresh && "bg-flame-soft/40",
         className,
       )}
     >
-      <FoodThumb entry={entry} className="size-14" />
-      <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 text-[15px] font-semibold leading-snug text-ink">{entry.name}</p>
-        <p className="mt-0.5 truncate text-xs text-ink-soft">
-          {entry.portion ? `${entry.portion} · ` : ""}
-          {timeLabel(entry.loggedAt)}
-        </p>
-        <MacroLine n={entry.nutrition} className="mt-1" />
+      <span className="min-w-0 flex-1">
+        <span className="line-clamp-2 text-sm text-ink">{entry.name}</span>
         {showTags && (
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="mt-1 flex flex-wrap items-center gap-1">
             {fresh && <JustLoggedTag />}
             {entry.estimated && <EstimatedBadge />}
             {entry.source === "ai" && <SousTag />}
-          </div>
+          </span>
         )}
-      </div>
-      <div className="flex shrink-0 items-start gap-0.5 pt-0.5">
-        <div className="text-right">
-          <p className="text-[15px] font-semibold leading-tight tabular-nums text-ink">{fmt(entry.nutrition.calories)}</p>
-          <p className="text-[11px] text-ink-faint">kcal</p>
-        </div>
-        <EllipsisVertical className="-mr-1 mt-0.5 size-4 text-ink-faint" aria-hidden />
-      </div>
+      </span>
+      {entry.portion && <span className="line-clamp-2 w-16 shrink-0 text-right text-meta text-ink-soft">{entry.portion}</span>}
+      <span className="w-10 shrink-0 text-right text-sm font-semibold tabular-nums text-ink">{fmt(entry.nutrition.calories)}</span>
     </button>
   );
 }

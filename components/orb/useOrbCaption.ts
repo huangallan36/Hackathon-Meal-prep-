@@ -6,11 +6,12 @@
  * speaking and for a few seconds after, and hands-free hints ("Still there?").
  */
 import { useEffect, useState } from "react";
-import { statusLabel } from "@/components/voice/StatusGlyph";
 import { REST_HINTS } from "@/components/voice/HandsFree";
+import { statusLabel } from "@/components/voice/status";
 import { usePrefs } from "@/lib/stores/prefs";
 import { useVoice } from "@/lib/stores/voice";
 import type { VoiceStatus } from "@/lib/types";
+import { useAssistantName } from "@/lib/voice/persona";
 
 /** Captions fade this long after Sous finishes talking */
 export const CAPTION_MS = 6000;
@@ -43,6 +44,7 @@ export function useOrbCaption(busyOnly = false): OrbCaption {
   const rest = useVoice((s) => s.handsFreeRest);
   const restAt = useVoice((s) => s.handsFreeRestAt);
   const handsFree = usePrefs((s) => s.handsFree);
+  const name = useAssistantName();
   const lastUserLine = useVoice((s) => {
     for (let i = s.transcript.length - 1; i >= 0; i--) if (s.transcript[i].role === "user") return s.transcript[i].text;
     return "";
@@ -83,7 +85,7 @@ export function useOrbCaption(busyOnly = false): OrbCaption {
     : restHint
       ? "Hands-free"
       : status === "idle" || status === "speaking"
-        ? "Sous"
+        ? name
         : statusLabel(status, false);
 
   return { visual, paused, sessionActive, interim, show, label, text, live: busy };

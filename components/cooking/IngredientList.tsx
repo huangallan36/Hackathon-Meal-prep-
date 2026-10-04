@@ -1,10 +1,11 @@
 "use client";
 
-import { Check, Leaf } from "lucide-react";
+import { Leaf } from "lucide-react";
 import { useState } from "react";
 import { ingredientMatches, isPantry } from "@/lib/recipes/catalog";
 import type { Ingredient } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { COOK_ICON } from "./icons";
 
 export type Availability = "have" | "missing" | "pantry";
 
@@ -19,6 +20,7 @@ export function availabilityOf(ingredients: Ingredient[], fridge: string[]): Map
   return out;
 }
 
+/** Ingredient rows in the Figma 2.4 list style: 15px text, 1px dividers, status on the right */
 export function IngredientList({
   ingredients,
   availability,
@@ -35,23 +37,25 @@ export function IngredientList({
         return (
           <li
             key={`${ing.name}-${i}`}
-            className={cn("flex items-center gap-3 animate-fade-up", compact ? "py-2" : "py-2.5")}
+            className={cn("flex items-center gap-3 animate-fade-up", compact ? "py-2.5" : "py-3")}
             style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
           >
             {!compact && <IngredientThumb src={ing.image} />}
-            <span className={cn("min-w-0 flex-1 text-[15px] leading-snug text-ink", status === "missing" && "text-ink-soft")}>
+            <span className={cn("min-w-0 flex-1 text-body leading-snug text-ink", status === "missing" && "text-ink-soft")}>
               {ing.original}
             </span>
             {status === "have" && (
-              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-herb-soft text-herb" title="In your fridge">
-                <Check className="size-3.5" strokeWidth={3} />
+              <span className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-accent" title="In your fridge">
+                <img src={COOK_ICON.check} alt="" width={14} height={14} className="block size-3.5" />
                 <span className="sr-only">You have this</span>
               </span>
             )}
             {status === "missing" && (
-              <span className="shrink-0 rounded-pill bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent-strong">Need</span>
+              <span className="shrink-0 rounded-pill bg-butter-soft px-2.5 py-1 text-caption font-semibold leading-none text-butter-ink">
+                Need
+              </span>
             )}
-            {status === "pantry" && <span className="shrink-0 text-[11px] font-medium text-ink-faint">Pantry</span>}
+            {status === "pantry" && <span className="shrink-0 text-caption font-medium text-ink-faint">Pantry</span>}
           </li>
         );
       })}
@@ -62,11 +66,11 @@ export function IngredientList({
 function IngredientThumb({ src }: { src?: string }) {
   const [failed, setFailed] = useState(false);
   return (
-    <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-cream-deep">
+    <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-cream">
       {src && !failed ? (
-        <img src={src} alt="" loading="lazy" className="size-8 object-contain" onError={() => setFailed(true)} />
+        <img src={src} alt="" loading="lazy" className="size-7 object-contain" onError={() => setFailed(true)} />
       ) : (
-        <Leaf className="size-4 text-herb" />
+        <Leaf className="size-4 text-accent" />
       )}
     </span>
   );

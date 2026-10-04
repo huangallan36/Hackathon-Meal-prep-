@@ -9,15 +9,16 @@ import { cancelTimer, remainingSeconds, ringTimer } from "@/lib/cooking/actions"
 import { useNow } from "@/lib/cooking/clock";
 import { formatClock } from "@/lib/cooking/durations";
 import { useKitchen } from "@/lib/stores/kitchen";
+import { COOK_ICON } from "./icons";
 import { ProgressRing } from "./ProgressRing";
 
 /**
  * App-wide kitchen timer, rendered by AppShell on every screen.
  * - Rings (chime, vibration, toast, Sous) when the countdown hits zero, on any screen,
  *   including right after a reload if the timer expired while the app was closed.
- * - Off the cook page it shows a compact live pill at the top center that links back to
- *   cooking mode: on the desktop phone frame it grows out of the fake Dynamic Island (like
- *   an iOS Live Activity); on real phones it floats just below the screen header.
+ * - Off the cook page it shows a compact live pill (the Figma 2.3 butter timer pill) that
+ *   links back to cooking mode: at the top center of the desktop phone frame (like an iOS
+ *   Live Activity), above the floating orb on real phones.
  */
 export function GlobalTimer() {
   const timer = useKitchen((s) => s.timer);
@@ -62,19 +63,22 @@ export function GlobalTimer() {
   );
 }
 
-const pillBase = "relative flex h-[28px] items-center gap-2 rounded-pill text-[13px] font-semibold text-white shadow-lift";
+const pillBase = "relative flex h-[28px] items-center rounded-pill text-meta font-semibold leading-[normal] shadow-lift";
 /** Invisible padding so the 28px pill still has a ~44px tap target */
 const hitArea = "after:absolute after:-inset-y-2 after:-inset-x-1 after:content-['']";
 
+/** Figma 2.3 timer pill styling: butter-soft, the stopwatch asset, butter-ink text */
 function RunningPill({ label, remaining, progress, href }: { label: string; remaining: number; progress: number; href: string | null }) {
   const body = (
     <>
-      <ProgressRing progress={progress} size={18} stroke={2.5} barClassName="stroke-accent" />
+      <ProgressRing progress={progress} size={20} stroke={2} trackClassName="stroke-butter/25" barClassName="stroke-butter" className="rounded-full bg-surface">
+        <img src={COOK_ICON.timer} alt="" width={14} height={14} className="relative block size-3.5" />
+      </ProgressRing>
       <span className="tabular-nums">{formatClock(remaining)}</span>
-      <span className="max-w-[96px] truncate font-medium text-white/65">{label}</span>
+      <span className="max-w-[96px] truncate font-medium opacity-80">{label}</span>
     </>
   );
-  const cls = `${pillBase} ${hitArea} bg-ink pl-1.5 pr-3.5`;
+  const cls = `${pillBase} ${hitArea} gap-1.5 bg-butter-soft pl-1 pr-3 text-butter-ink ring-1 ring-butter/30`;
   return href ? (
     <Link href={href} className={cls} aria-label={`${label} timer, ${formatClock(remaining)} left. Open cooking mode`}>
       {body}
@@ -88,7 +92,7 @@ function RunningPill({ label, remaining, progress, href }: { label: string; rema
 
 function DonePill({ label, href }: { label: string; href: string | null }) {
   return (
-    <div className={`${pillBase} bg-accent pl-3 pr-1 shadow-accent`} role="alert">
+    <div className={`${pillBase} gap-2 bg-accent pl-3 pr-1 text-white`} role="alert">
       <motion.span
         animate={{ rotate: [0, -16, 14, -10, 8, 0] }}
         transition={{ duration: 0.9, repeat: Infinity, repeatDelay: 0.8 }}

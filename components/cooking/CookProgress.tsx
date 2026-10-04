@@ -2,8 +2,15 @@ import { formatDuration } from "@/lib/cooking/durations";
 import { cn } from "@/lib/utils";
 
 /**
+ * Sticks the progress right under ScreenHeader (6px top + 40px buttons + 8px bottom), on the
+ * same translucent cream. Its own 8px top + 8px bottom keep the design's 16 / 18px rhythm.
+ */
+export const COOK_PROGRESS_STICKY = "sticky top-[calc(var(--safe-top)+54px)] z-10 bg-cream/90 pb-2 pt-2 backdrop-blur-md";
+
+/**
  * Figma 2.3 progress: "Step 2 of 6" (13 SemiBold) and "~18 min left" (13, ink-soft) over a
  * 6px segmented bar with 4px gaps: done steps green, the current one butter, the rest line.
+ * The page keeps it stuck under the header (see COOK_PROGRESS_STICKY) so it never scrolls away.
  */
 export function CookProgress({
   index,

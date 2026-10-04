@@ -14,8 +14,8 @@ import { TutorialCard } from "./TutorialCard";
 
 type State = "done" | "current" | "upcoming";
 
-/** Room above a step when it is scrolled into view: the sticky header (40px + 6px top + 8px bottom) and a little air */
-export const STEP_SCROLL_MARGIN = "scroll-mt-[calc(var(--safe-top)+70px)]";
+/** Room above a step scrolled into view: the sticky header (54px) and progress (47px), plus a little air */
+export const STEP_SCROLL_MARGIN = "scroll-mt-[calc(var(--safe-top)+112px)]";
 
 /**
  * Figma 2.3 step list: a timeline of 30px badges joined by a 2px line.

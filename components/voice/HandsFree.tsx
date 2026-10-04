@@ -11,6 +11,7 @@ import { usePrefs } from "@/lib/stores/prefs";
 import { useVoice, type HandsFreeRest } from "@/lib/stores/voice";
 import { cn } from "@/lib/utils";
 import { setHandsFreeMode } from "@/lib/voice/engine";
+import { useAssistantName } from "@/lib/voice/persona";
 
 /** Why hands-free stopped listening by itself, phrased as what to do next */
 export const REST_HINTS: Record<HandsFreeRest, string> = {
@@ -30,13 +31,13 @@ export function useHandsFree(): { on: boolean; rest: HandsFreeRest | null } {
 }
 
 /** The visual switch track (decorative: the parent button carries role="switch") */
-export function SwitchTrack({ on, className }: { on: boolean; className?: string }) {
+export function SwitchTrack({ on, dark = false, className }: { on: boolean; dark?: boolean; className?: string }) {
   return (
     <span
       aria-hidden
       className={cn(
         "relative inline-flex h-[22px] w-[38px] shrink-0 items-center rounded-pill p-[2px] transition-colors duration-200",
-        on ? "bg-accent" : "bg-line-strong",
+        on ? (dark ? "bg-live" : "bg-accent") : dark ? "bg-white/25" : "bg-line-strong",
         className,
       )}
     >
@@ -50,29 +51,39 @@ export function SwitchTrack({ on, className }: { on: boolean; className?: string
   );
 }
 
-/** Compact pill switch for the conversation screen: [ear] Hands-free [switch] */
-export function HandsFreeSwitch({ className }: { className?: string }) {
+/**
+ * Compact pill switch: [ear] Hands-free [switch]. `dark` is the call screen's translucent
+ * white-on-green version (same chips as the design's quick actions).
+ */
+export function HandsFreeSwitch({ dark = false, className }: { dark?: boolean; className?: string }) {
   const on = usePrefs((s) => s.handsFree);
+  const name = useAssistantName();
   return (
     <button
       type="button"
       role="switch"
       aria-checked={on}
       aria-label="Hands-free conversation mode"
-      title={on ? "Hands-free on: Sous listens again after it talks" : "Turn on hands-free: no tap needed between turns"}
+      title={on ? `Hands-free on: ${name} listens again after talking` : "Turn on hands-free: no tap needed between turns"}
       onClick={() => setHandsFreeMode(!on)}
       className={cn(
-        // 36px pill; the ::after keeps a 44px tap target
-        "relative inline-flex h-9 items-center gap-2 rounded-pill pl-3 pr-[7px] text-meta font-semibold shadow-card transition active:scale-[0.97]",
-        "after:absolute after:-inset-y-1 after:inset-x-0 after:content-['']",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-cream",
-        on ? "bg-accent-soft text-accent-strong" : "bg-surface/90 text-ink-soft",
+        // 34px pill; the ::after keeps a 44px tap target
+        "relative inline-flex h-[34px] items-center gap-2 rounded-pill pl-3 pr-[6px] text-meta font-medium transition active:scale-[0.97]",
+        "after:absolute after:-inset-y-[5px] after:inset-x-0 after:content-['']",
+        dark
+          ? "bg-white/12 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          : "shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-cream",
+        !dark && (on ? "bg-accent-soft text-accent-strong" : "bg-surface/90 text-ink-soft"),
         className,
       )}
     >
-      <Ear aria-hidden className={cn("size-4", on ? "text-accent" : "text-ink-faint")} strokeWidth={2.2} />
+      <Ear
+        aria-hidden
+        className={cn("size-[14px]", dark ? (on ? "text-live" : "text-white/70") : on ? "text-accent" : "text-ink-faint")}
+        strokeWidth={2.2}
+      />
       Hands-free
-      <SwitchTrack on={on} />
+      <SwitchTrack on={on} dark={dark} />
     </button>
   );
 }
@@ -80,6 +91,7 @@ export function HandsFreeSwitch({ className }: { className?: string }) {
 /** Full-width settings row: title, one-line explanation, switch */
 export function HandsFreeSettingRow({ className }: { className?: string }) {
   const on = usePrefs((s) => s.handsFree);
+  const name = useAssistantName();
   return (
     <button
       type="button"
@@ -98,7 +110,7 @@ export function HandsFreeSettingRow({ className }: { className?: string }) {
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold text-ink">Hands-free conversation</span>
         <span className="block text-xs leading-snug text-ink-soft">
-          Sous listens again after it talks, so you don&apos;t need to tap between turns.
+          {name} listens again after talking, so you don&apos;t need to tap between turns.
         </span>
       </span>
       <SwitchTrack on={on} />

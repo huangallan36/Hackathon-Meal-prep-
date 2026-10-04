@@ -21,7 +21,7 @@ export function CookMenu({ items }: { items: CookMenuItem[] }) {
   // Close on a tap outside or Escape; focus the first item when it opens.
   useEffect(() => {
     if (!open) return;
-    menu.current?.querySelector<HTMLButtonElement>("[role=menuitem]")?.focus();
+    menu.current?.querySelector<HTMLButtonElement>("[role=menuitem]")?.focus({ preventScroll: true });
     function onDown(e: PointerEvent) {
       if (root.current && !root.current.contains(e.target as Node)) setOpen(false);
     }

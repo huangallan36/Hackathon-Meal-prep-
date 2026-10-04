@@ -1,69 +1,64 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { Card, SectionLabel } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { fmt, ratio } from "@/lib/diary/stats";
-import type { Nutrition } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { CountUp } from "./CountUp";
-import { MACROS } from "./MacroBars";
-import { ProgressBar } from "./ProgressBar";
+import { ProgressRing } from "./ProgressRing";
 
-/** Daily diary header card: kcal eaten vs goal plus macro mini bars */
+/** Exercise calories that fill the "Burned" ring (Figma 3.3: 310 kcal draws ~62%) */
+export const BURN_GOAL = 500;
+
+const TRACK = "/figma/screens/2-159/ellipse.svg";
+
+/**
+ * Figma 3.3 day rings: Eaten (green, vs. the calorie goal), Burned (orange, exercise) and
+ * Left (amber: goal − eaten + burned). Past the goal "Left" becomes "Over" in orange.
+ */
 export function DaySummary({
-  totals,
-  goals,
+  eaten,
+  burned,
+  goal,
   className,
   style,
 }: {
-  totals: Nutrition;
-  goals: Nutrition;
+  eaten: number;
+  burned: number;
+  goal: number;
   className?: string;
   style?: CSSProperties;
 }) {
-  const left = Math.round(goals.calories - totals.calories);
+  const e = Number.isFinite(eaten) ? Math.max(0, Math.round(eaten)) : 0;
+  const b = Number.isFinite(burned) ? Math.max(0, Math.round(burned)) : 0;
+  const g = Number.isFinite(goal) && goal > 0 ? goal : 0;
+  const left = Math.round(g - e + b);
   const over = left < 0;
 
   return (
-    <Card className={cn("p-5", className)} style={style}>
-      <div className="flex items-end justify-between gap-3">
-        <div className="min-w-0">
-          <SectionLabel>Eaten</SectionLabel>
-          <p className="mt-1.5 flex items-baseline gap-1.5">
-            <CountUp value={totals.calories} className="font-display text-[34px] font-semibold leading-none text-ink" />
-            <span className="text-sm font-medium tabular-nums text-ink-soft">/ {fmt(goals.calories)} kcal</span>
-          </p>
-        </div>
-        <span
-          className={cn(
-            "mb-0.5 shrink-0 rounded-pill px-3 py-1.5 text-xs font-semibold tabular-nums",
-            over ? "bg-accent-soft text-accent-strong" : "bg-herb-soft text-herb",
-          )}
-        >
-          {over ? `${fmt(-left)} over` : `${fmt(left)} left`}
-        </span>
-      </div>
-
-      <ProgressBar
-        value={ratio(totals.calories, goals.calories)}
-        colorClass={over ? "bg-accent-strong" : "bg-accent"}
-        trackClass="bg-accent-soft"
-        height="h-3"
-        className="mt-4"
+    <Card className={cn("flex items-start justify-between px-3.5 py-4", className)} style={style}>
+      <Ring label="Eaten" value={e} ratio={ratio(e, g)} color="stroke-accent" title={`Eaten: ${fmt(e)} of ${fmt(g)} kcal`} />
+      <Ring label="Burned" value={b} ratio={ratio(b, BURN_GOAL)} color="stroke-flame" delay={0.08} title={`Burned: ${fmt(b)} kcal from exercise`} />
+      <Ring
+        label={over ? "Over" : "Left"}
+        value={Math.abs(left)}
+        ratio={ratio(Math.abs(left), g)}
+        color={over ? "stroke-flame" : "stroke-butter"}
+        delay={0.16}
+        title={over ? `${fmt(-left)} kcal over your goal` : `${fmt(left)} kcal left`}
       />
-
-      <div className="mt-5 grid grid-cols-3 gap-4">
-        {MACROS.map((m, i) => (
-          <div key={m.key} className="min-w-0">
-            <div className="flex items-baseline justify-between gap-1">
-              <span className="truncate text-xs font-semibold text-ink">{m.label}</span>
-              <span className="text-[11px] tabular-nums text-ink-soft">{fmt(totals[m.key])}g</span>
-            </div>
-            <ProgressBar value={ratio(totals[m.key], goals[m.key])} colorClass={m.bar} height="h-1.5" className="mt-1.5" delay={0.2 + i * 0.08} />
-            <p className="mt-1 text-[10px] tabular-nums text-ink-faint">of {fmt(goals[m.key])}g</p>
-          </div>
-        ))}
-      </div>
     </Card>
+  );
+}
+
+function Ring({ label, value, ratio: r, color, delay = 0, title }: { label: string; value: number; ratio: number; color: string; delay?: number; title: string }) {
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <ProgressRing value={r} size={78} stroke={8} cap="butt" colorClass={color} trackSrc={TRACK} delay={delay} label={title}>
+        <CountUp value={value} className="text-base font-semibold leading-[normal] text-ink" />
+        <span className="text-micro leading-[normal] text-ink-soft">kcal</span>
+      </ProgressRing>
+      <span className="text-xs font-medium leading-[normal] text-ink-soft">{label}</span>
+    </div>
   );
 }

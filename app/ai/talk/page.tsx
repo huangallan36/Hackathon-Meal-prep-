@@ -6,7 +6,7 @@ import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react
 import { Orb } from "@/components/orb/Orb";
 import { IconButton } from "@/components/ui/Button";
 import { HANDS_FREE_LIVE_HINT, HandsFreeSwitch, REST_HINTS, useHandsFree } from "@/components/voice/HandsFree";
-import { statusLabel } from "@/components/voice/StatusGlyph";
+import { statusLabel } from "@/components/voice/status";
 import { Transcript } from "@/components/voice/Transcript";
 import { TypeSheet } from "@/components/voice/TypeSheet";
 import { useDock } from "@/lib/stores/dock";
