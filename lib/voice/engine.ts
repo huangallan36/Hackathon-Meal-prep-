@@ -70,8 +70,8 @@ function restingStatus(): "thinking" | "idle" {
 
 /** Beat between Sous's audio ending and the mic reopening (so it never hears its own tail) */
 const AUTO_LISTEN_MS = 350;
-/** Empty listens in a row before the loop rests and asks "Still there?" */
-const MAX_SILENT_ROUNDS = 4;
+/** Empty listens in a row before the loop rests and asks "Still there?": never, once a call starts Sous keeps listening */
+const MAX_SILENT_ROUNDS = Number.POSITIVE_INFINITY;
 
 let autoTimer: ReturnType<typeof setTimeout> | null = null;
 let silentRounds = 0;
@@ -115,7 +115,7 @@ function cancelAutoListen(): void {
 function loopWanted(): boolean {
   const v = voice();
   // A playing recipe video would be heard as the user talking: wait until it's closed.
-  return handsFreeOn() && v.sessionActive && !v.paused && isSttSupported() && useVideo.getState().recipeId == null;
+  return handsFreeOn() && v.sessionActive && !v.paused && isSttSupported() && !useVideo.getState().playing;
 }
 
 /** Nothing else is using the conversation: no audio, no open mic, no turn in flight, no typing. */
@@ -353,7 +353,7 @@ function bargeInWanted(): boolean {
     isSttSupported() &&
     // iOS Safari stops audio when the mic opens; a playing recipe video would be heard as the user.
     !isAppleTouch() &&
-    useVideo.getState().recipeId == null
+    !useVideo.getState().playing
   );
 }
 
@@ -440,6 +440,8 @@ function stopBargeIn(): void {
 /** Begin a conversation (Start button / first orb tap). Does not greet: Sous waits for the user. */
 export function startSession(): void {
   voice().startSession();
+  // Once a call starts, Sous keeps listening (the toggle can still turn it off).
+  if (!handsFreeOn()) usePrefs.getState().setHandsFree(true);
 }
 
 /** Hang up: stop mic + audio, clear transcript. Nothing listens again after this. */
@@ -506,7 +508,7 @@ async function listenTurn(mode: ListenMode): Promise<void> {
     const v = voice();
     if (v.status === "thinking" || v.status === "listening") return;
     if (mode === "tap") {
-      if (!v.sessionActive) v.startSession();
+      if (!v.sessionActive) startSession();
       if (v.paused) v.setPaused(false);
       // Talking again drops anything held from a pause: the user has moved on.
       heldLine = null;
@@ -603,7 +605,7 @@ export async function handleUserText(text: string): Promise<void> {
       toast(`One sec, ${currentPersona().name} is still thinking.`);
       return;
     }
-    if (!v.sessionActive) v.startSession();
+    if (!v.sessionActive) startSession();
     if (v.paused) v.setPaused(false);
     cancelAutoListen();
     if (v.status === "listening") {
@@ -804,8 +806,8 @@ async function runTurn(text: string, id: number): Promise<void> {
 // hands-free mic, closing it lets hands-free listen again.
 if (typeof window !== "undefined") {
   useVideo.subscribe((s, prev) => {
-    if (s.recipeId === prev.recipeId) return;
-    if (s.recipeId == null) {
+    if (s.playing === prev.playing) return;
+    if (!s.playing) {
       scheduleAutoListen();
       return;
     }

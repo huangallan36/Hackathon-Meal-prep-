@@ -157,7 +157,7 @@ function showVideo(hide: unknown): string | null {
   showCookScreen(r.id);
   if (k.finishedRecipeId === r.id) useKitchen.setState({ finishedRecipeId: null });
   if (k.stepIndex < 0) k.goToStep(0);
-  useVideo.getState().show(r.id);
+  useVideo.getState().show(r.id, useKitchen.getState().stepIndex);
   return null;
 }
 

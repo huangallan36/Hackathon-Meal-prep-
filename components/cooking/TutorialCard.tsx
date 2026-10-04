@@ -60,7 +60,10 @@ export function TutorialCard({
   const id = useId();
   const videoId = recipe.youtubeId && VALID_ID.test(recipe.youtubeId) ? recipe.youtubeId : null;
   const open = useVideo((s) => s.recipeId === recipe.id) && videoId != null;
-  const toggle = useVideo((s) => s.toggle);
+  // Opened on this step: play. Opened earlier and the user moved on: the old video stops (the
+  // previous card unmounts) and this step's player loads cued at its own time, paused.
+  const openedHere = useVideo((s) => s.step) === (stepIndex ?? null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   // Opened by voice: start once Sous has finished saying so, so the two don't talk over each
   // other. Once started, the player stays (Sous talking later never restarts the video).
   const sousSpeaking = useVoice((s) => s.status === "speaking");
@@ -72,10 +75,43 @@ export function TutorialCard({
   const start = videoId ? videoStartFor(recipe.id, stepIndex) : null;
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !openedHere) return;
     const t = setTimeout(() => playerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
     return () => clearTimeout(t);
-  }, [open]);
+  }, [open, openedHere]);
+
+  // Follow the player's own state (YouTube iframe API messages): hands-free listens again as
+  // soon as the video is paused or ends. Leaving this step stops it (the iframe unmounts).
+  useEffect(() => {
+    if (!open || !started) return;
+    const frame = iframeRef.current;
+    const onMessage = (e: MessageEvent) => {
+      if (!frame || e.source !== frame.contentWindow || typeof e.data !== "string") return;
+      try {
+        const msg = JSON.parse(e.data) as { event?: string; info?: unknown };
+        const state =
+          msg.event === "onStateChange" ? msg.info : msg.event === "infoDelivery" ? (msg.info as { playerState?: unknown })?.playerState : undefined;
+        if (typeof state === "number") useVideo.getState().setPlaying(state === 1 || state === 3);
+      } catch {
+        /* not a player message */
+      }
+    };
+    const listen = () => frame?.contentWindow?.postMessage(JSON.stringify({ event: "listening", id: 1, channel: "widget" }), "*");
+    window.addEventListener("message", onMessage);
+    frame?.addEventListener("load", listen);
+    listen();
+    return () => {
+      window.removeEventListener("message", onMessage);
+      frame?.removeEventListener("load", listen);
+      useVideo.getState().setPlaying(false);
+    };
+  }, [open, started, start]);
+
+  const onCard = () => {
+    const v = useVideo.getState();
+    if (open && openedHere) v.hide();
+    else v.show(recipe.id, stepIndex ?? null);
+  };
 
   const body = (
     <>
@@ -90,7 +126,9 @@ export function TutorialCard({
         <span className="truncate text-xs text-ink-soft">
           {videoId
             ? open
-              ? "Playing below · tap to hide"
+              ? openedHere
+                ? "Playing below · tap to hide"
+                : `Cued to this step${start ? ` (${clock(start)})` : ""} · press play`
               : start != null
                 ? `Plays from this step (${clock(start)})`
                 : tutorial
@@ -121,10 +159,11 @@ export function TutorialCard({
     );
   }
 
-  const src = `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1&autoplay=1${start ? `&start=${start}` : ""}`;
+  const origin = typeof window === "undefined" ? "" : `&origin=${encodeURIComponent(window.location.origin)}`;
+  const src = `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1&enablejsapi=1${origin}&autoplay=${openedHere ? 1 : 0}${start ? `&start=${start}` : ""}`;
   return (
     <div className={cn("flex w-full flex-col gap-2", className)}>
-      <button type="button" aria-expanded={open} aria-controls={`${id}-video`} onClick={() => toggle(recipe.id)} className={cardClass}>
+      <button type="button" aria-expanded={open} aria-controls={`${id}-video`} onClick={onCard} className={cardClass}>
         {body}
       </button>
       <AnimatePresence initial={false}>
@@ -144,6 +183,8 @@ export function TutorialCard({
                 <p className="flex size-full items-center justify-center text-sm text-white/80">Starting the video…</p>
               ) : (
                 <iframe
+                  ref={iframeRef}
+                  key={src}
                   src={src}
                   title={`${recipe.title}: video tutorial`}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
