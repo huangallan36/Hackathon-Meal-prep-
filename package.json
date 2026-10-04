@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "node scripts/seed-recipes.mjs",
-    "avatars": "node scripts/gen-avatars.mjs"
+    "avatars": "node scripts/gen-avatars.mjs",
+    "voices": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/gen-voice-samples.mjs"
   },
   "dependencies": {
     "@google/genai": "2.27.0",

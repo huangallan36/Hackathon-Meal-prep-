@@ -70,7 +70,7 @@ If the wifi is bad, keep going: every step has an offline fallback (see below).
 
 | What | Where |
 | --- | --- |
-| **Three personas** from the design (Maya warm, Leo calm, Nova upbeat), each an ElevenLabs premade voice; the assistant is labelled with the persona's name everywhere. | `lib/voice/persona.ts` |
+| **Three personas** from the design (Maya warm, Leo calm, Nova upbeat), each an ElevenLabs premade voice; the assistant is labelled with the persona's name everywhere. Picking one plays an in-character greeting recorded with `eleven_v4` (`npm run voices`), so it's instant and works offline. | `lib/voice/personas.ts`, `public/voices` |
 | **Streaming TTS proxy** with `eleven_flash_v2_5`, with first-byte and total timeouts so it can never hang. The key stays on the server. | `app/api/tts`, `lib/server/elevenlabs.ts` |
 | **Hands-free conversation mode**: after Sous speaks, the mic reopens on its own (never while audio plays, so Sous doesn't hear itself) and stops after a few silent rounds. | `lib/voice/engine.ts` |
 | **Browser-voice fallback**: if ElevenLabs fails or is rate limited, Sous keeps talking with `speechSynthesis`. | `lib/voice/audio.ts` |
@@ -188,6 +188,7 @@ Requires **Node.js 20.9+**.
 npm install
 cp .env.example .env.local   # then add your keys
 npm run seed                 # recommended: real recipes (needs a Spoonacular key)
+npm run voices               # optional: re-record the persona greetings (already committed)
 npm run dev                  # http://localhost:3000
 ```
 

@@ -3,14 +3,11 @@
 /**
  * Figma 1.1 "Pick your sous-chef": Maya / Leo / Nova tiles (46px voice orb, name, vibe).
  * Selected = green tint + 1.5px green border. Tapping a tile selects that persona (its
- * ElevenLabs voice and name) and plays a short sample: the voice's ElevenLabs preview clip
- * when /api/voices lists one, else a one-line hello through /api/tts. Selection never waits
- * on the sample.
+ * ElevenLabs voice and name) and plays its in-character greeting: the pre-recorded clip in
+ * /public/voices (scripts/gen-voice-samples.mjs), else the same line live through /api/tts.
+ * Selection never waits on the sample.
  */
 import { useEffect, useState } from "react";
-import { fetchJSON } from "@/lib/http";
-import { usePrefs } from "@/lib/stores/prefs";
-import type { VoiceOption, VoicesResponse } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { playTts, stopPlayback } from "@/lib/voice/audio";
 import { cancelListening, stopSpeaking, unlockAudio } from "@/lib/voice/engine";
@@ -19,19 +16,6 @@ import { PERSONAS, selectPersona, usePersona, type Persona } from "@/lib/voice/p
 /* ------------------------------------------------------------------ */
 /* Samples                                                             */
 /* ------------------------------------------------------------------ */
-
-/** The voice list (for preview clips), fetched once per page load */
-let voicesPromise: Promise<VoiceOption[]> | null = null;
-
-function loadVoices(): Promise<VoiceOption[]> {
-  voicesPromise ??= fetchJSON<VoicesResponse>("/api/voices", { timeoutMs: 8000 })
-    .then((res) => (Array.isArray(res?.voices) ? res.voices.filter((v) => v && typeof v.id === "string") : []))
-    .catch(() => {
-      voicesPromise = null;
-      return [];
-    });
-  return voicesPromise;
-}
 
 let sampleEl: HTMLAudioElement | null = null;
 let sampleSeq = 0;
@@ -53,7 +37,7 @@ export function stopPersonaSample(): void {
 }
 
 /** Play `persona`'s sample; `done` runs when it ends or is replaced. Call inside the tap. */
-function playPersonaSample(persona: Persona, userName: string, done: () => void): void {
+function playPersonaSample(persona: Persona, done: () => void): void {
   stopPersonaSample();
   // Half-duplex holds for samples too: close the mic and quiet Sous first.
   cancelListening();
@@ -62,37 +46,29 @@ function playPersonaSample(persona: Persona, userName: string, done: () => void)
   const finish = () => {
     if (id === sampleSeq) done();
   };
-  const hello = () => {
+  // Fallback: say the same greeting live with the persona's ElevenLabs voice.
+  const live = () => {
     if (id !== sampleSeq) return;
     sampleViaTts = true;
-    const who = userName ? `Hi ${userName}, I'm ${persona.name}.` : `Hi, I'm ${persona.name}.`;
-    void playTts(`${who} Let's figure out dinner together.`, persona.voiceId).finally(() => {
+    void playTts(persona.greeting, persona.voiceId).finally(() => {
       if (id === sampleSeq) sampleViaTts = false;
       finish();
     });
   };
 
-  void loadVoices().then((voices) => {
-    if (id !== sampleSeq) return;
-    const url = voices.find((v) => v.id === persona.voiceId)?.previewUrl;
-    if (!url) {
-      hello();
-      return;
-    }
-    const audio = new Audio(url);
-    sampleEl = audio;
-    const fail = () => {
-      if (sampleEl !== audio) return;
-      sampleEl = null;
-      hello();
-    };
-    audio.onended = () => {
-      if (sampleEl === audio) sampleEl = null;
-      finish();
-    };
-    audio.onerror = fail;
-    audio.play().catch(fail);
-  });
+  const audio = new Audio(persona.sample);
+  sampleEl = audio;
+  const fail = () => {
+    if (sampleEl !== audio) return;
+    sampleEl = null;
+    live();
+  };
+  audio.onended = () => {
+    if (sampleEl === audio) sampleEl = null;
+    finish();
+  };
+  audio.onerror = fail;
+  audio.play().catch(fail);
 }
 
 /* ------------------------------------------------------------------ */
@@ -101,20 +77,16 @@ function playPersonaSample(persona: Persona, userName: string, done: () => void)
 
 export function PersonaPicker({ className }: { className?: string }) {
   const selected = usePersona();
-  const userName = usePrefs((s) => s.userName);
   const [sampling, setSampling] = useState<Persona["id"] | null>(null);
 
-  // Warm the voice list so a tap plays its clip right away; stop any sample on leave.
-  useEffect(() => {
-    void loadVoices();
-    return () => stopPersonaSample();
-  }, []);
+  // Stop any greeting that's still playing when the picker goes away.
+  useEffect(() => () => stopPersonaSample(), []);
 
   function pick(persona: Persona) {
     unlockAudio();
     selectPersona(persona);
     setSampling(persona.id);
-    playPersonaSample(persona, userName, () => setSampling((s) => (s === persona.id ? null : s)));
+    playPersonaSample(persona, () => setSampling((s) => (s === persona.id ? null : s)));
   }
 
   return (

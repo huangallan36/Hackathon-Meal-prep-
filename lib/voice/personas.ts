@@ -18,6 +18,10 @@ export interface Persona {
   /** The orb's radial gradient, center -> edge (from the Figma voice-orb assets) */
   orbFrom: string;
   orbTo: string;
+  /** In-character intro played when the persona is picked */
+  greeting: string;
+  /** Pre-recorded greeting (scripts/gen-voice-samples.mjs); live TTS of `greeting` is the fallback */
+  sample: string;
 }
 
 export const PERSONAS: readonly Persona[] = [
@@ -29,6 +33,8 @@ export const PERSONAS: readonly Persona[] = [
     orb: "/figma/voices/orb-maya.svg",
     orbFrom: "#f7cf7a",
     orbTo: "#e0603a",
+    greeting: "Hey, I'm Maya. Long day? Pull up a stool and tell me what's in your fridge. We'll make something cozy together.",
+    sample: "/voices/maya.mp3",
   },
   {
     id: "leo",
@@ -38,6 +44,8 @@ export const PERSONAS: readonly Persona[] = [
     orb: "/figma/voices/orb-leo.svg",
     orbFrom: "#9bc7ae",
     orbTo: "#2f5d46",
+    greeting: "Hi, I'm Leo. No rush tonight. Tell me what you've got, and I'll walk you through dinner, one easy step at a time.",
+    sample: "/voices/leo.mp3",
   },
   {
     id: "nova",
@@ -47,6 +55,8 @@ export const PERSONAS: readonly Persona[] = [
     orb: "/figma/voices/orb-nova.svg",
     orbFrom: "#a9c4ea",
     orbTo: "#4f7fb8",
+    greeting: "Hey hey, I'm Nova! Let's turn whatever's in your fridge into something delicious. Ready when you are!",
+    sample: "/voices/nova.mp3",
   },
 ];
 
