@@ -1,32 +1,44 @@
 "use client";
 
-import { Plus } from "lucide-react";
 import Link from "next/link";
+import type { ComponentProps } from "react";
 import { Avatar } from "@/components/ui/Avatar";
 import { DEMO_USER } from "@/lib/config";
 import { userByHandle, useSocial } from "@/lib/stores/social";
+import { cn } from "@/lib/utils";
+import { FigmaIcon } from "./FigmaIcon";
 
-/** Feed header actions: new post (+) and the demo user's profile */
+/**
+ * Feed header buttons: new post (+) and your profile, as Figma 40px white header circles.
+ * Wrapped in a non-shrinking row so both fit ScreenHeader's right slot.
+ */
 export function HeaderActions() {
   const me = useSocial((s) => userByHandle(s.users, DEMO_USER.handle));
   return (
-    <>
-      <Link
-        href="/social/new"
-        aria-label="New post"
-        title="New post"
-        className="inline-flex size-11 items-center justify-center rounded-full bg-accent text-white shadow-accent transition hover:bg-accent-strong active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
-      >
-        <Plus className="size-5" strokeWidth={2.6} />
-      </Link>
-      <Link
-        href={`/social/u/${DEMO_USER.handle}`}
-        aria-label="Your profile"
-        title="Your profile"
-        className="rounded-full transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-      >
-        <Avatar src={me?.avatar ?? DEMO_USER.avatar} name={me?.name ?? DEMO_USER.name} size={44} className="ring-2 ring-surface shadow-soft" />
-      </Link>
-    </>
+    <div className="flex shrink-0 items-center gap-2">
+      <HeaderLink href="/social/new" label="New post">
+        <FigmaIcon name="plus16" />
+      </HeaderLink>
+      <HeaderLink href={`/social/u/${DEMO_USER.handle}`} label="Your profile">
+        <Avatar src={me?.avatar ?? DEMO_USER.avatar} name={me?.name ?? DEMO_USER.name} size={40} />
+      </HeaderLink>
+    </div>
+  );
+}
+
+/** A link styled like IconButton (40px white circle, 48px tap target) */
+function HeaderLink({ label, className, children, ...rest }: { label: string } & ComponentProps<typeof Link>) {
+  return (
+    <Link
+      aria-label={label}
+      title={label}
+      className={cn(
+        "relative inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-surface text-ink transition after:absolute after:-inset-1 after:content-[''] hover:bg-cream-deep active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+        className,
+      )}
+      {...rest}
+    >
+      {children}
+    </Link>
   );
 }

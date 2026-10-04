@@ -1,15 +1,20 @@
 "use client";
 
-import { Check, Flame, MapPin, PenLine, UserPlus } from "lucide-react";
+import { Check, PenLine, UserPlus } from "lucide-react";
 import { motion } from "motion/react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { Chip } from "@/components/ui/Chip";
 import type { ProfileStats } from "@/lib/social/feed";
 import { toast } from "@/lib/stores/toast";
 import type { SocialUser } from "@/lib/types";
 import { formatCount } from "@/lib/utils";
+import { FigmaIcon } from "./FigmaIcon";
 
-/** Avatar, name, handle, location, bio, streak and the Follow / Edit button */
+/**
+ * Profile header like Figma 3.1: avatar circle + name (Fraunces 22) + a 12px ink-soft
+ * line (handle · location), then the bio, the cooking streak badge and Follow / Edit.
+ */
 export function ProfileHero({
   user,
   following,
@@ -20,36 +25,32 @@ export function ProfileHero({
   onToggleFollow: () => void;
 }) {
   return (
-    <section className="flex flex-col items-center px-5 text-center animate-fade-up">
-      <div className="relative">
-        <span
-          aria-hidden
-          className="absolute -inset-4 rounded-full bg-[radial-gradient(circle,var(--color-accent-soft)_0%,transparent_70%)]"
-        />
-        <Avatar src={user.avatar} name={user.name} size={104} className="relative ring-4 ring-surface shadow-card" />
+    <section className="px-5 pt-2 animate-fade-up">
+      <div className="flex items-center gap-3">
+        <Avatar src={user.avatar} name={user.name} size={56} className="shadow-card" />
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate font-display text-heading font-semibold leading-tight text-ink">{user.name}</h1>
+          <p className="mt-px truncate text-xs text-ink-soft">
+            @{user.handle}
+            {user.location && ` · ${user.location}`}
+          </p>
+        </div>
       </div>
 
-      <h1 className="mt-4 font-display text-[28px] font-semibold leading-tight text-ink">{user.name}</h1>
-      <p className="mt-0.5 text-sm font-medium text-ink-soft">@{user.handle}</p>
-      {user.location && (
-        <p className="mt-1 inline-flex items-center gap-1 text-sm text-ink-faint">
-          <MapPin className="size-3.5" />
-          {user.location}
-        </p>
-      )}
-      <p className="mt-3 max-w-[310px] text-[15px] leading-relaxed text-ink">{user.bio}</p>
+      <p className="mt-3.5 text-body leading-relaxed text-ink">{user.bio}</p>
 
-      <span className="mt-3 inline-flex items-center gap-1.5 rounded-pill bg-accent-soft px-3.5 py-1.5 text-sm font-semibold text-accent-strong animate-pop">
-        <Flame className="size-4 text-accent" fill="currentColor" />
-        {user.streak}-day streak
-      </span>
+      <div className="mt-3 flex">
+        <Chip tone="flame" icon={<FigmaIcon name="flame16" />}>
+          {user.streak}-day cooking streak
+        </Chip>
+      </div>
 
-      <div className="mt-5 w-full max-w-[280px]">
+      <div className="mt-4">
         {user.isMe ? (
           <Button
             variant="secondary"
             full
-            icon={<PenLine className="size-4" />}
+            icon={<PenLine className="size-4" strokeWidth={1.9} />}
             onClick={() => toast("Profile editing is coming soon")}
           >
             Edit profile
@@ -59,7 +60,7 @@ export function ProfileHero({
             variant={following ? "secondary" : "primary"}
             full
             aria-pressed={following}
-            icon={following ? <Check className="size-4" /> : <UserPlus className="size-4" />}
+            icon={following ? <Check className="size-4" strokeWidth={2.2} /> : <UserPlus className="size-4" strokeWidth={1.9} />}
             onClick={onToggleFollow}
           >
             {following ? "Following" : "Follow"}
@@ -70,7 +71,7 @@ export function ProfileHero({
   );
 }
 
-/** Posts / followers / following / total yums */
+/** Posts / followers / following / total yums in one Figma card (white, 1px line, dividers) */
 export function ProfileStatsRow({ stats }: { stats: ProfileStats }) {
   const items = [
     { label: "Posts", value: stats.posts },
@@ -79,16 +80,16 @@ export function ProfileStatsRow({ stats }: { stats: ProfileStats }) {
     { label: "Yums", value: stats.upvotes },
   ];
   return (
-    <dl className="mx-5 mt-6 grid grid-cols-4 rounded-card bg-surface py-3.5 shadow-card animate-fade-up">
+    <dl className="mx-5 mt-4 grid grid-cols-4 rounded-card bg-surface py-3.5 shadow-card animate-fade-up">
       {items.map((item, i) => (
-        <div key={item.label} className={i ? "flex flex-col items-center border-l border-line" : "flex flex-col items-center"}>
-          <dt className="order-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{item.label}</dt>
+        <div key={item.label} className={i ? "flex flex-col items-center gap-0.5 border-l border-line" : "flex flex-col items-center gap-0.5"}>
+          <dt className="order-2 text-xs text-ink-soft">{item.label}</dt>
           <dd className="order-1">
             <motion.span
               key={item.value}
               initial={{ y: -6, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              className="block font-display text-xl font-semibold tabular-nums text-ink"
+              className="block text-lead font-semibold tabular-nums text-ink"
             >
               {formatCount(item.value)}
             </motion.span>

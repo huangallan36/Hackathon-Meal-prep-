@@ -20,7 +20,7 @@ export const SEED_USERS: SocialUser[] = [
 
 export const ME: SocialUser = {
   handle: DEMO_USER.handle,
-  name: DEMO_USER.name,
+  name: DEMO_USER.fullName,
   avatar: DEMO_USER.avatar,
   bio: DEMO_USER.bio,
   location: DEMO_USER.location,

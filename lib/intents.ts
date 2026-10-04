@@ -1,9 +1,11 @@
 /**
- * Keyword intent router + speech helpers. Pure TS (type imports only), used in two places:
+ * Keyword intent router + speech helpers. Pure TS (no browser or server APIs; the only
+ * runtime import is the pure food table), used in two places:
  *  - server: /api/chat falls back to it when Gemini fails, and uses stepReply/speakable
  *  - client: instant "next / back / repeat" in cooking mode, and offline fallback
  */
-import type { ChatContext, ChatResponse, SousAction, SousActionName } from "@/lib/types";
+import { mentionsFood } from "@/lib/diary/food-table";
+import type { ChatContext, ChatResponse, MealType, SousAction, SousActionName } from "@/lib/types";
 
 export type StepActionName = Extract<SousActionName, "next_step" | "previous_step" | "repeat_step">;
 
@@ -352,6 +354,79 @@ function pickByTitle(message: string, recipes: ChatContext["recipes"]): number |
 }
 
 /* ------------------------------------------------------------------ */
+/* Food logging ("I had two eggs and toast")                           */
+/* ------------------------------------------------------------------ */
+
+const MEAL_NAMES: Record<string, MealType> = {
+  breakfast: "breakfast",
+  brunch: "lunch",
+  lunch: "lunch",
+  dinner: "dinner",
+  supper: "dinner",
+  snack: "snack",
+};
+const MEAL_WORDS = "breakfast|brunch|lunch|dinner|supper|snack";
+
+/** "log my lunch: chicken wrap and a latte", "add to my breakfast two eggs" */
+const LOG_MEAL_FOOD = new RegExp(
+  `^(?:(?:hey |ok |okay )?sous )?(?:(?:can|could|would) you |please |hey |ok |okay )*(?:log|track|add|record|save)(?: to)?(?: my| the| todays)? (${MEAL_WORDS})(?: (?:was|is|of|as|which was|today))?(?: i (?:had|ate|drank))? (.+)$`,
+);
+/** "I had two eggs and toast", "just ate a banana", "I've had a latte" */
+const ATE_FOOD = /\b(?:i (?:just |also |already )?(?:had|ate|drank|grabbed)|ive (?:just |also )?(?:had|eaten|drunk)|just (?:had|ate|drank))\s+(.+)$/;
+/** "log a banana", "track two eggs and toast for breakfast" */
+const LOG_FOOD = /^(?:(?:hey |ok |okay )?sous )?(?:(?:can|could|would) you |please )*(?:log|track|add|record)\s+(.+)$/;
+/** What "log ___" means when it's not a food: the meal photo flow (log_meal) handles these */
+const NOT_A_FOOD = new RegExp(`^(?:it|this|that|this one|that one|my meal|the meal|meal|my food|food|everything|all of it|(?:my |todays )?(?:${MEAL_WORDS}))$`);
+const FOR_MEAL = new RegExp(`\\b(?:for|as) (?:my |a )?(${MEAL_WORDS})\\b`);
+
+/**
+ * Food the user says they ate or drank, as `description` (+ `meal` when they name it), or
+ * null. `text` must be normalized (normalizeUtterance). Needs a known food word or a named
+ * meal, so "I had a long day" or "I had to add more salt" are not logged. Questions after
+ * "I had ..." ("I had chicken in the oven, is it done?") are left to the other intents.
+ */
+export function foodLogIntent(text: string): { description: string; meal?: MealType } | null {
+  if (!text) return null;
+  let meal: MealType | undefined;
+  let rest: string | null = null;
+  let named = false;
+
+  const logMeal = LOG_MEAL_FOOD.exec(text);
+  if (logMeal) {
+    meal = MEAL_NAMES[logMeal[1]];
+    rest = logMeal[2];
+    named = true;
+  }
+  if (rest == null) {
+    const log = LOG_FOOD.exec(text);
+    if (log && !NOT_A_FOOD.test(log[1].trim())) rest = log[1];
+  }
+  if (rest == null) {
+    const ate = ATE_FOOD.exec(text);
+    if (ate && !RE.question.test(text)) rest = ate[1];
+  }
+  if (rest == null) return null;
+
+  const forMeal = FOR_MEAL.exec(text);
+  if (forMeal) {
+    meal ??= MEAL_NAMES[forMeal[1]];
+    named = true;
+  }
+  const description = rest
+    .replace(new RegExp(`\\b(?:for|as) (?:my |a )?(?:${MEAL_WORDS})\\b`, "g"), " ")
+    .replace(/\b(?:to|in|into) (?:my |the )?(?:food )?(?:diary|log)\b/g, " ")
+    .replace(/\b(?:today|this morning|this afternoon|this evening|tonight|earlier|just now|please|thanks|thank you)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^(?:and|with|i had|i ate|had|ate|some)\s+/, "")
+    .slice(0, 200)
+    .trim();
+  if (description.length < 2 || NOT_A_FOOD.test(description)) return null;
+  if (!named && !mentionsFood(description)) return null;
+  return meal ? { description, meal } : { description };
+}
+
+/* ------------------------------------------------------------------ */
 /* Fallback router                                                     */
 /* ------------------------------------------------------------------ */
 
@@ -403,6 +478,11 @@ export function fallbackReply(message: string, context: ChatContext): ChatRespon
 
   if (RE.thanksOnly.test(text)) return reply("Anytime. Enjoy every bite, you earned it.");
   if (RE.bye.test(text)) return reply("Talk soon. Enjoy your food!");
+
+  const food = foodLogIntent(text);
+  if (food) {
+    return reply("Got it, logging that now.", [{ name: "log_food", args: food }]);
+  }
 
   if (RE.log.test(text)) {
     return reply("Love that. Snap a quick photo of your plate and I'll log it to your diary.", [{ name: "log_meal" }]);

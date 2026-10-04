@@ -1,18 +1,24 @@
 "use client";
 
-import { SlidersHorizontal } from "lucide-react";
-import { useMemo } from "react";
-import { Button } from "@/components/ui/Button";
+import { Refrigerator, SlidersHorizontal } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/Misc";
 import { filtersTitle } from "@/lib/planner/format";
 import { usePopularityMap } from "@/lib/planner/hooks";
-import { applyFilters, type SearchFilters } from "@/lib/planner/search";
+import { applyFilters, fridgeCount, type SearchFilters } from "@/lib/planner/search";
 import { getCatalog } from "@/lib/recipes/catalog";
+import { useKitchen } from "@/lib/stores/kitchen";
 import type { Recipe } from "@/lib/types";
 import { PlannerSection } from "./PlannerSection";
-import { RecipeTile, TileGrid } from "./RecipeTile";
+import { RecipeRow } from "./RecipeRow";
 
-/** Filters on, no query: every catalog recipe that fits, most popular first */
+const COLLAPSED = 6;
+
+/**
+ * A chip filter on, no query: every catalog recipe that fits, as Figma "Similar" rows.
+ * Leftovers first by how much of the fridge they use, otherwise most popular first.
+ */
 export function FilteredView({
   filters,
   onOpen,
@@ -23,18 +29,39 @@ export function FilteredView({
   onClear: () => void;
 }) {
   const popularity = usePopularityMap();
+  const fridge = useKitchen((s) => s.ingredients);
+  const [open, setOpen] = useState(false);
   const recipes = useMemo(
     () =>
-      applyFilters(getCatalog(), filters).sort(
-        (a, b) => (popularity.get(b.id) ?? 0) - (popularity.get(a.id) ?? 0) || a.readyInMinutes - b.readyInMinutes,
+      applyFilters(getCatalog(), filters, fridge).sort(
+        (a, b) =>
+          (filters.leftovers ? fridgeCount(b, fridge) - fridgeCount(a, fridge) : 0) ||
+          (popularity.get(b.id) ?? 0) - (popularity.get(a.id) ?? 0) ||
+          a.readyInMinutes - b.readyInMinutes,
       ),
-    [filters, popularity],
+    [filters, fridge, popularity],
   );
+
+  if (filters.leftovers && !fridge.length) {
+    return (
+      <EmptyState
+        className="animate-fade-up"
+        icon={<Refrigerator className="size-6" />}
+        title="What's in your fridge?"
+        body="Snap your fridge and Sous finds recipes that use it up."
+        action={
+          <ButtonLink href="/ai/fridge" variant="soft" size="sm" className="h-11">
+            Snap my fridge
+          </ButtonLink>
+        }
+      />
+    );
+  }
 
   if (!recipes.length) {
     return (
       <EmptyState
-        className="mt-6 animate-fade-up"
+        className="animate-fade-up"
         icon={<SlidersHorizontal className="size-6" />}
         title="Nothing fits those filters yet"
         body="Loosen a filter, or search for something specific."
@@ -47,14 +74,24 @@ export function FilteredView({
     );
   }
 
+  const shown = open ? recipes : recipes.slice(0, COLLAPSED);
   return (
     <PlannerSection
       id="filtered"
       title={filtersTitle(filters)}
-      subtitle={`${recipes.length} ${recipes.length === 1 ? "recipe" : "recipes"}, most popular first`}
-      className="mt-8"
+      gap="mt-2.5"
+      expanded={open}
+      onToggle={recipes.length > COLLAPSED ? () => setOpen((o) => !o) : undefined}
     >
-      <TileGrid items={recipes} render={(r, i, wide) => <RecipeTile key={r.id} recipe={r} index={i} wide={wide} onOpen={onOpen} />} />
+      <p className="-mt-1 mb-2.5 text-xs text-ink-soft">
+        {recipes.length} {recipes.length === 1 ? "recipe" : "recipes"}
+        {filters.leftovers ? ", most of your fridge first" : ", most popular first"}
+      </p>
+      <div className="flex flex-col gap-2.5">
+        {shown.map((r, i) => (
+          <RecipeRow key={r.id} recipe={r} index={i} onOpen={onOpen} />
+        ))}
+      </div>
     </PlannerSection>
   );
 }

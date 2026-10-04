@@ -10,7 +10,7 @@ import { PhotoPicker } from "@/components/ui/PhotoPicker";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { say } from "@/lib/cooking/actions";
 import { draftNutrition, patchDraft, toDraft, type EstimateDraft } from "@/lib/cooking/draft";
-import { fallbackEstimate, sanitizeEstimate } from "@/lib/cooking/meal";
+import { fallbackEstimate, microsForCalories, sanitizeEstimate } from "@/lib/cooking/meal";
 import { TIMEOUTS } from "@/lib/config";
 import { postJSON } from "@/lib/http";
 import { thumbnailFromDataUrl, toImageInput } from "@/lib/image";
@@ -19,7 +19,7 @@ import { useDiary } from "@/lib/stores/diary";
 import { useKitchen } from "@/lib/stores/kitchen";
 import { useSocial } from "@/lib/stores/social";
 import { toast } from "@/lib/stores/toast";
-import type { MealEstimate, MealEstimateRequest, MealEstimateResponse, MealType, Nutrition, Recipe } from "@/lib/types";
+import type { MealEstimate, MealEstimateRequest, MealEstimateResponse, MealType, Micros, Nutrition, Recipe } from "@/lib/types";
 import { mealForNow, todayISO } from "@/lib/utils";
 
 /** Real plated-meal photo on an allow-listed host, for "Use sample photo" without a recipe */
@@ -73,7 +73,13 @@ export default function SnapPage() {
   const [phase, setPhase] = useState<Phase>("pick");
   const [photo, setPhoto] = useState<string | null>(null);
   const [draft, setDraft] = useState<EstimateDraft | null>(null);
-  const [result, setResult] = useState<{ source: MealEstimateResponse["source"]; confidence: MealEstimate["confidence"] } | null>(null);
+  const [result, setResult] = useState<{
+    source: MealEstimateResponse["source"];
+    confidence: MealEstimate["confidence"];
+    /** The estimate as it came back: micros scale with any calorie edit (edited / estimated) */
+    calories: number;
+    micros?: Partial<Micros>;
+  } | null>(null);
   const [meal, setMeal] = useState<MealType>(() => mealForNow());
   const [logging, setLogging] = useState(false);
   const [logged, setLogged] = useState<Logged | null>(null);
@@ -114,7 +120,7 @@ export default function SnapPage() {
     if (req !== requestId.current) return; // retaken or left meanwhile
 
     setDraft(toDraft(estimateResult));
-    setResult({ source, confidence: estimateResult.confidence });
+    setResult({ source, confidence: estimateResult.confidence, calories: estimateResult.calories, micros: estimateResult.micros });
     setPhase("review");
     say(
       source === "gemini"
@@ -136,6 +142,7 @@ export default function SnapPage() {
     setLogging(true);
     try {
       const nutrition = draftNutrition(draft);
+      const micros = result ? microsForCalories(result.micros, result.calories, nutrition.calories) : undefined;
       const name = draft.dishName.trim() || recipe?.title || "Home-cooked meal";
       const portion = draft.portion.trim() || "1 serving";
 
@@ -155,6 +162,7 @@ export default function SnapPage() {
         name,
         portion,
         nutrition,
+        micros,
         image,
         recipeId: recipe?.id,
         source: "ai",
@@ -228,6 +236,7 @@ export default function SnapPage() {
               source={result.source}
               confidence={result.confidence}
               fallbackText={fallbackText}
+              micros={microsForCalories(result.micros, result.calories, draftNutrition(draft).calories)}
               onLog={() => void log()}
               logging={logging}
             />

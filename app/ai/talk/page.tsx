@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Orb } from "@/components/orb/Orb";
 import { IconButton } from "@/components/ui/Button";
+import { HANDS_FREE_LIVE_HINT, HandsFreeSwitch, REST_HINTS, useHandsFree } from "@/components/voice/HandsFree";
 import { statusLabel } from "@/components/voice/StatusGlyph";
 import { Transcript } from "@/components/voice/Transcript";
 import { TypeSheet } from "@/components/voice/TypeSheet";
+import { useDock } from "@/lib/stores/dock";
 import { usePrefs } from "@/lib/stores/prefs";
-import { useVoice } from "@/lib/stores/voice";
+import { useVoice, type HandsFreeRest } from "@/lib/stores/voice";
 import type { VoiceStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { getPreviousPath } from "@/lib/voice/context";
@@ -53,6 +55,7 @@ export default function TalkPage() {
   });
   const interimLength = useVoice((s) => s.interim.length);
   const voiceName = usePrefs((s) => s.voiceName);
+  const handsFree = useHandsFree();
   const [sttOk] = useState(isSttSupported);
   const compact = useSyncExternalStore(subscribeResize, isCompactFrame, () => false);
 
@@ -66,7 +69,9 @@ export default function TalkPage() {
   const orbSize = hasConversation ? (compact ? 116 : 156) : compact ? 176 : 220;
 
   function minimize() {
-    // The session keeps running; the floating orb takes over.
+    // The session keeps running: Sous docks as a bubble over the (demo) home screen.
+    // Underneath, the app goes back to where you were, so leaving the bubble lands there.
+    useDock.getState().dock();
     const prev = getPreviousPath();
     if (prev && prev !== "/ai/talk") router.back();
     else router.push("/ai");
@@ -98,7 +103,7 @@ export default function TalkPage() {
       />
 
       <header className="relative z-10 flex items-center gap-3 px-4 pb-1 pt-[calc(var(--safe-top)+14px)]">
-        <IconButton label="Minimize" onClick={minimize} className="size-11 shrink-0">
+        <IconButton label="Minimize to a floating bubble" onClick={minimize} className="size-11 shrink-0">
           <ChevronDown className="size-5" />
         </IconButton>
         <div className="min-w-0 flex-1 text-center">
@@ -111,10 +116,14 @@ export default function TalkPage() {
         <span className="size-11 shrink-0" aria-hidden />
       </header>
 
+      <div className="relative z-10 flex shrink-0 justify-center pb-1 pt-1.5">
+        <HandsFreeSwitch />
+      </div>
+
       <section
         className={cn(
           "relative z-10 flex shrink-0 flex-col items-center transition-[padding] duration-500",
-          hasConversation ? (compact ? "pb-2 pt-3" : "pb-3 pt-6") : compact ? "pb-4 pt-6" : "pb-6 pt-12",
+          hasConversation ? (compact ? "pb-2 pt-2" : "pb-3 pt-4") : compact ? "pb-4 pt-4" : "pb-6 pt-9",
         )}
       >
         <Orb
@@ -124,8 +133,14 @@ export default function TalkPage() {
           activity={interimLength}
           className="transition-[width,height] duration-500 ease-out"
         />
-        <p className={cn("min-h-5 text-center text-sm font-medium text-ink-soft", compact ? "mt-4" : "mt-7")}>
-          {hint(visual, paused, hasConversation, sttOk)}
+        <p
+          className={cn(
+            "min-h-5 px-6 text-center text-sm font-medium text-ink-soft",
+            compact ? "mt-4" : "mt-7",
+            handsFree.on && sttOk && !paused && visual === "idle" && !handsFree.rest && "text-accent-strong",
+          )}
+        >
+          {hint(visual, paused, hasConversation, sttOk, handsFree)}
         </p>
         {offline && (
           <p className="mt-2 inline-flex items-center gap-1.5 rounded-pill bg-butter-soft px-3 py-1 text-xs font-medium text-ink-soft animate-pop">
@@ -171,17 +186,24 @@ export default function TalkPage() {
   );
 }
 
-function hint(status: VoiceStatus, paused: boolean, hasConversation: boolean, sttOk: boolean): string {
+function hint(
+  status: VoiceStatus,
+  paused: boolean,
+  hasConversation: boolean,
+  sttOk: boolean,
+  handsFree: { on: boolean; rest: HandsFreeRest | null },
+): string {
   if (!sttOk) return "Voice input isn't available here. Tap Type to chat.";
-  if (paused) return "Paused. Tap the orb to talk again.";
+  if (paused) return handsFree.on ? "Paused. Resume to keep talking hands-free." : "Paused. Tap the orb to talk again.";
   switch (status) {
     case "listening":
-      return "Listening... tap the orb when you're done";
+      return handsFree.on ? "Listening... just talk, I'll reply when you pause" : "Listening... tap the orb when you're done";
     case "thinking":
       return "Thinking it over...";
     case "speaking":
-      return "Tap the orb to interrupt";
+      return handsFree.on ? "I'll listen when I'm done · tap to interrupt" : "Tap the orb to interrupt";
     default:
+      if (handsFree.on) return handsFree.rest ? REST_HINTS[handsFree.rest] : hasConversation ? HANDS_FREE_LIVE_HINT : "Hands-free on · tap the orb to start";
       return hasConversation ? "Tap to reply" : "Tap the orb and talk";
   }
 }

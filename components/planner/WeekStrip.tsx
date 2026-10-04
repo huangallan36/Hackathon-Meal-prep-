@@ -10,7 +10,8 @@ import { Scroller } from "./PlannerSection";
 import { stagger } from "./RecipeMeta";
 
 /**
- * The next seven days as tiles. A planned day shows its dish photos; an empty day is a
+ * The next seven days as tiles, in the planner's flat card language (white, 1px line,
+ * radius 18). A planned day shows its dishes as small round plates; an empty day is a
  * dashed slot that starts "pick something for this day".
  */
 export function WeekStrip({
@@ -27,7 +28,7 @@ export function WeekStrip({
   onDay: (day: PlanDay) => void;
 }) {
   return (
-    <Scroller label="This week">
+    <Scroller label="This week" gap="gap-2.5">
       {days.map((day, i) => (
         <DayTile
           key={day.date}
@@ -74,25 +75,23 @@ function DayTile({
       disabled={busy}
       style={stagger(index, 40)}
       className={cn(
-        "flex h-[128px] w-[84px] shrink-0 snap-start flex-col justify-between rounded-tile p-2.5 text-left animate-fade-up transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
-        planned ? "bg-surface shadow-card" : "border border-dashed border-line bg-surface/50",
-        selected && "ring-2 ring-accent ring-offset-2 ring-offset-cream",
+        "flex h-[112px] w-[76px] shrink-0 snap-start flex-col justify-between rounded-tile border p-2.5 text-left animate-fade-up transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+        selected
+          ? "border-accent bg-accent-soft"
+          : planned
+            ? "border-line bg-surface"
+            : "border-dashed border-line-strong/60 bg-surface/50",
       )}
     >
-      <span>
-        <span
-          className={cn(
-            "block truncate text-[11px] font-semibold uppercase tracking-[0.1em]",
-            today ? "text-accent-strong" : "text-ink-faint",
-          )}
-        >
+      <span className="leading-[normal]">
+        <span className={cn("block truncate text-caption font-semibold", today ? "text-accent" : "text-ink-soft")}>
           {day.label}
         </span>
-        <span className="block font-display text-[26px] font-semibold leading-none text-ink">{day.dayOfMonth}</span>
+        <span className="block font-display text-heading font-semibold leading-none text-ink">{day.dayOfMonth}</span>
       </span>
 
       {busy ? (
-        <span className="flex size-10 items-center justify-center">
+        <span className="flex size-9 items-center justify-center">
           <Spinner className="size-5 text-accent" />
         </span>
       ) : planned ? (
@@ -102,7 +101,7 @@ function DayTile({
               key={m.id}
               src={m.image}
               alt=""
-              className={cn("size-10 rounded-full ring-2 ring-surface", i > 0 && "-ml-3")}
+              className={cn("size-9 rounded-full ring-2 ring-surface", i > 0 && "-ml-3")}
             />
           ))}
           {day.meals.length > 2 && <span className="ml-1 text-xs font-semibold text-ink-soft">+{day.meals.length - 2}</span>}
@@ -110,8 +109,8 @@ function DayTile({
       ) : (
         <span
           className={cn(
-            "flex size-10 items-center justify-center rounded-full border border-dashed",
-            selected ? "border-accent bg-accent-soft text-accent-strong" : "border-ink-faint/50 text-ink-faint",
+            "flex size-9 items-center justify-center rounded-full",
+            selected ? "bg-accent text-white" : "bg-cream-deep text-ink-soft",
           )}
         >
           <Plus className="size-4" />

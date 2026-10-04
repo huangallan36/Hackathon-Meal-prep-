@@ -20,10 +20,17 @@ const MAX_SIMILAR = 12;
 export const DIETS = ["vegetarian", "vegan", "gluten free", "dairy free"] as const;
 export type DietFilter = (typeof DIETS)[number];
 
+/** "High protein" chip: at least this many grams of protein per serving */
+export const HIGH_PROTEIN_G = 25;
+
 export interface SearchFilters {
   /** Only recipes ready in this many minutes or less */
   maxMinutes?: number;
   diet?: DietFilter;
+  /** Only recipes with at least HIGH_PROTEIN_G of protein per serving */
+  highProtein?: boolean;
+  /** "Use up leftovers": only recipes that use something the user has (`have`) */
+  leftovers?: boolean;
 }
 
 export interface SearchOptions extends SearchFilters {
@@ -52,8 +59,12 @@ export interface PlannerSearchResponse extends RecipeSearchResponse {
 const STOPWORDS = new Set([
   "a", "an", "and", "the", "with", "for", "of", "in", "on", "to", "or", "my", "me", "i", "some", "something",
   "recipe", "recipes", "dish", "dishes", "meal", "meals", "food", "idea", "ideas", "make", "cook", "cooking",
-  "want", "how", "what", "good", "best", "made", "using", "from",
+  "want", "how", "what", "good", "best", "made", "using", "from", "under", "less", "than", "within", "minute",
+  "minutes", "min", "mins",
 ]);
+
+/** "something under 20 minutes", "dinner in 15 min": a spoken time limit inside the query */
+const TIME_LIMIT = /\b(?:under|in|within|less than|below|max|at most)\s+(\d{1,3})\s*(?:m|min|mins|minute|minutes)\b/;
 
 /** Words that mean "fast" rather than naming food */
 const QUICK_WORDS = new Set(["quick", "fast", "easy", "weeknight", "simple", "speedy", "busy", "lazy"]);
@@ -183,11 +194,29 @@ function fitsDiet(recipe: Recipe, diet: DietFilter): boolean {
   return d.includes(diet);
 }
 
-export function applyFilters(recipes: Recipe[], filters: SearchFilters = {}): Recipe[] {
-  const { maxMinutes, diet } = filters;
+/** How many of the recipe's (non-pantry) ingredients the user already has */
+export function fridgeCount(recipe: Recipe, have: string[]): number {
+  if (!have.length) return 0;
+  return recipe.ingredients.filter((i) => !isPantry(i.name) && have.some((h) => ingredientMatches(h, i.name))).length;
+}
+
+/** `have` = the user's fridge, needed by the leftovers filter */
+export function applyFilters(recipes: Recipe[], filters: SearchFilters = {}, have: string[] = []): Recipe[] {
+  const { maxMinutes, diet, highProtein, leftovers } = filters;
   return recipes.filter(
-    (r) => (maxMinutes == null || r.readyInMinutes <= maxMinutes) && (diet == null || fitsDiet(r, diet)),
+    (r) =>
+      (maxMinutes == null || r.readyInMinutes <= maxMinutes) &&
+      (diet == null || fitsDiet(r, diet)) &&
+      (!highProtein || (r.nutrition?.protein ?? 0) >= HIGH_PROTEIN_G) &&
+      (!leftovers || fridgeCount(r, have) > 0),
   );
+}
+
+/** Time limit spoken or typed inside a query ("under 20 minutes" -> 20), if any */
+export function queryTimeLimit(query: string): number | undefined {
+  const m = normalizeQuery(query).match(TIME_LIMIT);
+  const n = m ? Number(m[1]) : NaN;
+  return n >= 5 && n <= 240 ? n : undefined;
 }
 
 /** URLSearchParams -> validated query + options (server side of toSearchParams) */
@@ -203,6 +232,8 @@ export function parseSearchParams(params: URLSearchParams): { query: string; opt
   }
   const diet = params.get("diet");
   if (isDiet(diet)) options.diet = diet;
+  if (params.get("protein") === "1") options.highProtein = true;
+  if (params.get("leftovers") === "1") options.leftovers = true;
   return { query, options };
 }
 
@@ -211,6 +242,8 @@ export function toSearchParams(query: string, options: SearchOptions = {}): URLS
   if (options.have?.length) qs.set("have", options.have.slice(0, 25).join(","));
   if (options.maxMinutes) qs.set("maxTime", String(options.maxMinutes));
   if (options.diet) qs.set("diet", options.diet);
+  if (options.highProtein) qs.set("protein", "1");
+  if (options.leftovers) qs.set("leftovers", "1");
   return qs;
 }
 
@@ -231,12 +264,20 @@ interface ParsedQuery {
   text: string;
   terms: Term[];
   quick: boolean;
+  /** "under 20 minutes" inside the query */
+  maxMinutes?: number;
 }
 
 function parseQuery(query: string): ParsedQuery {
   const text = normalizeQuery(query);
-  const rawWords = text.replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length > 1);
-  let quick = false;
+  const maxMinutes = queryTimeLimit(text);
+  const rawWords = text
+    .replace(TIME_LIMIT, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 1);
+  // A time limit alone ("something under 20 minutes") browses everything that fast.
+  let quick = maxMinutes != null;
   const terms: Term[] = [];
   rawWords.forEach((raw, i) => {
     if (QUICK_WORDS.has(raw)) {
@@ -248,7 +289,7 @@ function parseQuery(query: string): ParsedQuery {
     if (terms.some((t) => t.alts[0] === word)) return;
     terms.push({ raw, alts: [word, ...(SYNONYMS[word] ?? [])], prefix: i === rawWords.length - 1 && raw.length >= 3 });
   });
-  return { text, terms, quick };
+  return { text, terms, quick, maxMinutes };
 }
 
 /** True when the query names something (not just "quick", "a recipe" or a number) */
@@ -349,7 +390,8 @@ function scoreMatches(parsed: ParsedQuery, pool: Recipe[]): Map<number, number> 
       if (considered.length > 1 && ix.titleText.includes(considered.map((t) => t.alts[0]).join(" "))) score += 6;
     }
     if (parsed.quick) {
-      if (recipe.readyInMinutes <= 30) score += considered.length ? 4 : 1 + (30 - recipe.readyInMinutes) / 30;
+      const limit = parsed.maxMinutes ?? 30;
+      if (recipe.readyInMinutes <= limit) score += considered.length ? 4 : 1 + (limit - recipe.readyInMinutes) / limit;
       else if (!considered.length) continue;
     }
     if (score > 0) scores.set(recipe.id, score);
@@ -465,8 +507,12 @@ export function searchRecipes(
   pinned: Recipe[] = [],
 ): PlannerSearchResponse {
   const parsed = parseQuery(query);
-  const candidates = applyFilters(dedupeById([...pool, ...pinned]), options).filter((r) => r.steps.length > 0);
-  const pinnedOk = applyFilters(pinned, options).filter((r) => r.steps.length > 0);
+  // A time limit said in the query ("under 20 minutes") narrows like the time chip does.
+  const filters: SearchOptions =
+    parsed.maxMinutes != null ? { ...options, maxMinutes: Math.min(options.maxMinutes ?? Infinity, parsed.maxMinutes) } : options;
+  const have = options.have ?? [];
+  const candidates = applyFilters(dedupeById([...pool, ...pinned]), filters, have).filter((r) => r.steps.length > 0);
+  const pinnedOk = applyFilters(pinned, filters, have).filter((r) => r.steps.length > 0);
   const empty: PlannerSearchResponse = {
     query: parsed.text,
     matches: [],
@@ -548,4 +594,124 @@ export function searchSuggestions(pool: Recipe[] = getCatalog(), n = 5): string[
 /** True when a query would return at least one match from the pool */
 export function hasResults(query: string, options: SearchOptions = {}, pool: Recipe[] = getCatalog()): boolean {
   return searchRecipes(query, options, pool).matches.length > 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Result presentation (search state)                                  */
+/* ------------------------------------------------------------------ */
+
+/** A "Cuts & ingredients" chip: an ingredient as the recipes name it, with its photo */
+export interface IngredientChip {
+  /** Short lowercase name, also the refinement key ("ground beef") */
+  key: string;
+  label: string;
+  /** Spoonacular ingredient photo, when a recipe has one */
+  image?: string;
+  /** Recipes in the result that use it */
+  count: number;
+}
+
+/** Last words that make an ingredient a by-product of the query, not a cut of it ("beef broth") */
+const NOT_A_CUT = new Set([
+  "broth", "stock", "bouillon", "sauce", "gravy", "fat", "drippings", "seasoning", "powder", "extract", "juice",
+  "paste", "base", "flavoring",
+]);
+
+function chipKey(name: string): string {
+  return shortIngredientName(name).replace(/[^a-z0-9\s&'-]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/** True when the recipe lists this ingredient (by chip key) */
+export function hasIngredient(recipe: Recipe, key: string): boolean {
+  return recipe.ingredients.some((i) => chipKey(i.name) === key);
+}
+
+/**
+ * "Cuts & ingredients" for a query: the query ingredient as these recipes actually name it
+ * ("ground beef", "flank steak", "beef short ribs"), most used first. When the query names
+ * no ingredient ("thai", "soup") or only one form of it, it is topped up with what those
+ * recipes are mostly made of.
+ */
+export function relatedIngredients(query: string, recipes: Recipe[], max = 8): IngredientChip[] {
+  const parsed = parseQuery(query);
+  const direct = new Map<string, IngredientChip>();
+  const other = new Map<string, IngredientChip>();
+
+  for (const recipe of dedupeById(recipes)) {
+    const seen = new Set<string>();
+    for (const ing of recipe.ingredients) {
+      if (isPantry(ing.name)) continue;
+      const key = chipKey(ing.name);
+      if (!key || seen.has(key) || key.split(" ").length > 3) continue;
+      seen.add(key);
+      const w = words(key);
+      const hit = parsed.terms.some((t) =>
+        t.alts.some(
+          (alt) =>
+            alt.split(" ").every((a) => w.includes(a)) || (t.prefix && !alt.includes(" ") && w.some((x) => x.startsWith(alt))),
+        ),
+      );
+      if (hit && NOT_A_CUT.has(w[w.length - 1])) continue;
+      if (!hit && isSupporting(ing.name)) continue;
+      const target = hit ? direct : other;
+      const prev = target.get(key);
+      if (prev) {
+        prev.count += 1;
+        prev.image ??= ing.image;
+      } else {
+        target.set(key, { key, label: capitalize(key), image: ing.image, count: 1 });
+      }
+    }
+  }
+
+  const byCount = (a: IngredientChip, b: IngredientChip) => b.count - a.count || a.label.localeCompare(b.label);
+  const first = [...direct.values()].sort(byCount);
+  const rest = first.length >= 4 ? [] : [...other.values()].sort((a, b) => b.count - a.count || mainRank(a.key) - mainRank(b.key));
+  return [...first, ...rest].slice(0, max);
+}
+
+/** A "Combinations" card: the query ingredient + one partner, with every recipe that pairs them */
+export interface ComboGroup {
+  /** The partner ingredient ("broccoli") */
+  key: string;
+  /** "Beef + Broccoli" */
+  title: string;
+  /** Query to search this pairing on its own ("beef broccoli") */
+  query: string;
+  recipes: Recipe[];
+  anchorImage?: string;
+  pairImage?: string;
+}
+
+/**
+ * Groups Combinations by partner ingredient ("Beef + Broccoli · 14 recipes"), keeping the
+ * server's order (fridge pairings first). `keep` narrows the recipes (a selected cut chip).
+ */
+export function combinationGroups(
+  data: Pick<PlannerSearchResponse, "combinations" | "pairs" | "anchor">,
+  keep?: (recipe: Recipe) => boolean,
+): ComboGroup[] {
+  const anchor = data.anchor;
+  if (!anchor) return [];
+  const anchorWords = anchor.split(" & ").filter(Boolean);
+  const groups = new Map<string, ComboGroup>();
+  for (const recipe of data.combinations) {
+    if (keep && !keep(recipe)) continue;
+    const pair = data.pairs[String(recipe.id)]?.[0];
+    if (!pair) continue;
+    let group = groups.get(pair);
+    if (!group) {
+      group = {
+        key: pair,
+        title: `${capitalize(anchorWords.join(" & "))} + ${capitalize(pair)}`,
+        query: `${anchorWords.join(" ")} ${pair}`,
+        recipes: [],
+      };
+      groups.set(pair, group);
+    }
+    group.recipes.push(recipe);
+    group.anchorImage ??= recipe.ingredients.find((i) => i.image && anchorWords.some((a) => ingredientMatches(a, i.name)))?.image;
+    group.pairImage ??= recipe.ingredients.find((i) => i.image && shortIngredientName(i.name) === pair)?.image;
+  }
+  return [...groups.values()];
 }

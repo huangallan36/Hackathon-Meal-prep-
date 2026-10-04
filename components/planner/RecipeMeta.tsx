@@ -1,44 +1,7 @@
-import { Clock, Users } from "lucide-react";
 import type { CSSProperties } from "react";
-import { minutesLabel } from "@/lib/kitchen/format";
 import { recipeTags } from "@/lib/planner/search";
 import type { Recipe } from "@/lib/types";
 import { cn } from "@/lib/utils";
-
-/** "35 min · 2 servings" with icons. `onPhoto` = light text for image overlays. */
-export function RecipeMeta({
-  recipe,
-  onPhoto,
-  compact,
-  className,
-}: {
-  recipe: Pick<Recipe, "readyInMinutes" | "servings">;
-  onPhoto?: boolean;
-  /** Hide servings (narrow tiles) */
-  compact?: boolean;
-  className?: string;
-}) {
-  return (
-    <span
-      className={cn(
-        "flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]",
-        onPhoto ? "text-white/85" : "text-ink-soft",
-        className,
-      )}
-    >
-      <span className="inline-flex items-center gap-1">
-        <Clock className={cn("size-3.5", onPhoto ? "text-white/85" : "text-accent")} />
-        {minutesLabel(recipe.readyInMinutes)}
-      </span>
-      {!compact && (
-        <span className="inline-flex items-center gap-1">
-          <Users className="size-3.5" />
-          {recipe.servings} {recipe.servings === 1 ? "serving" : "servings"}
-        </span>
-      )}
-    </span>
-  );
-}
 
 /** Small uppercase eyebrow tags: "Chinese · Vegetarian" */
 export function RecipeEyebrow({

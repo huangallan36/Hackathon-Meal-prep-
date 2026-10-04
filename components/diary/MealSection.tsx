@@ -1,7 +1,6 @@
 "use client";
 
-import { Camera } from "lucide-react";
-import Link from "next/link";
+import { Plus } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Card } from "@/components/ui/Card";
 import { MEAL_SLOT_ICON, MEAL_TINT } from "@/lib/diary/food";
@@ -15,18 +14,22 @@ export function MealSection({
   meal,
   entries,
   canAdd,
+  onAdd,
   onOpenEntry,
   className,
   style,
 }: {
   meal: MealType;
   entries: DiaryEntry[];
-  /** Offer "Add with Sous" when empty (today only: Sous logs to today) */
+  /** Offer the "+" / "Add food" buttons (today only: Sous logs to today) */
   canAdd: boolean;
+  /** Opens the "Add to <meal>" sheet */
+  onAdd?: (meal: MealType) => void;
   onOpenEntry: (id: string) => void;
   className?: string;
   style?: CSSProperties;
 }) {
+  const addable = canAdd && !!onAdd;
   const Icon = MEAL_SLOT_ICON[meal];
   const total = sumNutrition(entries);
 
@@ -39,11 +42,24 @@ export function MealSection({
           </span>
           {MEAL_LABEL[meal]}
         </h2>
-        {entries.length > 0 && (
-          <span className="text-sm font-semibold tabular-nums text-ink-soft">
-            {fmt(total.calories)} <span className="text-xs font-medium text-ink-faint">kcal</span>
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {entries.length > 0 && (
+            <span className="text-sm font-semibold tabular-nums text-ink-soft">
+              {fmt(total.calories)} <span className="text-xs font-medium text-ink-faint">kcal</span>
+            </span>
+          )}
+          {addable && entries.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onAdd?.(meal)}
+              aria-label={`Add to ${MEAL_LABEL[meal]}`}
+              title={`Add to ${MEAL_LABEL[meal]}`}
+              className="relative inline-flex size-8 items-center justify-center rounded-full bg-accent-soft text-accent transition after:absolute after:-inset-2 after:content-[''] hover:bg-[color-mix(in_oklab,var(--color-accent-soft),var(--color-accent)_12%)] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              <Plus className="size-4" strokeWidth={2.4} />
+            </button>
+          )}
+        </div>
       </div>
 
       {entries.length > 0 ? (
@@ -57,14 +73,15 @@ export function MealSection({
       ) : (
         <div className="flex min-h-[60px] items-center justify-between gap-3 rounded-card border-2 border-dashed border-line px-4 py-2">
           <span className="text-sm font-medium text-ink-faint">Nothing logged</span>
-          {canAdd && (
-            <Link
-              href="/ai/snap"
+          {addable && (
+            <button
+              type="button"
+              onClick={() => onAdd?.(meal)}
               className="inline-flex h-11 items-center gap-1.5 rounded-pill bg-accent-soft px-4 text-sm font-semibold text-accent-strong transition active:scale-95 hover:bg-[color-mix(in_oklab,var(--color-accent-soft),var(--color-accent)_12%)]"
             >
-              <Camera className="size-4" />
-              Add with Sous
-            </Link>
+              <Plus className="size-4" />
+              Add food
+            </button>
           )}
         </div>
       )}

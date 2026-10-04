@@ -1,61 +1,63 @@
 "use client";
 
-import { Flame } from "lucide-react";
-import { SmartImage } from "@/components/ui/Misc";
+import { Heart } from "lucide-react";
+import { recipeStats } from "@/lib/planner/format";
+import { useIsSaved, usePlanner } from "@/lib/planner/store";
+import { toast } from "@/lib/stores/toast";
 import type { Recipe } from "@/lib/types";
-import { formatCount } from "@/lib/utils";
-import { RecipeEyebrow, RecipeMeta, stagger } from "./RecipeMeta";
+import { cn, formatCount } from "@/lib/utils";
+import { PlateCard } from "./Plate";
+import { stagger } from "./RecipeMeta";
 
-/** Tall, photo-first card for the "Most Popular" scroller */
+/** Figma "Most popular" card: 158x128 plate tile with a heart, title, "30 min · 610 kcal" */
 export function PopularCard({
   recipe,
   upvotes,
-  rank,
   index = 0,
   onOpen,
 }: {
   recipe: Recipe;
   upvotes: number;
-  /** 1-based position; shown as an editorial numeral */
-  rank: number;
   index?: number;
   onOpen: (recipe: Recipe) => void;
 }) {
   return (
+    <div style={stagger(index)} className="relative w-[158px] shrink-0 snap-start animate-fade-up">
+      <button
+        type="button"
+        onClick={() => onOpen(recipe)}
+        aria-label={`${recipe.title}${upvotes ? `, ${formatCount(upvotes)} yums` : ""}`}
+        className="group flex w-full flex-col items-start gap-1.5 rounded-tile text-left transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-cream"
+      >
+        <PlateCard index={index} src={recipe.image} />
+        <span className="block w-full truncate text-body font-semibold leading-[normal] text-ink">{recipe.title}</span>
+        <span className="block w-full truncate text-xs leading-[normal] text-ink-soft">{recipeStats(recipe)}</span>
+      </button>
+      <SaveHeart recipe={recipe} className="absolute left-[120px] top-2" />
+    </div>
+  );
+}
+
+/** Figma heart (30px white circle): saves the recipe */
+function SaveHeart({ recipe, className }: { recipe: Recipe; className?: string }) {
+  const saved = useIsSaved(recipe.id);
+  const toggleSaved = usePlanner((s) => s.toggleSaved);
+  return (
     <button
       type="button"
-      onClick={() => onOpen(recipe)}
-      aria-label={`${recipe.title}${upvotes ? `, ${upvotes} yums` : ""}`}
-      style={stagger(index)}
-      className="group relative block w-[212px] shrink-0 snap-start overflow-hidden rounded-card bg-cream-deep text-left shadow-card animate-fade-up transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
-    >
-      <SmartImage
-        src={recipe.image}
-        alt=""
-        className="aspect-[3/4] w-full transition-transform duration-700 ease-out group-hover:scale-[1.04]"
-      />
-      <span className="pointer-events-none absolute inset-0 bg-linear-to-t from-ink/85 via-ink/20 to-ink/0" />
-
-      {upvotes > 0 && (
-        <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-pill bg-surface/92 px-2.5 py-1 text-xs font-semibold tabular-nums text-ink shadow-soft backdrop-blur">
-          <Flame className="size-3.5 text-accent" fill="currentColor" strokeWidth={2.2} />
-          {formatCount(upvotes)}
-        </span>
+      aria-pressed={saved}
+      aria-label={saved ? `Unsave ${recipe.title}` : `Save ${recipe.title}`}
+      onClick={() => toast(toggleSaved(recipe) ? "Saved" : "Removed from saved", "default", 1600)}
+      className={cn(
+        "inline-flex size-[30px] items-center justify-center rounded-full bg-surface/90 transition after:absolute after:-inset-2 after:content-[''] active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+        className,
       )}
-      <span
-        aria-hidden
-        className="absolute right-3.5 top-2 font-display text-[30px] font-semibold italic leading-none text-white/95 [text-shadow:0_2px_12px_rgb(0_0_0/0.35)]"
-      >
-        {rank}
-      </span>
-
-      <span className="absolute inset-x-0 bottom-0 block p-4">
-        <RecipeEyebrow recipe={recipe} max={1} onPhoto />
-        <span className="mt-1 line-clamp-3 block font-display text-[19px] font-semibold leading-[1.2] text-white">
-          {recipe.title}
-        </span>
-        <RecipeMeta recipe={recipe} onPhoto className="mt-2" />
-      </span>
+    >
+      {saved ? (
+        <Heart aria-hidden className="size-[15px] text-flame animate-pop" fill="currentColor" strokeWidth={1.8} />
+      ) : (
+        <img src="/figma/screens/2-146/icon-heart.svg" alt="" width={15} height={15} className="block size-[15px]" />
+      )}
     </button>
   );
 }

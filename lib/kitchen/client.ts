@@ -13,7 +13,8 @@ import { SAMPLE_FRIDGE_INGREDIENTS } from "@/lib/sample";
 import { ingredientsKey, useKitchen } from "@/lib/stores/kitchen";
 import { useVoice } from "@/lib/stores/voice";
 import type { ByIngredientsResponse, IngredientsRequest, IngredientsResponse, Recipe, RecipeMatch } from "@/lib/types";
-import { speak } from "@/lib/voice/engine";
+import { cancelListening, isSttSupported, speak, stopSpeaking } from "@/lib/voice/engine";
+import { listenOnce } from "@/lib/voice/stt";
 import { recipesLine } from "./format";
 import { uniqueIngredients } from "./sanitize";
 
@@ -158,6 +159,24 @@ export function announceMatches(key: string, matches: RecipeMatch[]): () => void
   return sayWhenFree(recipesLine(matches), () => {
     announcedKey = key;
   });
+}
+
+/**
+ * One-shot dictation into a field ("Add item — or just say it"): no chat turn, just the words.
+ * Resolves with "" when speech input is unavailable, blocked or silent. Call it from a tap
+ * handler so the mic permission prompt is allowed. Sous stops talking first (half-duplex).
+ */
+export async function dictate(): Promise<string> {
+  if (!isSttSupported()) return "";
+  const v = useVoice.getState();
+  if (v.status === "listening") cancelListening();
+  if (v.status === "speaking") stopSpeaking();
+  const typingBefore = v.typing;
+  const text = await listenOnce();
+  // A blocked mic makes the recognizer open Sous's own text box; the caller's field is the
+  // better place to type here, so put that back the way it was.
+  if (!text && !typingBefore && useVoice.getState().typing) useVoice.getState().setTyping(false);
+  return text;
 }
 
 /** Synchronous recipe lookup (cooking -> suggestions -> bundled cache), no network. */

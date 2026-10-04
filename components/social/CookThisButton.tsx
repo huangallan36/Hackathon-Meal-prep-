@@ -7,7 +7,10 @@ import { Button } from "@/components/ui/Button";
 import { cookFromPost } from "@/lib/social/client";
 import { cn } from "@/lib/utils";
 
-/** "Cook this": loads the post's recipe into cooking mode. Safe inside draggable cards. */
+/**
+ * "Cook this": loads the post's recipe into cooking mode. Safe inside draggable cards.
+ * Figma primary pill (green): sm = the 30px in-card action ("Start cooking"), md = 48px.
+ */
 export function CookThisButton({
   recipeId,
   size = "sm",
@@ -35,11 +38,12 @@ export function CookThisButton({
       size={size}
       full={full}
       loading={busy}
-      icon={<ChefHat className="size-4" />}
+      icon={<ChefHat className={size === "sm" ? "size-3.5" : "size-[18px]"} strokeWidth={1.9} />}
       data-no-drag
       onPointerDown={(e) => e.stopPropagation()}
       onClick={() => void handleClick()}
-      className={cn("shrink-0", className)}
+      // The 30px pill keeps a 46px tap target via ::after (same trick as IconButton).
+      className={cn("relative shrink-0", size === "sm" && "after:absolute after:-inset-2 after:content-['']", className)}
     >
       Cook this
     </Button>

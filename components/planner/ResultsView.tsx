@@ -1,33 +1,37 @@
 "use client";
 
 import { SearchX } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { FallbackNote, EmptyState } from "@/components/ui/Misc";
+import { EmptyState, FallbackNote } from "@/components/ui/Misc";
 import { SPOONACULAR_BACKLINK } from "@/lib/config";
 import type { PlannerResult } from "@/lib/planner/client";
 import { usePopularRecipes } from "@/lib/planner/hooks";
-import { searchSuggestions } from "@/lib/planner/search";
-import { ingredientMatches } from "@/lib/recipes/catalog";
-import { useKitchen } from "@/lib/stores/kitchen";
+import {
+  combinationGroups,
+  hasIngredient,
+  relatedIngredients,
+  searchSuggestions,
+  type ComboGroup,
+} from "@/lib/planner/search";
 import type { Recipe } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { PairingCard } from "./PairingCard";
-import { PlannerSection } from "./PlannerSection";
-import { FeatureCard, RecipeRow } from "./RecipeRow";
-import { RecipeTile, TileGrid } from "./RecipeTile";
+import { PlannerSection, Scroller } from "./PlannerSection";
+import { RecipeRow } from "./RecipeRow";
+import { ComboCard, CutChip } from "./ResultCards";
 import { ResultsSkeleton } from "./Skeletons";
 
-const COLLAPSED = 4;
+const ROWS_COLLAPSED = 4;
+const CUTS_COLLAPSED = 4;
+const COMBOS_COLLAPSED = 3;
 
-type SectionId = "matches" | "combinations" | "similar";
-
-const COLLAPSED_ALL: Record<SectionId, boolean> = { matches: false, combinations: false, similar: false };
+type SectionId = "cuts" | "combinations" | "similar";
 
 /**
- * Search results in three calm sections. Each shows its first four and expands in place
- * (expansion resets for a new query). While the next query loads, the previous results stay
- * up, dimmed; skeletons only show when there is nothing to show yet.
+ * Figma 2.2 search results: "Cuts & ingredients" (tap one to narrow everything below to it),
+ * "Combinations" (query ingredient + a partner, tap to search the pair) and "Similar" (every
+ * recipe that fits, best matches first). While the next query loads the previous results
+ * stay up, dimmed; skeletons only show when there is nothing to show yet.
  */
 export function ResultsView({
   result,
@@ -45,34 +49,98 @@ export function ResultsView({
   onQuery: (query: string) => void;
   onClearFilters: () => void;
 }) {
-  const [open, setOpen] = useState<{ query: string; sections: Record<SectionId, boolean> } | null>(null);
-  const fridge = useKitchen((s) => s.ingredients);
+  // Per-query UI state: the selected cut and which sections are open reset for a new query.
+  const [ui, setUi] = useState<{ query: string; cut: string | null; open: Record<SectionId, boolean> } | null>(null);
+  const data = result?.data;
+  const query = data?.query ?? "";
+  const state = ui?.query === query ? ui : { query, cut: null, open: { cuts: false, combinations: false, similar: false } };
+  const cut = state.cut;
 
-  if (!result) return <ResultsSkeleton />;
+  const all = useMemo(() => {
+    if (!data) return [];
+    const seen = new Set<number>();
+    return [...data.matches, ...data.similar].filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
+  }, [data]);
+  const cuts = useMemo(
+    () => (data ? relatedIngredients(data.query, [...data.matches, ...data.combinations, ...data.similar]) : []),
+    [data],
+  );
 
-  const { data, origin } = result;
-  const query = data.query;
-  const expanded = open?.query === query ? open.sections : COLLAPSED_ALL;
-  const toggle = (id: SectionId) => setOpen({ query, sections: { ...expanded, [id]: !expanded[id] } });
-  const visible = (id: SectionId, list: Recipe[]) => (expanded[id] ? list : list.slice(0, COLLAPSED));
+  if (!result || !data) return <ResultsSkeleton />;
+
+  const keep = cut ? (r: Recipe) => hasIngredient(r, cut) : undefined;
+  const combos = combinationGroups(data, keep);
+  const rows = keep ? all.filter(keep) : all;
   const total = new Set([...data.matches, ...data.combinations, ...data.similar].map((r) => r.id)).size;
+  const shown = cut ? new Set([...rows, ...combos.flatMap((g) => g.recipes)].map((r) => r.id)).size : total;
 
   if (total === 0) {
     if (loading) return <ResultsSkeleton />;
     return <NoResults query={query} filtersActive={filtersActive} onOpen={onOpen} onQuery={onQuery} onClearFilters={onClearFilters} />;
   }
 
-  const matches = visible("matches", data.matches);
-  const combos = visible("combinations", data.combinations);
-  const similar = visible("similar", data.similar);
+  const toggle = (id: SectionId) => setUi({ ...state, open: { ...state.open, [id]: !state.open[id] } });
+  const pickCut = (key: string) => setUi({ ...state, cut: cut === key ? null : key });
+  const openCombo = (group: ComboGroup) => {
+    if (group.recipes.length === 1) onOpen(group.recipes[0]);
+    else onQuery(group.query);
+  };
 
   return (
     <div aria-busy={loading} className={cn("transition-opacity duration-300", loading && "pointer-events-none opacity-55")}>
-      <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 animate-fade-up">
-        <p className="text-sm text-ink-soft">
-          {total} {total === 1 ? "recipe" : "recipes"} for <span className="font-semibold text-ink">“{query}”</span>
+      {cuts.length > 0 && (
+        <PlannerSection
+          id="cuts"
+          title="Cuts & ingredients"
+          className="pt-5"
+          expanded={state.open.cuts}
+          onToggle={cuts.length > CUTS_COLLAPSED ? () => toggle("cuts") : undefined}
+        >
+          <Scroller label="Cuts and ingredients" wrap={state.open.cuts} gap="gap-2">
+            {cuts.map((c, i) => (
+              <CutChip key={c.key} chip={c} index={i} selected={cut === c.key} onClick={() => pickCut(c.key)} />
+            ))}
+          </Scroller>
+        </PlannerSection>
+      )}
+
+      {combos.length > 0 && (
+        <PlannerSection
+          id="combinations"
+          title="Combinations"
+          expanded={state.open.combinations}
+          onToggle={combos.length > COMBOS_COLLAPSED ? () => toggle("combinations") : undefined}
+        >
+          <Scroller label="Combinations" wrap={state.open.combinations} gap="gap-2.5">
+            {combos.map((g, i) => (
+              <ComboCard key={g.key} group={g} index={i} onClick={() => openCombo(g)} />
+            ))}
+          </Scroller>
+        </PlannerSection>
+      )}
+
+      {rows.length > 0 && (
+        <PlannerSection
+          id="similar"
+          title="Similar"
+          gap="mt-2.5"
+          expanded={state.open.similar}
+          onToggle={rows.length > ROWS_COLLAPSED ? () => toggle("similar") : undefined}
+        >
+          <div className="flex flex-col gap-2.5">
+            {(state.open.similar ? rows : rows.slice(0, ROWS_COLLAPSED)).map((r, i) => (
+              <RecipeRow key={r.id} recipe={r} index={i} onOpen={onOpen} />
+            ))}
+          </div>
+        </PlannerSection>
+      )}
+
+      <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 px-5">
+        <p className="text-xs text-ink-soft">
+          {shown} {shown === 1 ? "recipe" : "recipes"} for <span className="font-semibold text-ink">“{query}”</span>
+          {cut && <> with {cut}</>}
         </p>
-        <FallbackNote show={origin === "local"} />
+        <FallbackNote show={result.origin === "local"} />
         {data.source === "live" && (
           <a
             href={SPOONACULAR_BACKLINK}
@@ -84,71 +152,6 @@ export function ResultsView({
           </a>
         )}
       </div>
-
-      {data.matches.length > 0 && (
-        <PlannerSection
-          id="matches"
-          title="Matches"
-          subtitle={`Best fits for “${query}”`}
-          total={data.matches.length}
-          expanded={expanded.matches}
-          onToggle={data.matches.length > COLLAPSED ? () => toggle("matches") : undefined}
-          className="mt-5"
-        >
-          <div className="flex flex-col gap-3">
-            <FeatureCard recipe={matches[0]} badge="Top match" onOpen={onOpen} />
-            {matches.slice(1).map((r, i) => (
-              <RecipeRow key={r.id} recipe={r} index={i + 1} onOpen={onOpen} />
-            ))}
-          </div>
-        </PlannerSection>
-      )}
-
-      {data.combinations.length > 0 && (
-        <PlannerSection
-          id="combinations"
-          title="Combinations"
-          subtitle={data.labels.combinations || undefined}
-          total={data.combinations.length}
-          expanded={expanded.combinations}
-          onToggle={data.combinations.length > COLLAPSED ? () => toggle("combinations") : undefined}
-        >
-          <TileGrid
-            items={combos}
-            render={(r, i, wide) => {
-              const pair = data.pairs[String(r.id)]?.[0];
-              return (
-                <PairingCard
-                  key={r.id}
-                  recipe={r}
-                  anchor={data.anchor}
-                  pair={pair}
-                  fromFridge={pair ? fridge.some((f) => ingredientMatches(f, pair)) : false}
-                  index={i}
-                  wide={wide}
-                  onOpen={onOpen}
-                />
-              );
-            }}
-          />
-        </PlannerSection>
-      )}
-
-      {data.similar.length > 0 && (
-        <PlannerSection
-          id="similar"
-          title="Similar"
-          subtitle={data.labels.similar || undefined}
-          total={data.similar.length}
-          expanded={expanded.similar}
-          onToggle={data.similar.length > COLLAPSED ? () => toggle("similar") : undefined}
-        >
-          <TileGrid
-            items={similar}
-            render={(r, i, wide) => <RecipeTile key={r.id} recipe={r} index={i} wide={wide} onOpen={onOpen} />}
-          />
-        </PlannerSection>
-      )}
     </div>
   );
 }
@@ -171,7 +174,7 @@ function NoResults({
   return (
     <>
       <EmptyState
-        className="mt-6 animate-fade-up pb-4"
+        className="mt-2 animate-fade-up pb-2"
         icon={<SearchX className="size-6" />}
         title={`Nothing for “${query}” yet`}
         body={filtersActive ? "Try removing a filter, or search for one of these." : "Try an ingredient you have, or one of these."}
@@ -183,7 +186,7 @@ function NoResults({
                   key={s}
                   type="button"
                   onClick={() => onQuery(s)}
-                  className="inline-flex h-11 items-center rounded-pill bg-surface px-4 text-sm font-semibold text-ink ring-1 ring-line transition hover:bg-cream-deep active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="inline-flex items-center rounded-pill border border-line bg-surface px-3 py-1.5 text-meta font-medium text-ink transition hover:bg-cream-deep active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   {s}
                 </button>
@@ -198,8 +201,8 @@ function NoResults({
         }
       />
       {popular.length > 0 && (
-        <PlannerSection id="meanwhile" title="Popular right now" subtitle="While you think it over" className="mt-4">
-          <div className="flex flex-col gap-3">
+        <PlannerSection id="meanwhile" title="Popular right now" gap="mt-2.5">
+          <div className="flex flex-col gap-2.5">
             {popular.map((p, i) => (
               <RecipeRow key={p.recipe.id} recipe={p.recipe} index={i} onOpen={onOpen} />
             ))}

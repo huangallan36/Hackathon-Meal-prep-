@@ -10,6 +10,7 @@ import { Button, IconButton } from "@/components/ui/Button";
 import { SectionHeader } from "@/components/ui/Card";
 import { SmartImage } from "@/components/ui/Misc";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
+import { REST_HINTS, useHandsFree } from "@/components/voice/HandsFree";
 import { SettingsSheet } from "@/components/voice/SettingsSheet";
 import { VoicePicker } from "@/components/voice/VoicePicker";
 import { DEMO_USER } from "@/lib/config";
@@ -137,6 +138,8 @@ function LiveLine() {
   const status = useVoice((s) => s.status);
   const interim = useVoice((s) => s.interim);
   const caption = useVoice((s) => s.caption);
+  const paused = useVoice((s) => s.paused);
+  const handsFree = useHandsFree();
 
   let text: ReactNode = <>Try &ldquo;I&apos;m wiped, no idea what to cook&rdquo;</>;
   let live = false;
@@ -146,6 +149,9 @@ function LiveLine() {
   } else if (sessionActive && status === "thinking") {
     text = "Thinking...";
     live = true;
+  } else if (sessionActive && status === "idle" && !paused && handsFree.rest) {
+    // Hands-free stopped listening by itself: say why and what to do.
+    text = REST_HINTS[handsFree.rest];
   } else if (sessionActive && caption) {
     text = <>&ldquo;{caption}&rdquo;</>;
     live = true;

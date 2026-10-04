@@ -1,11 +1,14 @@
 "use client";
 
+import { AnimatePresence } from "motion/react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { GlobalTimer } from "@/components/cooking/GlobalTimer";
+import { PhoneHomeScreen } from "@/components/dock/PhoneHomeScreen";
 import { FloatingOrb } from "@/components/orb/FloatingOrb";
 import { Toaster } from "@/components/ui/Misc";
 import { isDarkScreen, isFullscreen } from "@/lib/nav";
+import { useDock } from "@/lib/stores/dock";
 import { cn } from "@/lib/utils";
 import { BottomNav } from "./BottomNav";
 
@@ -17,19 +20,23 @@ import { BottomNav } from "./BottomNav";
  *
  * Children render only after mount: every store is persisted to localStorage, and
  * rendering after hydration avoids server/client mismatches across the whole app.
+ *
+ * Docked (useDock): a pretend phone home screen covers the app, with Sous as a floating
+ * bubble (above the screen, tab bar and floating orb; below sheets and toasts).
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time client-only gate
   useEffect(() => setMounted(true), []);
+  const docked = useDock((s) => s.docked) && mounted;
 
   useEffect(() => {
     document.getElementById("sous-scroll")?.scrollTo({ top: 0 });
   }, [pathname]);
 
   const fullscreen = isFullscreen(pathname);
-  const dark = isDarkScreen(pathname);
+  const dark = isDarkScreen(pathname) || docked;
 
   return (
     <div className="flex min-h-dvh w-full items-center justify-center bg-cream sm:bg-[radial-gradient(circle_at_20%_10%,#fdfaf5,transparent_50%),radial-gradient(circle_at_85%_90%,#e2ede5,transparent_45%),#efe9df] sm:p-6">
@@ -38,12 +45,17 @@ export function AppShell({ children }: { children: ReactNode }) {
         className="relative h-dvh w-full overflow-hidden bg-cream [transform:translateZ(0)] sm:h-[min(844px,calc(100dvh-48px))] sm:w-[390px] sm:rounded-phone sm:shadow-phone sm:[--safe-bottom:22px] sm:[--safe-top:50px]"
       >
         <StatusBar dark={dark} />
-        <main id="sous-scroll" className="no-scrollbar absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-contain">
+        <main
+          id="sous-scroll"
+          inert={docked}
+          className="no-scrollbar absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-contain"
+        >
           {mounted ? children : <Splash />}
         </main>
         {mounted && <GlobalTimer />}
         {mounted && <FloatingOrb />}
-        {mounted && !fullscreen && <BottomNav />}
+        {mounted && !fullscreen && !docked && <BottomNav />}
+        <AnimatePresence>{docked && <PhoneHomeScreen key="phone-home" />}</AnimatePresence>
         <Toaster />
         {/* Figma home indicator: 134x5, 8px from the bottom (desktop frame only) */}
         <span

@@ -8,7 +8,7 @@ import { DayTitle } from "@/components/diary/DayTitle";
 import { MacroBars } from "@/components/diary/MacroBars";
 import { MealsPreview } from "@/components/diary/MealsPreview";
 import { MonthCalendar } from "@/components/diary/MonthCalendar";
-import { NutrientGrid } from "@/components/diary/NutrientGrid";
+import { HighlightedNutrients } from "@/components/diary/HighlightedNutrients";
 import { HIT_AREA } from "@/components/diary/hitArea";
 import { stagger } from "@/components/diary/stagger";
 import { WeekChart } from "@/components/diary/WeekChart";
@@ -36,7 +36,8 @@ export default function DiaryPage() {
   const isCurrentWeek = week.end >= today;
 
   const logged = loggedDates(entries);
-  const { totals, microsEstimated } = dayTotals(entries, selected);
+  const dayResult = dayTotals(entries, selected);
+  const { totals } = dayResult;
   const streak = currentStreak(logged, today);
   const dayActivity = activity[selected];
   /** Today / yesterday get a relative heading with the date above it */
@@ -122,7 +123,7 @@ export default function DiaryPage() {
         />
         <MealsPreview date={selected} today={today} entries={entries} className="animate-fade-up" style={stagger(3)} />
         <MacroBars totals={totals} goals={goals} className="animate-fade-up" style={stagger(4)} />
-        <NutrientGrid totals={totals} goals={goals} estimated={microsEstimated} className="animate-fade-up" style={stagger(5)} />
+        <HighlightedNutrients result={dayResult} goals={goals} date={selected} className="animate-fade-up" style={stagger(5)} />
         <ActivityRow activity={dayActivity} className="animate-fade-up" style={stagger(6)} />
         <WeekChart
           days={week.days}

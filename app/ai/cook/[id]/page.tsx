@@ -8,7 +8,7 @@ import { FinishCelebration } from "@/components/cooking/FinishCelebration";
 import { IngredientsPanel } from "@/components/cooking/IngredientsPanel";
 import { RecipeCredits, RecipeOverview } from "@/components/cooking/RecipeOverview";
 import { StepCard } from "@/components/cooking/StepCard";
-import { StepControls, VoiceHint } from "@/components/cooking/StepControls";
+import { StepControls } from "@/components/cooking/StepControls";
 import { StepProgress } from "@/components/cooking/StepProgress";
 import { HeaderTimer, TimerPill } from "@/components/cooking/TimerPill";
 import { VideoTutorial } from "@/components/cooking/VideoTutorial";
@@ -26,6 +26,7 @@ import {
   restartRecipe,
 } from "@/lib/cooking/actions";
 import { loadRecipe } from "@/lib/recipes/client";
+import { useDock } from "@/lib/stores/dock";
 import { useKitchen } from "@/lib/stores/kitchen";
 import type { Recipe } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -116,6 +117,8 @@ function CookView({ recipe }: { recipe: Recipe }) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.repeat) return;
+      // Sous is docked over the (demo) home screen: this screen is in the background.
+      if (useDock.getState().docked) return;
       const target = e.target instanceof HTMLElement ? e.target : null;
       if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
       const k = useKitchen.getState();
@@ -181,7 +184,6 @@ function CookView({ recipe }: { recipe: Recipe }) {
               }}
               onNext={() => nextOrFinish(recipe)}
             />
-            <VoiceHint className="-mt-2" />
           </div>
         ) : (
           <div className="flex flex-col gap-5">

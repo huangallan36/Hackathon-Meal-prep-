@@ -21,6 +21,16 @@ export interface TranscriptLine {
 /** Which engine actually voiced the last Sous line */
 export type TtsEngine = "elevenlabs" | "browser" | "none";
 
+/**
+ * Why hands-free mode stopped opening the mic by itself (null = the loop is live):
+ *   silence  several listens in a row heard nothing ("Still there?")
+ *   stopped  the user closed the mic without saying anything
+ *   blocked  the browser won't start the mic without a tap (e.g. iOS Safari)
+ *   error    the mic or speech service failed
+ * The next orb tap wakes it (except "blocked", which only re-enabling the toggle retries).
+ */
+export type HandsFreeRest = "silence" | "stopped" | "blocked" | "error";
+
 interface VoiceState {
   /** True between Start and Hang up */
   sessionActive: boolean;
@@ -38,6 +48,10 @@ interface VoiceState {
   captionAt: number;
   ttsEngine: TtsEngine | null;
   error: string | null;
+  /** Hands-free loop resting (see HandsFreeRest); null while it is live or off */
+  handsFreeRest: HandsFreeRest | null;
+  /** epoch ms handsFreeRest last changed (lets hints fade like captions) */
+  handsFreeRestAt: number;
 
   setStatus: (status: VoiceStatus) => void;
   setInterim: (interim: string) => void;
@@ -46,6 +60,7 @@ interface VoiceState {
   setError: (error: string | null) => void;
   setCaption: (caption: string | null) => void;
   setTtsEngine: (engine: TtsEngine | null) => void;
+  setHandsFreeRest: (rest: HandsFreeRest | null) => void;
   addLine: (role: TranscriptLine["role"], text: string, source?: TranscriptLine["source"]) => void;
   startSession: () => void;
   endSession: () => void;
@@ -62,6 +77,8 @@ export const useVoice = create<VoiceState>()((set) => ({
   captionAt: 0,
   ttsEngine: null,
   error: null,
+  handsFreeRest: null,
+  handsFreeRestAt: 0,
 
   setStatus: (status) => set({ status }),
   setInterim: (interim) => set({ interim }),
@@ -70,6 +87,7 @@ export const useVoice = create<VoiceState>()((set) => ({
   setError: (error) => set({ error }),
   setCaption: (caption) => set({ caption, captionAt: Date.now() }),
   setTtsEngine: (ttsEngine) => set({ ttsEngine }),
+  setHandsFreeRest: (handsFreeRest) => set({ handsFreeRest, handsFreeRestAt: handsFreeRest ? Date.now() : 0 }),
   addLine: (role, text, source) =>
     set((s) => ({
       transcript: [...s.transcript, { id: uid("t"), role, text, at: Date.now(), source }].slice(-60),
@@ -87,5 +105,7 @@ export const useVoice = create<VoiceState>()((set) => ({
       captionAt: 0,
       transcript: [],
       error: null,
+      handsFreeRest: null,
+      handsFreeRestAt: 0,
     }),
 }));

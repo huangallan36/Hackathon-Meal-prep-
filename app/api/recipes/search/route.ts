@@ -1,6 +1,7 @@
 /**
- * GET /api/recipes/search?q=chicken[&have=rice,spinach][&maxTime=30][&diet=vegetarian]
+ * GET /api/recipes/search?q=chicken[&have=rice,spinach][&maxTime=30][&diet=vegetarian][&protein=1][&leftovers=1]
  *   -> PlannerSearchResponse (a RecipeSearchResponse plus section labels / pairings).
+ * A time limit inside the query ("something under 20 minutes") narrows like maxTime.
  *
  * The bundled catalog always answers first (lib/planner/search.ts, shared with the client's
  * offline fallback). Only when it finds fewer than 3 matches, and Spoonacular is enabled,
@@ -11,8 +12,10 @@
 import { getCatalog, youtubeIdFor } from "@/lib/recipes/catalog";
 import { normalizeRecipe, type SpoonacularRecipeInfo } from "@/lib/recipes/normalize";
 import {
+  HIGH_PROTEIN_G,
   hasSearchTerms,
   parseSearchParams,
+  queryTimeLimit,
   searchRecipes,
   type PlannerSearchResponse,
   type SearchOptions,
@@ -91,7 +94,7 @@ function fromCache(query: string, options: SearchOptions, partial = false) {
 }
 
 function liveKey(query: string, options: SearchOptions): string {
-  return [query, options.maxMinutes ?? "", options.diet ?? ""].join("|");
+  return [query, options.maxMinutes ?? "", options.diet ?? "", options.highProtein ? "p" : ""].join("|");
 }
 
 function takeLiveSlot(): boolean {
@@ -145,6 +148,7 @@ async function liveSearch(query: string, options: SearchOptions): Promise<Recipe
   if (!takeLiveSlot()) return null;
 
   const started = Date.now();
+  const maxReadyTime = Math.min(options.maxMinutes ?? Infinity, queryTimeLimit(query) ?? Infinity);
   const res = await spoon<ComplexSearchResponse>(
     "/recipes/complexSearch",
     {
@@ -154,7 +158,8 @@ async function liveSearch(query: string, options: SearchOptions): Promise<Recipe
       addRecipeInformation: true,
       addRecipeInstructions: true,
       fillIngredients: true,
-      maxReadyTime: options.maxMinutes,
+      maxReadyTime: Number.isFinite(maxReadyTime) ? maxReadyTime : undefined,
+      minProtein: options.highProtein ? HIGH_PROTEIN_G : undefined,
       diet: options.diet === "vegetarian" || options.diet === "vegan" || options.diet === "gluten free" ? options.diet : undefined,
       intolerances: options.diet === "dairy free" ? "dairy" : undefined,
     },

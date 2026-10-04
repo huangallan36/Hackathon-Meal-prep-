@@ -6,11 +6,15 @@
  * Returns text to speak INSTEAD of the model's reply when the action has its own
  * answer (e.g. the step it just moved to).
  */
+import { estimateFoods, logFoods } from "@/lib/diary/estimate";
+import { dayTotals, MEAL_LABEL } from "@/lib/diary/stats";
 import { loadRecipe } from "@/lib/recipes/client";
 import { FRIDGE_SCAN_HREF } from "@/lib/kitchen/routes";
+import { useDiary } from "@/lib/stores/diary";
 import { useKitchen } from "@/lib/stores/kitchen";
 import { toast } from "@/lib/stores/toast";
-import type { Recipe, SousAction, SousActionName } from "@/lib/types";
+import type { MealType, Recipe, SousAction, SousActionName } from "@/lib/types";
+import { mealForNow, todayISO } from "@/lib/utils";
 import { getCurrentPath, navigateTo } from "./context";
 import { stepSpeech } from "./speech-text";
 
@@ -20,10 +24,13 @@ const KNOWN: ReadonlySet<SousActionName> = new Set<SousActionName>([
   "start_cooking",
   "show_groceries",
   "log_meal",
+  "log_food",
   "next_step",
   "previous_step",
   "repeat_step",
 ]);
+
+const MEALS: readonly MealType[] = ["breakfast", "lunch", "dinner", "snack"];
 
 export const LAST_STEP_LINE = "That was the last step! Snap a photo of your finished meal and I'll log it for you.";
 export const NO_RECIPE_LINE = "Pick a recipe first and I'll walk you through it.";
@@ -134,6 +141,46 @@ function logMeal() {
   navigateTo("/ai/snap");
 }
 
+/** "1,420" (TTS voices read grouped digits naturally; no symbols) */
+const count = (n: number) => Math.round(n).toLocaleString("en-US");
+
+/** "chicken wrap and latte", "eggs, toast and orange juice" (lowercase, no leading article) */
+function spokenList(names: string[]): string {
+  const clean = names.map((n) => n.toLowerCase().replace(/^(?:a|an|the|some)\s+/, "").replace(/[^a-z0-9 '-]/g, " ").replace(/\s+/g, " ").trim()).filter(Boolean);
+  if (clean.length <= 1) return clean[0] ?? "food";
+  return `${clean.slice(0, -1).join(", ")} and ${clean[clean.length - 1]}`;
+}
+
+/**
+ * Spoken food logging: estimate what they described, log it to today's diary under the
+ * named meal (else the one that fits the time), open the day and answer with a short
+ * summary. Never throws; every failure ends in a friendly line.
+ */
+async function logFood(description: unknown, meal: unknown): Promise<string> {
+  const text = typeof description === "string" ? description.replace(/\s+/g, " ").trim().slice(0, 200) : "";
+  const today = todayISO();
+  if (!text) {
+    navigateTo(`/diary/${today}`);
+    return "Tell me what you had, like a chicken wrap and a latte, and I'll log it.";
+  }
+  const slot: MealType = MEALS.includes(meal as MealType) ? (meal as MealType) : mealForNow();
+  try {
+    const { items } = await estimateFoods(text, slot);
+    if (!items.length) return "Hmm, I couldn't tell what you had. Try again, like two eggs and toast.";
+    const logged = logFoods(items, slot, today);
+    if (!logged.length) return "Sorry, I couldn't save that to your diary. Try again?";
+    navigateTo(`/diary/${today}`);
+    toast(`Added to ${MEAL_LABEL[slot]}`, "success");
+    const kcal = logged.reduce((sum, e) => sum + (e.nutrition.calories || 0), 0);
+    const dayKcal = dayTotals(useDiary.getState().entries, today).totals.calories;
+    const what = logged.length > 3 ? `${logged.length} things for ${slot === "snack" ? "a snack" : slot}` : `your ${spokenList(logged.map((e) => e.name))}`;
+    return `Logged ${what}, about ${count(kcal)} calories. That's ${count(dayKcal)} for today.`;
+  } catch (err) {
+    console.warn("[voice] log_food failed:", err instanceof Error ? err.message : err);
+    return "Sorry, I couldn't log that right now. You can add it from your diary.";
+  }
+}
+
 async function applyOne(action: SousAction): Promise<string | null> {
   const id = validId(action.args?.recipeId);
   switch (action.name) {
@@ -159,8 +206,7 @@ async function applyOne(action: SousAction): Promise<string | null> {
     case "repeat_step":
       return repeatStep();
     case "log_food":
-      // Placeholder until spoken food logging is wired up (the server never sends it yet).
-      return null;
+      return logFood(action.args?.description, action.args?.meal);
   }
 }
 

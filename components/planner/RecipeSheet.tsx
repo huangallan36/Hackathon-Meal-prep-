@@ -162,9 +162,12 @@ function SheetBody({
               {formatCount(upvotes)} yums
             </span>
           )}
-          <IconButton label="Close" onClick={onClose} autoFocus className="absolute right-3 top-3 size-11 bg-surface/90 backdrop-blur">
-            <X className="size-5" />
-          </IconButton>
+          {/* Positioned by a wrapper: IconButton is `relative` (for its tap target) */}
+          <span className="absolute right-3 top-3">
+            <IconButton label="Close" onClick={onClose} autoFocus className="size-11 bg-surface/90 backdrop-blur">
+              <X className="size-5" />
+            </IconButton>
+          </span>
         </div>
 
         <RecipeEyebrow recipe={recipe} max={3} className="mt-4" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Camera, Keyboard, Lightbulb, RefreshCw, Sparkles, X } from "lucide-react";
+import { ArrowRight, Camera, Keyboard, RefreshCw, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
@@ -12,7 +12,7 @@ import { StickyAction } from "@/components/kitchen/StickyAction";
 import { Button } from "@/components/ui/Button";
 import { FallbackNote } from "@/components/ui/Misc";
 import { PhotoPicker } from "@/components/ui/PhotoPicker";
-import { ScreenHeader } from "@/components/ui/ScreenHeader";
+import { PageTitle, ScreenHeader } from "@/components/ui/ScreenHeader";
 import { fetchMatches, fridgeThumbnail, replaceQuery, sayWhenFree, scanFridge, wait } from "@/lib/kitchen/client";
 import { fridgeLine } from "@/lib/kitchen/format";
 import { RECIPES_HREF } from "@/lib/kitchen/routes";
@@ -21,6 +21,9 @@ import { useKitchen } from "@/lib/stores/kitchen";
 import { useVoice } from "@/lib/stores/voice";
 
 type Phase = "pick" | "scanning" | "results";
+
+/** Shared Figma sparkle (white), on the green "Find recipes" button */
+const ICON_SPARKLE = "/figma/icons/sparkle.svg";
 
 /** Keep the scan animation on screen long enough to read, even when the answer is instant */
 const MIN_SCAN_MS = 1400;
@@ -44,7 +47,7 @@ function initialPhase(search: Pick<URLSearchParams, "has">): Phase {
 // useSearchParams needs a Suspense boundary for prerendering.
 export default function FridgePage() {
   return (
-    <Suspense fallback={<ScreenHeader title="What's in your fridge?" back />}>
+    <Suspense fallback={<ScreenHeader back />}>
       <FridgeScreen />
     </Suspense>
   );
@@ -136,79 +139,91 @@ function FridgeScreen() {
 
   const photo = scanSrc ?? storedPhoto;
 
+  const manual = source === "manual";
+
   return (
     <>
-      <ScreenHeader title="What's in your fridge?" back />
+      <ScreenHeader back />
 
-      <div className="px-5 pb-nav">
-        <AnimatePresence mode="wait" initial={false}>
-          {phase === "pick" && (
-            <motion.section key="pick" {...fade} className="flex flex-col gap-5 pt-2">
-              <div className="relative overflow-hidden rounded-card bg-surface px-5 pb-6 pt-4 shadow-card">
-                <FridgeHero className="mx-auto block h-44 w-[218px]" />
-                <h2 className="mt-2 text-center font-display text-[26px] font-semibold leading-tight text-ink">Show me your fridge</h2>
-                <p className="mx-auto mt-2 max-w-[280px] text-center text-[15px] leading-relaxed text-ink-soft">
-                  Snap one photo and Gemini will spot what you can cook with. It only takes a few seconds.
-                </p>
-              </div>
+      {/* Figma text uses "normal" line height; children inherit it */}
+      <div className="pb-nav leading-[normal]">
+        <PageTitle
+          title={phase === "results" ? (manual ? "Your ingredients" : "Your fridge") : "Scan your fridge"}
+          subtitle={<span className="text-sm leading-[normal]">{subtitleFor(phase, ingredients.length, manual)}</span>}
+          className="pt-0.5"
+        />
 
-              <PhotoPicker onPick={(src) => void handlePick(src)} sampleSrc={SAMPLE_FRIDGE_PHOTO} />
-
-              <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.12em] text-ink-faint">
-                <span className="h-px flex-1 bg-line" />
-                or
-                <span className="h-px flex-1 bg-line" />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                {ingredients.length > 0 && (
-                  <Button variant="secondary" full icon={<ArrowRight className="size-5" />} onClick={showResults}>
-                    Back to my {ingredients.length} ingredient{ingredients.length === 1 ? "" : "s"}
-                  </Button>
-                )}
-                <Button variant="ghost" full icon={<Keyboard className="size-5" />} onClick={typeInstead}>
-                  Type ingredients instead
-                </Button>
-              </div>
-
-              <p className="flex items-start gap-2.5 rounded-tile bg-butter-soft px-4 py-3 text-[13px] leading-relaxed text-ink-soft">
-                <Lightbulb className="mt-0.5 size-4 shrink-0 text-ink" />
-                Open the door wide and step back so every shelf is in the frame.
-              </p>
-            </motion.section>
-          )}
-
-          {phase === "scanning" && scanSrc && (
-            <motion.section key="scanning" {...fade} className="flex flex-col gap-4 pt-2">
-              <ScanningPhoto src={scanSrc} />
-              <Button variant="ghost" icon={<X className="size-4" />} onClick={cancelScan} className="self-center">
-                Cancel
-              </Button>
-            </motion.section>
-          )}
-
-          {phase === "results" && (
-            <motion.section key="results" {...fade} className="flex flex-col gap-6 pt-2">
-              <ResultsHeader
-                count={ingredients.length}
-                manual={source === "manual"}
-                photo={photo}
-                onRescan={() => setPhase("pick")}
-              />
-              {source === "fallback" && (
-                <div className="-mt-2">
-                  <FallbackNote show>Showing a sample scan. Edit it to match your fridge.</FallbackNote>
+        <div className="px-5 pt-5">
+          <AnimatePresence mode="wait" initial={false}>
+            {phase === "pick" && (
+              <motion.section key="pick" {...fade} className="flex flex-col gap-4">
+                <div className="rounded-card bg-surface p-2.5 shadow-card">
+                  <div className="flex h-[184px] items-center justify-center overflow-hidden rounded-tile bg-butter-soft">
+                    <FridgeHero className="h-[168px] w-auto" />
+                  </div>
+                  <div className="px-1.5 pb-1.5 pt-3">
+                    <h2 className="font-display text-section font-semibold text-ink">Show me your fridge</h2>
+                    <p className="mt-1 text-sm leading-snug text-ink-soft">
+                      Open the door wide and step back so every shelf is in the frame.
+                    </p>
+                  </div>
                 </div>
-              )}
-              <IngredientEditor
-                ingredients={ingredients}
-                onAdd={addIngredient}
-                onRemove={removeIngredient}
-                autoFocus={focusInput}
-              />
-            </motion.section>
-          )}
-        </AnimatePresence>
+
+                <PhotoPicker onPick={(src) => void handlePick(src)} sampleSrc={SAMPLE_FRIDGE_PHOTO} />
+
+                <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.08em] text-ink-faint">
+                  <span className="h-px flex-1 bg-line" />
+                  or
+                  <span className="h-px flex-1 bg-line" />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  {ingredients.length > 0 && (
+                    <Button variant="secondary" full icon={<ArrowRight className="size-5" />} onClick={showResults}>
+                      Back to my {ingredients.length} ingredient{ingredients.length === 1 ? "" : "s"}
+                    </Button>
+                  )}
+                  <Button variant="ghost" full icon={<Keyboard className="size-5" />} onClick={typeInstead}>
+                    Type ingredients instead
+                  </Button>
+                </div>
+              </motion.section>
+            )}
+
+            {phase === "scanning" && scanSrc && (
+              <motion.section key="scanning" {...fade} className="flex flex-col gap-4">
+                <ScanningPhoto src={scanSrc} />
+                <Button variant="ghost" icon={<X className="size-4" />} onClick={cancelScan} className="self-center">
+                  Cancel
+                </Button>
+              </motion.section>
+            )}
+
+            {phase === "results" && (
+              <motion.section key="results" {...fade} className="flex flex-col gap-5">
+                <div className="flex flex-col gap-2">
+                  <SourceRow
+                    manual={manual}
+                    sample={source === "fallback"}
+                    photo={photo}
+                    onRescan={() => setPhase("pick")}
+                  />
+                  {source === "fallback" && (
+                    <div>
+                      <FallbackNote show>Showing a sample scan. Edit it to match your fridge.</FallbackNote>
+                    </div>
+                  )}
+                </div>
+                <IngredientEditor
+                  ingredients={ingredients}
+                  onAdd={addIngredient}
+                  onRemove={removeIngredient}
+                  autoFocus={focusInput}
+                />
+              </motion.section>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
       {phase === "results" && (
@@ -216,7 +231,7 @@ function FridgeScreen() {
           <Button
             size="lg"
             full
-            icon={<Sparkles className="size-5" />}
+            icon={<img src={ICON_SPARKLE} alt="" width={16} height={16} className="size-[18px]" />}
             disabled={ingredients.length === 0}
             onClick={findRecipes}
           >
@@ -228,61 +243,50 @@ function FridgeScreen() {
   );
 }
 
-function ResultsHeader({
-  count,
+function subtitleFor(phase: Phase, count: number, manual: boolean): string {
+  if (phase === "pick") return "One photo and Gemini spots what you can cook.";
+  if (phase === "scanning") return "Hang tight, this takes a few seconds.";
+  if (manual) return count === 0 ? "Add a few things and I'll match recipes." : `${count} so far. Add more or find recipes.`;
+  return count === 0 ? "Nothing left on the list. Add a few things." : `I spotted ${count} ingredient${count === 1 ? "" : "s"}. Fix anything I got wrong.`;
+}
+
+/** Figma 2.5 list-row shape: 60px thumb, title + meta, a link on the right */
+function SourceRow({
   manual,
+  sample,
   photo,
   onRescan,
 }: {
-  count: number;
   manual: boolean;
+  sample: boolean;
   photo: string | null;
   onRescan: () => void;
 }) {
-  const title = manual
-    ? count === 0
-      ? "What do you have?"
-      : `${count} ingredient${count === 1 ? "" : "s"} so far`
-    : count === 0
-      ? "Nothing left on the list"
-      : `I spotted ${count} ingredient${count === 1 ? "" : "s"}`;
-  const body = manual
-    ? "Add a few things and I'll match recipes to them."
-    : "Tap anything I got wrong to remove it, or add what I missed.";
-
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-3 rounded-tile bg-surface py-2 pl-2 pr-3 shadow-card animate-fade-up">
       {photo && !manual ? (
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0, rotate: -4 }}
-          animate={{ scale: 1, opacity: 1, rotate: -3 }}
-          transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className="relative shrink-0"
-        >
-          <FridgePhoto src={photo} className="size-20 rounded-tile border-4 border-surface shadow-card" />
-          <span className="absolute -bottom-1.5 -right-1.5 flex size-7 items-center justify-center rounded-full bg-accent text-white shadow-accent">
-            <Sparkles className="size-3.5" />
-          </span>
-        </motion.div>
+        <FridgePhoto src={photo} className="size-[60px] shrink-0 rounded-thumb" />
       ) : (
-        <span className="flex size-16 shrink-0 items-center justify-center rounded-tile bg-accent-soft text-accent">
-          <Keyboard className="size-7" />
+        <span className="flex size-[60px] shrink-0 items-center justify-center rounded-thumb bg-accent-soft text-accent">
+          <Keyboard className="size-6" />
         </span>
       )}
-      <div className="min-w-0">
-        <h2 className="font-display text-2xl font-semibold leading-tight text-ink" aria-live="polite">
-          {title}
-        </h2>
-        <p className="mt-1 text-sm leading-snug text-ink-soft">{body}</p>
-        <button
-          type="button"
-          onClick={onRescan}
-          className="-ml-1 mt-0.5 inline-flex min-h-11 items-center gap-1.5 rounded-pill px-1 text-sm font-semibold text-accent-strong transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-        >
-          {manual ? <Camera className="size-4" /> : <RefreshCw className="size-4" />}
-          {manual ? "Scan a photo instead" : "Rescan"}
-        </button>
-      </div>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-body font-semibold text-ink">
+          {manual ? "Typed by you" : sample ? "Sample scan" : "Scanned with Gemini"}
+        </span>
+        <span className="mt-[3px] block truncate text-xs text-ink-soft">
+          {manual ? "No photo yet" : sample ? "From the sample photo" : "From your photo"}
+        </span>
+      </span>
+      <button
+        type="button"
+        onClick={onRescan}
+        className="relative inline-flex shrink-0 items-center gap-1 text-meta font-semibold text-accent after:absolute after:-inset-3 after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      >
+        {manual ? <Camera className="size-3.5" /> : <RefreshCw className="size-3.5" />}
+        {manual ? "Scan" : "Rescan"}
+      </button>
     </div>
   );
 }

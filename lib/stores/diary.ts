@@ -10,9 +10,11 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { DEFAULT_GOALS, storageKey } from "@/lib/config";
 import { cleanEntryFields, reviveActivity, reviveEntries, reviveGoals } from "@/lib/diary/sanitize";
+import { dayTotals } from "@/lib/diary/stats";
+import type { NutrientTotals } from "@/lib/nutrients";
 import { SEED_VERSION, seedActivity, seedDiary } from "@/lib/seed/diary";
 import { persistStorage } from "@/lib/storage";
-import type { DailyActivity, DiaryEntry, ISODate, Micros, Nutrition, NutritionGoals } from "@/lib/types";
+import type { DailyActivity, DiaryEntry, ISODate, NutritionGoals } from "@/lib/types";
 import { todayISO, uid } from "@/lib/utils";
 
 interface DiaryState {
@@ -79,20 +81,12 @@ export function entriesOn(entries: DiaryEntry[], date: ISODate): DiaryEntry[] {
   return entries.filter((e) => e.date === date).sort((a, b) => a.loggedAt - b.loggedAt);
 }
 
-export function totalsOn(entries: DiaryEntry[], date: ISODate): Nutrition & Micros {
-  const t = { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, iron: 0, calcium: 0, vitaminA: 0 };
-  for (const e of entries) {
-    if (e.date !== date) continue;
-    t.calories += e.nutrition.calories;
-    t.protein += e.nutrition.protein;
-    t.carbs += e.nutrition.carbs;
-    t.fat += e.nutrition.fat;
-    t.fiber += e.nutrition.fiber;
-    t.iron += e.micros?.iron ?? 0;
-    t.calcium += e.micros?.calcium ?? 0;
-    t.vitaminA += e.micros?.vitaminA ?? 0;
-  }
-  return t;
+/**
+ * Every registry nutrient for one day. Micros an entry doesn't carry are estimated (see
+ * microsFor in lib/diary/stats.ts); use dayTotals there when you need the "estimated" flags.
+ */
+export function totalsOn(entries: DiaryEntry[], date: ISODate): NutrientTotals {
+  return dayTotals(entries, date).totals;
 }
 
 export function loggedDates(entries: DiaryEntry[]): Set<ISODate> {

@@ -19,6 +19,7 @@ const tones: Record<Tone, string> = {
 export function Chip({
   children,
   tone = "neutral",
+  size = "md",
   icon,
   onRemove,
   onClick,
@@ -26,6 +27,8 @@ export function Chip({
 }: {
   children: ReactNode;
   tone?: Tone;
+  /** sm = Figma small pill (11px, 4/10 padding) */
+  size?: "sm" | "md";
   icon?: ReactNode;
   onRemove?: () => void;
   onClick?: () => void;
@@ -36,7 +39,8 @@ export function Chip({
     <Tag
       {...(onClick ? { type: "button" as const, onClick } : {})}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-pill px-3 py-[7px] text-meta font-medium animate-pop",
+        "inline-flex items-center gap-1.5 rounded-pill font-medium animate-pop",
+        size === "sm" ? "px-2.5 py-1 text-caption" : "px-3 py-[7px] text-meta",
         tones[tone],
         onClick && "active:scale-95 transition",
         className,

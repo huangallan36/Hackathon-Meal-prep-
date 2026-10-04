@@ -1,104 +1,153 @@
 "use client";
 
-import { Check, Leaf, Timer } from "lucide-react";
-import { useEffect, useRef, type ReactNode } from "react";
-import type { SearchFilters } from "@/lib/planner/search";
+import { X } from "lucide-react";
+import type { ReactNode } from "react";
+import { capitalize, DIETS, type SearchFilters } from "@/lib/planner/search";
 import { cn } from "@/lib/utils";
 
 export const QUICK_MINUTES = 30;
 
+/** Chip toggles that narrow the planner; "For you" = none of them */
+const TOGGLES = [
+  { id: "quick", label: `Under ${QUICK_MINUTES} min` },
+  { id: "protein", label: "High protein" },
+  { id: "leftovers", label: "Use up leftovers" },
+] as const;
+
+type ToggleId = (typeof TOGGLES)[number]["id"];
+
+function isOn(filters: SearchFilters, id: ToggleId): boolean {
+  if (id === "quick") return filters.maxMinutes === QUICK_MINUTES;
+  if (id === "protein") return filters.highProtein === true;
+  return filters.leftovers === true;
+}
+
+function toggled(filters: SearchFilters, id: ToggleId): SearchFilters {
+  const on = !isOn(filters, id);
+  if (id === "quick") return { ...filters, maxMinutes: on ? QUICK_MINUTES : undefined };
+  if (id === "protein") return { ...filters, highProtein: on || undefined };
+  return { ...filters, leftovers: on || undefined };
+}
+
+/** True when any chip toggle is on (so "For you" is not) */
+export function chipFiltersOn(filters: SearchFilters): boolean {
+  return TOGGLES.some((t) => isOn(filters, t.id));
+}
+
 /**
- * One scroller, two kinds of chips: toggles ("Under 30 min", "Vegetarian") narrow every
- * result; ingredient chips ("Chicken") set the search query.
+ * Figma 2.1 chip row: "For you" (selected = ink) clears the toggles; the others narrow every
+ * list. The row scrolls sideways under the screen edge, like the design.
  */
 export function FilterChips({
   filters,
   onFilters,
-  queryChips,
-  activeQuery,
-  onQuery,
+  className,
 }: {
   filters: SearchFilters;
   onFilters: (next: SearchFilters) => void;
-  queryChips: string[];
-  /** Normalized current query, to highlight its chip */
-  activeQuery: string;
-  onQuery: (query: string) => void;
+  className?: string;
 }) {
-  const quick = filters.maxMinutes === QUICK_MINUTES;
-  const veg = filters.diet === "vegetarian";
-  const rowRef = useRef<HTMLDivElement>(null);
-
-  // Slide the active query chip into view (e.g. "Rice" picked from an empty state or typed).
-  // Only the chip row scrolls horizontally; the page itself never moves.
-  useEffect(() => {
-    const row = rowRef.current;
-    const chip = row?.querySelector<HTMLElement>('[data-query-chip][aria-pressed="true"]');
-    if (!row || !chip) return;
-    // The row is `relative`, so offsetLeft is measured from the row's own edge.
-    const left = chip.offsetLeft;
-    const right = left + chip.offsetWidth;
-    if (left >= row.scrollLeft && right <= row.scrollLeft + row.clientWidth) return;
-    row.scrollTo({ left: Math.max(0, left - row.clientWidth / 2 + chip.offsetWidth / 2), behavior: "smooth" });
-  }, [activeQuery]);
-
+  const forYou = !chipFiltersOn(filters);
   return (
-    <div ref={rowRef} className="no-scrollbar relative -mx-5 mt-3 flex gap-2 overflow-x-auto px-5 py-1.5">
-      <ChipButton
-        pressed={quick}
-        icon={<Timer className="size-4" />}
-        onClick={() => onFilters({ ...filters, maxMinutes: quick ? undefined : QUICK_MINUTES })}
+    <div role="group" aria-label="Filters" className={cn("no-scrollbar flex gap-2 overflow-x-auto px-5", className)}>
+      <ToggleChip
+        pressed={forYou}
+        onClick={() => onFilters({ ...filters, maxMinutes: undefined, highProtein: undefined, leftovers: undefined })}
       >
-        Under {QUICK_MINUTES} min
-      </ChipButton>
-      <ChipButton
-        pressed={veg}
-        icon={<Leaf className="size-4" />}
-        onClick={() => onFilters({ ...filters, diet: veg ? undefined : "vegetarian" })}
-      >
-        Vegetarian
-      </ChipButton>
-      <span aria-hidden className="mx-1 my-auto h-5 w-px shrink-0 bg-line" />
-      {queryChips.map((chip) => {
-        const active = activeQuery === chip.toLowerCase();
-        return (
-          <ChipButton key={chip} pressed={active} queryChip onClick={() => onQuery(active ? "" : chip)}>
-            {chip}
-          </ChipButton>
-        );
-      })}
-      <span aria-hidden className="w-0 shrink-0" />
+        For you
+      </ToggleChip>
+      {TOGGLES.map((t) => (
+        <ToggleChip key={t.id} pressed={isOn(filters, t.id)} onClick={() => onFilters(toggled(filters, t.id))}>
+          {t.label}
+        </ToggleChip>
+      ))}
+      <span aria-hidden className="w-3 shrink-0" />
     </div>
   );
 }
 
-function ChipButton({
+/** Opened from the header's filter button: diet filters */
+export function DietPanel({
+  filters,
+  onFilters,
+  className,
+}: {
+  filters: SearchFilters;
+  onFilters: (next: SearchFilters) => void;
+  className?: string;
+}) {
+  return (
+    <div className={cn("px-5 animate-fade-up", className)}>
+      <div className="rounded-tile bg-surface p-3 shadow-card">
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-soft">Diet</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {DIETS.map((diet) => {
+            const on = filters.diet === diet;
+            return (
+              <ToggleChip key={diet} pressed={on} onClick={() => onFilters({ ...filters, diet: on ? undefined : diet })}>
+                {capitalize(diet)}
+              </ToggleChip>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Active filters while searching (the chip row is hidden there): tap to remove */
+export function ActiveFilters({
+  filters,
+  onFilters,
+  className,
+}: {
+  filters: SearchFilters;
+  onFilters: (next: SearchFilters) => void;
+  className?: string;
+}) {
+  const on = TOGGLES.filter((t) => isOn(filters, t.id));
+  if (!on.length && !filters.diet) return null;
+  return (
+    <div className={cn("no-scrollbar flex gap-2 overflow-x-auto px-5", className)}>
+      {on.map((t) => (
+        <ToggleChip key={t.id} pressed onClick={() => onFilters(toggled(filters, t.id))} removable>
+          {t.label}
+        </ToggleChip>
+      ))}
+      {filters.diet && (
+        <ToggleChip pressed onClick={() => onFilters({ ...filters, diet: undefined })} removable>
+          {capitalize(filters.diet)}
+        </ToggleChip>
+      )}
+    </div>
+  );
+}
+
+/** Figma chip (13px, 7/12 padding): white with a 1px line, or ink when selected */
+function ToggleChip({
   pressed,
-  icon,
-  queryChip,
+  removable,
   onClick,
   children,
 }: {
   pressed: boolean;
-  icon?: ReactNode;
-  /** Marks chips that set the query (auto-scrolled into view when active) */
-  queryChip?: boolean;
+  removable?: boolean;
   onClick: () => void;
   children: ReactNode;
 }) {
   return (
     <button
       type="button"
-      aria-pressed={pressed}
-      data-query-chip={queryChip || undefined}
+      aria-pressed={removable ? undefined : pressed}
+      aria-label={removable && typeof children === "string" ? `Remove filter: ${children}` : undefined}
       onClick={onClick}
       className={cn(
-        "inline-flex h-11 shrink-0 items-center gap-1.5 rounded-pill px-4 text-sm font-semibold transition-[background-color,color,box-shadow,transform] duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
-        pressed ? "bg-ink text-white shadow-soft" : "bg-surface text-ink ring-1 ring-line hover:bg-cream-deep",
+        "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-pill border px-3 py-1.5 text-meta font-medium leading-[normal] transition-[background-color,border-color,color,transform] duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+        pressed ? "border-ink bg-ink text-white" : "border-line bg-surface text-ink hover:bg-cream-deep",
       )}
     >
-      {pressed && icon ? <Check className="size-4" /> : icon}
       {children}
+      {removable && <X aria-hidden className="-mr-0.5 size-3.5 opacity-70" />}
     </button>
   );
 }

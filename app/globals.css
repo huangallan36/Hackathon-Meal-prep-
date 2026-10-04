@@ -67,6 +67,21 @@
   --text-heading: 22px; /* Fraunces: "Alex Rivera" */
   --text-title: 30px; /* Fraunces page titles: "Meal planner" */
 
+  /* Figma line-height is "normal" for every style except paragraphs (set 1.4 explicitly there) */
+  --text-xs--line-height: normal;
+  --text-sm--line-height: normal;
+  --text-base--line-height: normal;
+  --text-lg--line-height: normal;
+  --text-xl--line-height: normal;
+  --text-micro--line-height: normal;
+  --text-caption--line-height: normal;
+  --text-meta--line-height: normal;
+  --text-body--line-height: normal;
+  --text-lead--line-height: normal;
+  --text-section--line-height: normal;
+  --text-heading--line-height: normal;
+  --text-title--line-height: normal;
+
   /* Radii */
   --radius-card: 22px;
   --radius-tile: 18px;

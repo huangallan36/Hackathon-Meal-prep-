@@ -38,6 +38,8 @@ export const TIMEOUTS = {
   tts: 10_000,
   vision: 25_000,
   recipes: 10_000,
+  /** /api/nutrition/estimate (server answers within ~10s, food table after that) */
+  nutrition: 12_000,
   moderation: 15_000,
 } as const;
 

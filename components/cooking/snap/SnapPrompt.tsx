@@ -57,7 +57,7 @@ export function SnapViewfinder() {
       </motion.div>
       <p className="relative mt-2 font-display text-[22px] font-semibold text-ink">Snap your plate</p>
       <p className="relative max-w-[250px] text-sm leading-relaxed text-ink-soft">
-        Gemini estimates calories, protein, carbs, fat and fiber. You can tweak every number.
+        Gemini estimates calories, macros, vitamins and minerals. You can tweak every number.
       </p>
     </div>
   );

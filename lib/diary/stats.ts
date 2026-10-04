@@ -1,9 +1,12 @@
 /**
- * Pure helpers for the Diary tab: day totals (with micronutrient estimates for
- * photo-logged meals), streaks, calendar grids and display formatting.
+ * Pure helpers for the Diary tab: day totals for every tracked nutrient (with estimates
+ * for entries that carry no data for some of them), weekly averages, nutrient status rows,
+ * streaks, calendar grids and display formatting.
  */
+import { heuristicMicros, type FullMicros } from "@/lib/diary/micros";
+import { emptyTotals, MICRO_KEYS, NUTRIENTS, nutrientStatus, type NutrientDef, type NutrientStatus, type NutrientTotals } from "@/lib/nutrients";
 import { getCachedRecipe } from "@/lib/recipes/catalog";
-import type { DiaryEntry, ISODate, MealType, Micros, Nutrition } from "@/lib/types";
+import type { DiaryEntry, ISODate, MealType, Nutrition, NutritionGoals } from "@/lib/types";
 import { addDays, formatDay, fromISODate, toISODate } from "@/lib/utils";
 
 export const MEAL_ORDER: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
@@ -15,9 +18,8 @@ export const MEAL_LABEL: Record<MealType, string> = {
   snack: "Snack",
 };
 
-export type DayTotals = Nutrition & Micros;
-
-const ZERO: DayTotals = { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, iron: 0, calcium: 0, vitaminA: 0 };
+/** Every registry nutrient (calories, macros, vitamins, minerals, limits) */
+export type DayTotals = NutrientTotals;
 
 /* ------------------------------------------------------------------ */
 /* Numbers                                                             */
@@ -67,50 +69,138 @@ export function sumNutrition(entries: DiaryEntry[]): Nutrition {
   return t;
 }
 
-const hasMicros = (m?: Partial<Micros>) => !!m && (m.iron != null || m.calcium != null || m.vitaminA != null);
+const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
 /**
- * Micronutrients for one entry. Photo estimates from Gemini only carry macros, so we
- * fall back to the cooked recipe's per-serving micros (scaled to the logged calories),
- * then to an average-diet density per kcal. Either fallback is flagged as estimated.
+ * Every micronutrient for one entry. Whatever the entry doesn't carry (older photo logs,
+ * partial estimates) comes from the cooked recipe's per-serving values scaled to the logged
+ * calories, else from an average-diet density for those calories. `estimated` is true
+ * when any value had to be filled in like that.
  */
-export function microsFor(e: DiaryEntry): { micros: Micros; estimated: boolean } {
-  if (hasMicros(e.micros)) {
-    return { micros: { iron: e.micros?.iron ?? 0, calcium: e.micros?.calcium ?? 0, vitaminA: e.micros?.vitaminA ?? 0 }, estimated: false };
+export function microsFor(e: DiaryEntry): { micros: FullMicros; estimated: boolean } {
+  const have = e.micros ?? {};
+  const out = {} as FullMicros;
+  const missing: (keyof FullMicros)[] = [];
+  for (const k of MICRO_KEYS) {
+    const v = have[k];
+    if (finite(v)) out[k] = Math.max(0, v);
+    else missing.push(k);
   }
+  if (!missing.length) return { micros: out, estimated: false };
+
   const kcal = Math.max(0, e.nutrition.calories || 0);
   const r = e.recipeId != null ? getCachedRecipe(e.recipeId)?.nutrition : undefined;
-  if (r && hasMicros(r)) {
-    const scale = r.calories > 0 && kcal > 0 ? Math.min(2, Math.max(0.5, kcal / r.calories)) : 1;
-    return {
-      micros: { iron: (r.iron ?? 0) * scale, calcium: (r.calcium ?? 0) * scale, vitaminA: (r.vitaminA ?? 0) * scale },
-      estimated: true,
-    };
+  const scale = r && r.calories > 0 && kcal > 0 ? Math.min(2, Math.max(0.5, kcal / r.calories)) : 1;
+  const typical = heuristicMicros({ calories: kcal, carbs: e.nutrition.carbs || 0, fat: e.nutrition.fat || 0 });
+  for (const k of missing) {
+    const fromRecipe = r?.[k];
+    out[k] = finite(fromRecipe) ? Math.max(0, fromRecipe) * scale : typical[k];
   }
-  // Rough densities of a typical mixed diet: ~15 mg iron, ~800 mg calcium, ~600 mcg vit A per 2,000 kcal
-  return { micros: { iron: kcal * 0.0075, calcium: kcal * 0.4, vitaminA: kcal * 0.3 }, estimated: true };
+  return { micros: out, estimated: true };
 }
 
-/** Everything the Diary needs for one day */
-export function dayTotals(entries: DiaryEntry[], date: ISODate): { totals: DayTotals; microsEstimated: boolean; count: number } {
-  const totals = { ...ZERO };
+export interface TotalsResult {
+  totals: NutrientTotals;
+  /** Some micros were filled in from recipes or calories (entries without that data) */
+  microsEstimated: boolean;
+  /** Some entries are Sous estimates (photo, voice or typed descriptions) */
+  aiEstimated: boolean;
+  count: number;
+}
+
+/** Every registry nutrient summed over `entries` */
+export function sumNutrients(entries: DiaryEntry[]): TotalsResult {
+  const totals = emptyTotals();
   let microsEstimated = false;
-  let count = 0;
+  let aiEstimated = false;
   for (const e of entries) {
-    if (e.date !== date) continue;
-    count++;
     totals.calories += e.nutrition.calories || 0;
     totals.protein += e.nutrition.protein || 0;
     totals.carbs += e.nutrition.carbs || 0;
     totals.fat += e.nutrition.fat || 0;
     totals.fiber += e.nutrition.fiber || 0;
     const m = microsFor(e);
-    totals.iron += m.micros.iron;
-    totals.calcium += m.micros.calcium;
-    totals.vitaminA += m.micros.vitaminA;
+    for (const k of MICRO_KEYS) totals[k] += m.micros[k];
     microsEstimated ||= m.estimated;
+    aiEstimated ||= e.estimated === true;
   }
-  return { totals, microsEstimated, count };
+  return { totals, microsEstimated, aiEstimated, count: entries.length };
+}
+
+/** Everything the Diary needs for one day */
+export function dayTotals(entries: DiaryEntry[], date: ISODate): TotalsResult {
+  return sumNutrients(entries.filter((e) => e.date === date));
+}
+
+/** Dates with at least one entry in the `days`-day window ending on `endDate` (inclusive), oldest first */
+export function loggedDaysIn(entries: DiaryEntry[], endDate: ISODate, days = 7): ISODate[] {
+  const start = addDays(endDate, -(Math.max(1, Math.floor(days)) - 1));
+  const set = new Set<ISODate>();
+  for (const e of entries) if (e.date >= start && e.date <= endDate) set.add(e.date);
+  return [...set].sort();
+}
+
+/**
+ * Daily average of every nutrient over the `days`-day window ending on `endDate`, counting
+ * only days that have entries (a skipped day doesn't drag the average down). Pass yesterday
+ * as `endDate` for "the last 7 full days" (today is still in progress). All zeros when
+ * nothing was logged.
+ */
+export function weekAverages(entries: DiaryEntry[], endDate: ISODate, days = 7): NutrientTotals {
+  const dates = loggedDaysIn(entries, endDate, days);
+  const avg = emptyTotals();
+  if (!dates.length) return avg;
+  const inWindow = new Set(dates);
+  const { totals } = sumNutrients(entries.filter((e) => inWindow.has(e.date)));
+  for (const n of NUTRIENTS) avg[n.key] = totals[n.key] / dates.length;
+  return avg;
+}
+
+/* ------------------------------------------------------------------ */
+/* Targets + status                                                    */
+/* ------------------------------------------------------------------ */
+
+/** The user's goal for a nutrient when they have one, else the registry's daily value */
+export function targetFor(def: NutrientDef, goals?: Partial<NutritionGoals>): number {
+  const g = goals?.[def.key as keyof NutritionGoals];
+  return finite(g) && g > 0 ? g : def.target;
+}
+
+export interface NutrientRow {
+  def: NutrientDef;
+  value: number;
+  target: number;
+  /** value / target (1 = 100%) */
+  ratio: number;
+  status: NutrientStatus;
+}
+
+export function nutrientRow(def: NutrientDef, totals: NutrientTotals, goals?: Partial<NutritionGoals>): NutrientRow {
+  const value = Math.max(0, finite(totals[def.key]) ? totals[def.key] : 0);
+  const target = targetFor(def, goals);
+  return { def, value, target, ratio: ratio(value, target), status: nutrientStatus({ ...def, target }, value) };
+}
+
+/** Rows for the given registry groups, in registry order */
+export function nutrientRows(totals: NutrientTotals, goals: Partial<NutritionGoals> | undefined, groups: NutrientDef["group"][]): NutrientRow[] {
+  return NUTRIENTS.filter((n) => groups.includes(n.group)).map((n) => nutrientRow(n, totals, goals));
+}
+
+/**
+ * The 4-6 rows worth a glance: the goals furthest from their target (fiber, vitamins,
+ * minerals), then any limit that's over. Lowest first, like Figma's "Highlighted nutrients".
+ */
+export function highlightedNutrients(totals: NutrientTotals, goals?: Partial<NutritionGoals>): NutrientRow[] {
+  const over = NUTRIENTS.filter((n) => n.kind === "limit")
+    .map((n) => nutrientRow(n, totals, goals))
+    .filter((r) => r.status === "over")
+    .sort((a, b) => b.ratio - a.ratio)
+    .slice(0, 2);
+  const lows = NUTRIENTS.filter((n) => n.kind === "goal" && (n.key === "fiber" || n.group === "vitamin" || n.group === "mineral"))
+    .map((n) => nutrientRow(n, totals, goals))
+    .sort((a, b) => a.ratio - b.ratio)
+    .slice(0, over.length ? 4 : 5);
+  return [...lows, ...over];
 }
 
 /** Calories per logged date, one pass */

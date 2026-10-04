@@ -1,46 +1,36 @@
-import { Flame } from "lucide-react";
 import { cn, formatCount } from "@/lib/utils";
+import { FigmaIcon } from "./FigmaIcon";
 
-type Tone = "glass" | "light" | "plain";
-
-const tones: Record<Tone, string> = {
-  /** On photos */
-  glass: "bg-ink/45 text-white backdrop-blur-md",
-  /** On white surfaces */
-  light: "bg-accent-soft text-accent-strong",
-  plain: "text-ink-soft",
-};
-
-/** Flame + upvote count ("Yums") */
+/**
+ * Orange flame + upvote count ("Yums"). Styled like the Figma photo-card overlay
+ * buttons (2.1: white 90% on the photo); a flame-soft fill marks dishes you Yummed.
+ */
 export function UpvotePill({
   count,
-  tone = "glass",
   size = "md",
   active,
+  onPhoto = true,
   className,
 }: {
   count: number;
-  tone?: Tone;
   size?: "sm" | "md";
   /** The viewer has upvoted this post */
   active?: boolean;
+  /** Sits on a photo (translucent white) instead of a white surface (1px line) */
+  onPhoto?: boolean;
   className?: string;
 }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-pill font-semibold tabular-nums",
-        size === "sm" ? "h-6 px-2 text-[11px]" : "h-8 px-3 text-sm",
-        tones[tone],
+        "inline-flex items-center rounded-pill font-semibold tabular-nums",
+        size === "sm" ? "h-6 gap-1 pl-1 pr-2 text-xs" : "h-[30px] gap-1 pl-1.5 pr-2.5 text-meta",
+        active ? "bg-flame-soft text-flame" : onPhoto ? "bg-surface/90 text-ink" : "bg-surface text-ink shadow-card",
         className,
       )}
-      aria-label={`${count} yums`}
+      aria-label={`${count} yums${active ? ", including yours" : ""}`}
     >
-      <Flame
-        className={cn(size === "sm" ? "size-3" : "size-4", active || tone !== "plain" ? "text-accent" : "")}
-        fill={active ? "currentColor" : "none"}
-        strokeWidth={2.4}
-      />
+      <FigmaIcon name={size === "sm" ? "flame16" : "flame18"} />
       {formatCount(count)}
     </span>
   );

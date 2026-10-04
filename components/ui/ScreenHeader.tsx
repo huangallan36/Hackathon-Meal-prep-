@@ -1,6 +1,5 @@
 "use client";
 
-import { ChevronLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -32,14 +31,14 @@ export function ScreenHeader({
   return (
     <header
       className={cn(
-        "sticky top-0 z-20 grid grid-cols-[40px_1fr_40px] items-center gap-3 bg-cream/90 px-5 pb-2 pt-[calc(var(--safe-top)+6px)] backdrop-blur-md",
+        "sticky top-0 z-20 grid grid-cols-[minmax(40px,auto)_1fr_minmax(40px,auto)] items-center gap-3 bg-cream/90 px-5 pb-2 pt-[calc(var(--safe-top)+6px)] backdrop-blur-md",
         className,
       )}
     >
       <div className="flex">
         {back && (
           <IconButton label="Back" onClick={() => (typeof back === "string" ? router.push(back) : router.back())}>
-            <ChevronLeft className="size-5" strokeWidth={2} />
+            <img src="/figma/icons/chevron-left.svg" alt="" width={20} height={20} className="block size-5" />
           </IconButton>
         )}
       </div>
@@ -66,7 +65,7 @@ export function PageTitle({
   return (
     <div className={cn("px-5", className)}>
       <h1 className="font-display text-title font-semibold leading-tight text-ink">{title}</h1>
-      {subtitle && <p className="mt-1 text-meta text-ink-soft">{subtitle}</p>}
+      {subtitle && <p className="mt-1 text-sm text-ink-soft">{subtitle}</p>}
     </div>
   );
 }

@@ -11,7 +11,7 @@ import {
   type GenerateContentConfig,
 } from "@google/genai";
 import { fallbackReply, pickRecipe, quickCookingIntent, speakable, stepReply, type StepActionName } from "@/lib/intents";
-import type { ChatContext, ChatRequest, ChatTurn, SousAction, SousActionName } from "@/lib/types";
+import type { ChatContext, ChatRequest, ChatTurn, MealType, SousAction, SousActionName } from "@/lib/types";
 
 export const CHAT_LIMITS = {
   message: 500,
@@ -32,10 +32,15 @@ export const SOUS_ACTIONS: readonly SousActionName[] = [
   "start_cooking",
   "show_groceries",
   "log_meal",
+  "log_food",
   "next_step",
   "previous_step",
   "repeat_step",
 ];
+
+const MEALS: readonly MealType[] = ["breakfast", "lunch", "dinner", "snack"];
+/** log_food's description is what the client sends to /api/nutrition/estimate */
+export const FOOD_DESCRIPTION_MAX = 200;
 
 const STEP_ACTIONS: readonly StepActionName[] = ["next_step", "previous_step", "repeat_step"];
 
@@ -83,8 +88,28 @@ export const SOUS_TOOLS: FunctionDeclaration[] = [
   {
     name: "log_meal",
     description:
-      "Open the meal photo screen to log what they ate to their food diary (Sous estimates the nutrition from the photo). Call when they finish cooking or eating, say they ate, or ask to log or track the meal.",
+      "Open the meal photo screen so they can photograph a dish they just cooked with Sous and log it (Sous estimates the nutrition from the photo). Call when they finish cooking or eating that dish and want to log or track it. Not for foods they describe in words: that's log_food.",
     parametersJsonSchema: params(),
+  },
+  {
+    name: "log_food",
+    description:
+      'Log foods or drinks the user tells you they ate or drank, e.g. "log my lunch, chicken wrap and a latte" or "I had two eggs and toast for breakfast". Sous estimates calories, macros, vitamins and minerals from the description, adds them to today\'s food diary and opens it. Call it whenever they say what they ate or drank, even without the word log. Never use log_meal for this.',
+    parametersJsonSchema: params(
+      {
+        description: {
+          type: "string",
+          description:
+            'The foods and drinks exactly as the user described them, with any amounts or sizes, e.g. "chicken wrap and a large oat latte" or "two eggs and two slices of toast". Food words only, no meal name or filler.',
+        },
+        meal: {
+          type: "string",
+          enum: ["breakfast", "lunch", "dinner", "snack"],
+          description: "Only when the user names the meal or it's obvious (a snack); otherwise leave it out and the app uses the time of day.",
+        },
+      },
+      ["description"],
+    ),
   },
   {
     name: "next_step",
@@ -259,8 +284,8 @@ export function buildSystemInstruction(ctx: ChatContext, opts: PromptOptions = {
   const state = JSON.stringify(ctx);
   const force = opts.forceCall ?? FORCE_CALL;
   const toolsIntro = force
-    ? `Every turn, respond by calling exactly one function: an app tool when ${name} needs an action, otherwise reply. Put your spoken line in the "say" argument. The app only changes screens or steps when you call an app tool, so never use reply to promise an action (looking in the fridge, showing recipes, starting a recipe, logging the meal); call that tool instead.`
-    : `The app only changes screens or steps when you call a tool, so if you'd say you'll do something (look in the fridge, show recipes, start cooking, log the meal), call that tool in the same turn instead of only talking about it. Put the line you'd say in the tool's "say" argument. Call at most one tool per turn.`;
+    ? `Every turn, respond by calling exactly one function: an app tool when ${name} needs an action, otherwise reply. Put your spoken line in the "say" argument. The app only changes screens or steps when you call an app tool, so never use reply to promise an action (looking in the fridge, showing recipes, starting a recipe, logging a meal or what they ate); call that tool instead.`
+    : `The app only changes screens or steps when you call a tool, so if you'd say you'll do something (look in the fridge, show recipes, start cooking, log a meal or what they ate), call that tool in the same turn instead of only talking about it. Put the line you'd say in the tool's "say" argument. Call at most one tool per turn.`;
   const talkOnly = force ? "call reply with" : "give";
   const chatLine = force
     ? "Anything else: call reply to chat briefly and kindly, steering gently toward cooking. Thanks or goodbye: reply with something warm."
@@ -288,7 +313,8 @@ ${toolsIntro}
 - show_recipes: ingredients are known and they want ideas, ask what they can make, or want to see the options again.
 - start_cooking: they pick a recipe by position ("the first one" means item one in the recipes list), by a word from the title ("the chicken one"), or by name. Pass that recipe's exact id from APP STATE. Never guess or make up an id. If two recipes fit equally, ask which one instead of calling.
 - show_groceries: they ask what they're missing, what to buy, or whether they need to shop. Use the active recipe's id, or the id of the recipe they mean.
-- log_meal: they're done cooking or eating, say they ate, or ask to log or track the meal.
+- log_meal: they just finished cooking a dish with Sous and want to snap a photo of it to log it ("that was amazing, log it").
+- log_food: they tell you what they ate or drank ("log my lunch, chicken wrap and a latte", "I had two eggs and toast for breakfast", "just had a banana"). Put the foods in description as they said them, with amounts, and pass meal when they name it. The app estimates the nutrition and logs it. Don't use log_meal for this, and don't ask for a photo.
 - next_step, previous_step, repeat_step: while cooking, "next", "done", "continue", "what's next" call next_step; "back", "go back", "previous" call previous_step; "repeat", "say that again", "what was that" call repeat_step. The app reads the step out loud itself, so your text for these is just "Okay."
 - Don't call a tool that opens the screen they're already on, unless they ask.
 
@@ -303,6 +329,7 @@ EXAMPLES
 - "The salmon one sounds good." or "Let's do the second one." (recipes on screen) -> start_cooking(recipeId: <that recipe's id from APP STATE>, say: <a short excited line naming the dish>). Never just reply in text when they pick a recipe.
 - "Next." (cooking) -> next_step()
 - "That was amazing, log it." -> log_meal(say: "Love that. Snap a photo of your plate and I'll log it.")
+- "Log my lunch, I had a chicken wrap and a latte." -> log_food(description: "chicken wrap and a latte", meal: "lunch", say: "Nice, logging that now.")
 - "Can I use olive oil instead of butter?" (cooking) -> ${oliveOil}
 
 APP STATE (live, this turn)
@@ -357,13 +384,30 @@ const CANNED: Record<SousActionName, string> = {
   start_cooking: "Great pick. Say next when you're ready for step one.",
   show_groceries: "Here's what you're missing. I put it on a little shopping list.",
   log_meal: "Nice work. Snap a photo of your plate and I'll log it to your diary.",
+  log_food: "Got it, logging that now.",
   next_step: "Okay.",
   previous_step: "Okay.",
   repeat_step: "Okay.",
-  log_food: "Got it. I logged that to your diary.",
 };
 
 const isStep = (name: SousActionName): name is StepActionName => (STEP_ACTIONS as readonly string[]).includes(name);
+
+/** A food description safe to send on: one line, no control characters, at most 200 chars */
+export function cleanFoodDescription(v: unknown): string {
+  if (typeof v !== "string") return "";
+  const text = Array.from(v, (ch) => (ch.charCodeAt(0) < 32 || ch.charCodeAt(0) === 127 ? " " : ch))
+    .join("")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (text.length <= FOOD_DESCRIPTION_MAX) return text;
+  const cut = text.slice(0, FOOD_DESCRIPTION_MAX);
+  const space = cut.lastIndexOf(" ");
+  return (space > FOOD_DESCRIPTION_MAX * 0.6 ? cut.slice(0, space) : cut).replace(/[,;:\s]+$/, "");
+}
+
+function toMeal(v: unknown): MealType | undefined {
+  return typeof v === "string" && (MEALS as readonly string[]).includes(v) ? (v as MealType) : undefined;
+}
 
 export interface ParsedActions {
   actions: SousAction[];
@@ -413,6 +457,12 @@ export function toActions(calls: FunctionCall[] | undefined, ctx: ChatContext, m
           : (ctx.activeRecipe?.id ?? pickRecipe(message, ctx.recipes) ?? ctx.recipes[0]?.id ?? null);
       if (id == null) dropped.push(name);
       else screen = { name, args: { recipeId: id } };
+    } else if (name === "log_food") {
+      // The model sometimes drops the description; the user's own words are the next best thing.
+      const description = cleanFoodDescription(call.args?.description) || cleanFoodDescription(message);
+      const meal = toMeal(call.args?.meal);
+      if (!description) dropped.push(name);
+      else screen = { name, args: meal ? { description, meal } : { description } };
     } else {
       screen = { name };
     }
@@ -430,6 +480,7 @@ const PROMISES: Partial<Record<SousActionName, RegExp>> = {
   show_recipes: /\b(ideas|recipes|options|here are|here's what)\b/,
   start_cooking: /\b(let's (get )?(cooking|cook|make|start|do)|let's get started|great (pick|choice)|good (pick|choice)|coming up)\b/,
   log_meal: /\b(log|diary|snap|plate)\b/,
+  log_food: /\b(log|logged|logging|diary|added|adding|track|tracked)\b/,
   show_groceries: /\b(missing|shopping list|grocery|groceries|to buy|the store)\b/,
 };
 const SAME_SCREEN: Partial<Record<SousActionName, RegExp>> = {
@@ -523,6 +574,7 @@ export function finalizeReply(rawText: string, parsed: ParsedActions, ctx: ChatC
     const first = dropped[0];
     if (first === "start_cooking") return "Which one sounds good? You can say the first one, or tell me the name.";
     if (first === "show_groceries") return "Pick a recipe first, then I can tell you exactly what you're missing.";
+    if (first === "log_food") return "Tell me what you had, like a chicken wrap and a latte, and I'll log it.";
     if (isStep(first)) return stepReply(first, ctx);
   }
 

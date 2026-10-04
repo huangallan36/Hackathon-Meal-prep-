@@ -1,14 +1,22 @@
 "use client";
 
 import { ArrowUp } from "lucide-react";
-import { useCallback, useState } from "react";
-import { handleUserText, isSttSupported, unlockAudio } from "@/lib/voice/engine";
+import { useState } from "react";
+import { closeTyping, handleUserText, isSttSupported, unlockAudio } from "@/lib/voice/engine";
 import { useKitchen } from "@/lib/stores/kitchen";
 import { useVoice } from "@/lib/stores/voice";
 import { Sheet } from "./Sheet";
 
 const IDLE_SUGGESTIONS = ["I'm wiped, no idea what to cook", "Scan my fridge", "What can I make tonight?"];
 const COOKING_SUGGESTIONS = ["Next step", "Repeat that", "Go back"];
+
+function focusWithoutScroll(el: HTMLInputElement | null) {
+  try {
+    el?.focus({ preventScroll: true });
+  } catch {
+    /* ignore */
+  }
+}
 
 /** Text input fallback for the conversation (mic blocked, unsupported, or just quieter). */
 export function TypeSheet() {
@@ -17,19 +25,18 @@ export function TypeSheet() {
   const cooking = useKitchen((s) => !!s.activeRecipe && s.finishedRecipeId !== s.activeRecipe.id);
   const [text, setText] = useState("");
 
-  const close = useCallback(() => useVoice.getState().setTyping(false), []);
-
   function send(value: string) {
     const message = value.trim();
     if (!message || thinking) return;
     unlockAudio();
     setText("");
-    close();
+    // Not closeTyping(): the turn below takes over, so hands-free must not reopen the mic first.
+    useVoice.getState().setTyping(false);
     void handleUserText(message);
   }
 
   return (
-    <Sheet open={open} onClose={close} title="Type to Sous">
+    <Sheet open={open} onClose={closeTyping} title="Type to Sous">
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -38,7 +45,9 @@ export function TypeSheet() {
         className="flex items-center gap-2"
       >
         <input
-          autoFocus
+          // Not autoFocus: the sheet slides in from below the phone, and focusing it there makes
+          // the browser scroll the (overflow-hidden) phone frame to reveal it, shifting every screen.
+          ref={focusWithoutScroll}
           value={text}
           onChange={(e) => setText(e.target.value)}
           maxLength={500}

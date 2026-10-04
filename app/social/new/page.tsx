@@ -9,7 +9,7 @@ import { ComposerFields } from "@/components/social/composer/ComposerFields";
 import { PhotoPanel, type PhotoOrigin } from "@/components/social/composer/PhotoPanel";
 import { Button } from "@/components/ui/Button";
 import type { PhotoSource } from "@/components/ui/PhotoPicker";
-import { ScreenHeader } from "@/components/ui/ScreenHeader";
+import { PageTitle, ScreenHeader } from "@/components/ui/ScreenHeader";
 import { DEMO_USER } from "@/lib/config";
 import { thumbnailFromDataUrl } from "@/lib/image";
 import { moderatePost } from "@/lib/social/client";
@@ -119,9 +119,11 @@ export default function NewPostPage() {
 
   return (
     <div className="pb-nav">
-      <ScreenHeader back="/social" title="New post" subtitle="Share what you cooked" />
+      {/* Figma 2.4 pattern: header bar with the back circle, then the large page title */}
+      <ScreenHeader back="/social" />
+      <PageTitle title="New post" subtitle="Share what you cooked with the community" className="pt-1" />
 
-      <div className="flex flex-col gap-5 px-5 pt-1">
+      <div className="flex flex-col gap-5 px-5 pt-4">
         <PhotoPanel
           photo={photo}
           origin={origin}
@@ -158,13 +160,13 @@ export default function NewPostPage() {
             full
             loading={busy}
             disabled={!canPost}
-            icon={<Send className="size-5" />}
+            icon={<Send className="size-[18px]" strokeWidth={1.9} />}
             onClick={() => void submit()}
           >
             {status === "checking" ? "Checking your post..." : status === "posting" ? "Posting..." : "Post"}
           </Button>
-          <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-ink-faint">
-            <ShieldCheck className="size-3.5 shrink-0" />
+          <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-ink-soft">
+            <ShieldCheck className="size-3.5 shrink-0 text-accent" strokeWidth={1.9} />
             {missing ?? "Sous checks every post to keep the feed tasty and kind"}
           </p>
         </div>

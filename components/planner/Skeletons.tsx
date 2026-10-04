@@ -1,4 +1,4 @@
-/** Loading placeholders shaped like the real results, so nothing jumps when they land */
+/** Loading placeholders shaped like the 2.2 results, so nothing jumps when they land */
 
 function Line({ className }: { className: string }) {
   return <div className={`skeleton rounded-pill ${className}`} />;
@@ -6,39 +6,39 @@ function Line({ className }: { className: string }) {
 
 export function ResultsSkeleton() {
   return (
-    <div aria-hidden className="mt-8">
-      <Line className="h-6 w-28" />
-      <Line className="mt-2 h-3.5 w-44" />
-      <div className="mt-4 overflow-hidden rounded-card bg-surface shadow-card">
-        <div className="skeleton aspect-[16/10] w-full" />
-        <div className="space-y-2.5 p-4">
-          <Line className="h-3 w-24" />
-          <Line className="h-5 w-3/4" />
-          <Line className="h-3.5 w-1/2" />
-        </div>
-      </div>
-      {[0, 1].map((i) => (
-        <div key={i} className="mt-3 flex items-center gap-4 rounded-card bg-surface p-3 shadow-card">
-          <div className="skeleton size-[84px] shrink-0 rounded-tile" />
-          <div className="flex-1 space-y-2">
-            <Line className="h-3 w-20" />
-            <Line className="h-4 w-4/5" />
-            <Line className="h-3 w-24" />
-          </div>
-        </div>
-      ))}
-      <Line className="mt-10 h-6 w-36" />
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        {[0, 1].map((i) => (
-          <div key={i} className="overflow-hidden rounded-card bg-surface shadow-card">
-            <div className="skeleton aspect-[4/3] w-full" />
-            <div className="space-y-2 p-3.5">
-              <Line className="h-4 w-4/5" />
-              <Line className="h-3 w-14" />
-            </div>
+    <div aria-hidden className="overflow-hidden px-5 pt-5">
+      <Line className="h-5 w-40" />
+      <div className="mt-3 flex gap-2">
+        {[104, 80, 96, 88].map((w) => (
+          <div key={w} className="flex h-[42px] shrink-0 items-center gap-2 rounded-pill border border-line bg-surface pl-1 pr-3.5">
+            <div className="skeleton size-8 rounded-full" />
+            <div className="skeleton h-3 rounded-pill" style={{ width: w - 48 }} />
           </div>
         ))}
       </div>
+      <Line className="mt-[22px] h-5 w-36" />
+      <div className="mt-3 flex gap-2.5">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="w-[140px] shrink-0 rounded-tile border border-line bg-surface p-3">
+            <div className="relative h-[52px] w-[84px]">
+              <div className="skeleton absolute left-0 top-0 size-[52px] rounded-full" />
+              <div className="skeleton absolute left-8 top-0 size-[52px] rounded-full ring-[3px] ring-surface" />
+            </div>
+            <Line className="mt-2.5 h-3.5 w-24" />
+            <Line className="mt-1.5 h-3 w-16" />
+          </div>
+        ))}
+      </div>
+      <Line className="mt-[22px] h-5 w-24" />
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="mt-2.5 flex items-center gap-3 rounded-tile border border-line bg-surface p-2 pr-3">
+          <div className="skeleton size-[60px] shrink-0 rounded-thumb" />
+          <div className="flex-1 space-y-2">
+            <Line className="h-4 w-3/5" />
+            <Line className="h-3 w-2/5" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

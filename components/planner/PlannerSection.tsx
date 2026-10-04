@@ -1,80 +1,96 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
+import { SectionHeader } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 
 /**
- * Editorial section: Fraunces title, quiet subtitle, optional "See all" / "Show less" toggle.
+ * Figma planner section: Fraunces 18 title with a green "See all" on the right, 12px above
+ * its content, 22px below the previous section. "See all" toggles the section open in place
+ * ("Show less"); it only shows when there is more to see.
  */
 export function PlannerSection({
   id,
   title,
-  subtitle,
-  total,
   expanded,
   onToggle,
   action,
+  gap = "mt-3",
   children,
   className,
 }: {
   id?: string;
   title: string;
-  subtitle?: ReactNode;
-  /** Total items; with onToggle shows "See all {total}" */
-  total?: number;
   expanded?: boolean;
+  /** Shows "See all" / "Show less" */
   onToggle?: () => void;
-  /** Custom right-side action (instead of See all) */
+  /** Custom right-side content (instead of See all) */
   action?: ReactNode;
+  /** Space between the header and the content (Figma: 12, the Similar list 10) */
+  gap?: string;
   children: ReactNode;
   className?: string;
 }) {
   const headingId = id ? `${id}-title` : undefined;
   return (
-    <section id={id} aria-labelledby={headingId} className={cn("mt-10 animate-fade-up", className)}>
-      <div className="flex items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h2 id={headingId} className="font-display text-[22px] font-semibold leading-tight tracking-tight text-ink">
-            {title}
-          </h2>
-          {subtitle && <p className="mt-0.5 line-clamp-2 text-sm text-ink-soft">{subtitle}</p>}
-        </div>
-        {action}
-        {!action && onToggle && (
-          <button
-            type="button"
-            onClick={onToggle}
-            aria-expanded={expanded}
-            className="-mr-2 inline-flex h-11 shrink-0 items-center gap-1 rounded-pill px-3 text-sm font-semibold text-accent-strong transition hover:bg-accent-soft active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-          >
-            {expanded ? "Show less" : total ? `See all ${total}` : "See all"}
-            <ChevronDown className={cn("size-4 transition-transform duration-300", expanded && "rotate-180")} />
-          </button>
-        )}
+    <section id={id} aria-labelledby={headingId} className={cn("px-5 pt-[22px] animate-fade-up", className)}>
+      <SectionHeader
+        title={title}
+        className="leading-[normal] [&>h2]:min-w-0 [&>h2]:truncate"
+        action={
+          action ??
+          (onToggle ? (
+            <button
+              type="button"
+              onClick={onToggle}
+              aria-expanded={expanded}
+              aria-controls={id ? `${id}-content` : undefined}
+              className="-my-2 -mr-2 shrink-0 rounded-pill px-2 py-2 text-meta font-semibold leading-[normal] text-accent transition hover:text-accent-strong active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              {expanded ? "Show less" : "See all"}
+            </button>
+          ) : undefined)
+        }
+      />
+      <div id={id ? `${id}-content` : undefined} className={gap}>
+        {children}
       </div>
-      <div className="mt-4">{children}</div>
     </section>
   );
 }
 
 /**
- * Edge-to-edge horizontal scroller with scroll-snap. Bleeds into the page gutters so cards
- * scroll under the screen edge, and pads vertically so card shadows aren't clipped.
+ * Sideways scroller that bleeds into the page gutters, so cards slide under the screen edge
+ * like the design. With `wrap` it lays the same items out in rows instead ("See all").
  */
-export function Scroller({ children, className, label }: { children: ReactNode; className?: string; label?: string }) {
+export function Scroller({
+  children,
+  label,
+  wrap,
+  gap = "gap-3",
+  className,
+}: {
+  children: ReactNode;
+  label?: string;
+  wrap?: boolean;
+  gap?: string;
+  className?: string;
+}) {
   return (
     <div
       role="group"
       aria-label={label}
       className={cn(
-        "no-scrollbar -mx-5 -my-3 flex snap-x snap-mandatory scroll-px-5 gap-3 overflow-x-auto overscroll-x-contain px-5 py-3",
+        wrap
+          ? "flex flex-wrap gap-y-4"
+          : "no-scrollbar -mx-5 flex snap-x snap-mandatory scroll-px-5 overflow-x-auto overscroll-x-contain px-5",
+        gap,
         className,
       )}
     >
       {children}
       {/* Trailing spacer: keeps the last card's right gutter (padding-right is ignored in flex overflow) */}
-      <span aria-hidden className="w-0 shrink-0" />
+      {!wrap && <span aria-hidden className="w-2 shrink-0" />}
     </div>
   );
 }

@@ -1,16 +1,18 @@
 "use client";
 
-import { AudioLines, BookOpen, RotateCcw, Sparkles } from "lucide-react";
+import { AudioLines, BookOpen, ChevronRight, PictureInPicture2, RotateCcw, Sparkles } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { SectionLabel } from "@/components/ui/Card";
 import { resetDemoData } from "@/lib/storage";
+import { useDock } from "@/lib/stores/dock";
 import { usePrefs } from "@/lib/stores/prefs";
 import { toast } from "@/lib/stores/toast";
 import { endSession } from "@/lib/voice/engine";
+import { HandsFreeSettingRow } from "./HandsFree";
 import { Sheet } from "./Sheet";
 
-/** Gear sheet on the AI home: your name, demo reset, and how Sous works. */
+/** Gear sheet on the AI home: your name, conversation mode, the floating bubble demo, demo reset, and how Sous works. */
 export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
     <Sheet open={open} onClose={onClose} title="Settings">
@@ -56,6 +58,32 @@ function SettingsBody({ onClose }: { onClose: () => void }) {
             Save
           </Button>
         </form>
+      </section>
+
+      <section>
+        <SectionLabel>Conversation</SectionLabel>
+        <div className="mt-3 flex flex-col gap-4">
+          <HandsFreeSettingRow />
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              useDock.getState().dock();
+            }}
+            className="flex min-h-11 w-full items-center gap-3 rounded-tile text-left transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+          >
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-flame-soft text-flame">
+              <PictureInPicture2 aria-hidden className="size-4" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold text-ink">Show floating bubble</span>
+              <span className="block text-xs leading-snug text-ink-soft">
+                See Sous float over your phone&apos;s home screen, like a chat head.
+              </span>
+            </span>
+            <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-mute" />
+          </button>
+        </div>
       </section>
 
       <section>

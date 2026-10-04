@@ -4,6 +4,7 @@
  * localStorage. Everything that reaches the UI is a finite, non-negative number.
  */
 import { DEFAULT_GOALS } from "@/lib/config";
+import { MICRO_KEYS } from "@/lib/nutrients";
 import type { DailyActivity, DiaryEntry, ISODate, MealType, Micros, Nutrition, NutritionGoals } from "@/lib/types";
 import { fromISODate, mealForNow, toISODate, todayISO } from "@/lib/utils";
 
@@ -36,11 +37,18 @@ export function cleanNutrition(v: unknown): Nutrition {
   };
 }
 
+/**
+ * Every registry micro that is present (vitamins, minerals, sugar, sodium...). Missing keys
+ * stay missing so the Diary can tell "no data" (estimated later) from a real zero.
+ * Values are capped well above any single plate so a corrupt entry can't wreck a day.
+ */
+const MICRO_CAP = 100_000;
+
 function cleanMicros(v: unknown): Partial<Micros> | undefined {
   if (!isObject(v)) return undefined;
   const out: Partial<Micros> = {};
-  for (const k of ["iron", "calcium", "vitaminA"] as const) {
-    if (v[k] != null && v[k] !== "") out[k] = num(v[k]);
+  for (const k of MICRO_KEYS) {
+    if (v[k] != null && v[k] !== "") out[k] = Math.min(MICRO_CAP, num(v[k]));
   }
   return Object.keys(out).length ? out : undefined;
 }

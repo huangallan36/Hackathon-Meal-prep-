@@ -1,20 +1,24 @@
 "use client";
 
-import { Search, X } from "lucide-react";
 import type { RefObject } from "react";
 import { Spinner } from "@/components/ui/Spinner";
 import { MAX_QUERY_LENGTH } from "@/lib/planner/search";
 import { cn } from "@/lib/utils";
 
 /**
- * Pill search field. Typing is debounced by the page; Enter searches immediately and
- * dismisses the phone keyboard; Escape or the X clears.
+ * Figma search pill (2.1 / 2.2): 50px white pill, search icon, field, a clear button once
+ * there is text, and the mic. Browse state: 1px line + green-tint mic. Search state (or
+ * focused): 1.5px green outline + solid green mic. Enter searches at once and dismisses
+ * the phone keyboard; Escape or the X clears.
  */
 export function SearchBar({
   value,
   onChange,
   onSubmit,
   onClear,
+  onMic,
+  active,
+  listening,
   busy,
   inputRef,
   className,
@@ -23,10 +27,16 @@ export function SearchBar({
   onChange: (value: string) => void;
   onSubmit: () => void;
   onClear: () => void;
+  onMic: () => void;
+  /** Search state: green outline + solid mic */
+  active?: boolean;
+  /** Voice search is listening */
+  listening?: boolean;
   busy?: boolean;
   inputRef?: RefObject<HTMLInputElement | null>;
   className?: string;
 }) {
+  const solidMic = active || listening;
   return (
     <form
       role="search"
@@ -35,10 +45,20 @@ export function SearchBar({
         onSubmit();
         inputRef?.current?.blur();
       }}
-      className={cn("relative", className)}
+      className={cn(
+        "flex h-[50px] min-w-0 flex-1 items-center gap-2.5 rounded-pill bg-surface pl-4 pr-1.5 transition-shadow duration-200",
+        active
+          ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]"
+          : "shadow-[inset_0_0_0_1px_var(--color-line)] focus-within:shadow-[inset_0_0_0_1.5px_var(--color-accent)]",
+        className,
+      )}
     >
-      <span className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-ink-faint">
-        {busy ? <Spinner className="size-5 text-accent" /> : <Search className="size-5" />}
+      <span className="flex size-[18px] shrink-0 items-center justify-center">
+        {busy ? (
+          <Spinner className="size-4 text-accent" />
+        ) : (
+          <img src="/figma/screens/2-146/icon-search.svg" alt="" width={18} height={18} className="block size-[18px]" />
+        )}
       </span>
       <input
         ref={inputRef}
@@ -58,12 +78,11 @@ export function SearchBar({
             onClear();
           }
         }}
-        placeholder="Search recipes or ingredients"
+        placeholder="Search recipes or ask Sous…"
         aria-label="Search recipes, ingredients or cuisines"
         className={cn(
-          "h-14 w-full rounded-pill bg-surface pl-[52px] text-base text-ink shadow-card outline-none ring-1 ring-line transition-shadow placeholder:text-ink-faint focus:ring-2 focus:ring-accent/40",
+          "h-full min-w-0 flex-1 bg-transparent text-body font-medium text-ink outline-none placeholder:font-normal placeholder:text-ink-faint",
           "[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none",
-          value ? "pr-14" : "pr-5",
         )}
       />
       {value && (
@@ -74,11 +93,30 @@ export function SearchBar({
             inputRef?.current?.focus();
           }}
           aria-label="Clear search"
-          className="absolute right-1.5 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full text-ink-soft transition hover:bg-cream-deep active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent animate-pop"
+          className="relative inline-flex size-[26px] shrink-0 items-center justify-center rounded-full bg-cream-deep transition after:absolute after:-inset-2 after:content-[''] active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent animate-pop"
         >
-          <X className="size-5" />
+          <img src="/figma/screens/2-148/icon-x.svg" alt="" width={14} height={14} className="block size-3.5" />
         </button>
       )}
+      <button
+        type="button"
+        onClick={onMic}
+        aria-label={listening ? "Stop voice search" : "Search by voice"}
+        aria-pressed={listening}
+        className={cn(
+          "relative inline-flex size-9 shrink-0 items-center justify-center rounded-full transition-colors duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+          solidMic ? "bg-accent hover:bg-accent-strong" : "bg-accent-soft hover:bg-[#d5e6da]",
+        )}
+      >
+        {listening && <span aria-hidden className="absolute inset-0 animate-ping rounded-full bg-accent/35" />}
+        <img
+          src={solidMic ? "/figma/screens/2-148/icon-mic.svg" : "/figma/screens/2-146/icon-mic.svg"}
+          alt=""
+          width={18}
+          height={18}
+          className="relative block size-[18px]"
+        />
+      </button>
     </form>
   );
 }

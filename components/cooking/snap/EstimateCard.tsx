@@ -1,11 +1,12 @@
 "use client";
 
-import { NotebookPen, Pencil, Sparkles } from "lucide-react";
-import { useId } from "react";
+import { ChevronDown, NotebookPen, Pencil, Sparkles } from "lucide-react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { FallbackNote } from "@/components/ui/Misc";
 import { cleanNumberInput, draftNutrition, type EstimateDraft } from "@/lib/cooking/draft";
-import type { MealEstimate, MealType } from "@/lib/types";
+import { formatAmount, MICRO_KEYS, NUTRIENTS, type NutrientUnit } from "@/lib/nutrients";
+import type { MealEstimate, MealType, Micros } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { MacroDonut, MacroLegend } from "./MacroDonut";
 import { MealTypePicker } from "./MealTypePicker";
@@ -34,6 +35,7 @@ export function EstimateCard({
   fallbackText,
   onLog,
   logging,
+  micros,
 }: {
   draft: EstimateDraft;
   onChange: (patch: Partial<Omit<EstimateDraft, "anchor">>) => void;
@@ -44,6 +46,8 @@ export function EstimateCard({
   fallbackText: string;
   onLog: () => void;
   logging: boolean;
+  /** Vitamins, minerals and limits for the portion being logged (read-only) */
+  micros?: Partial<Micros>;
 }) {
   const id = useId();
   const nutrition = draftNutrition(draft);
@@ -153,6 +157,8 @@ export function EstimateCard({
         ))}
       </div>
 
+      {micros && Object.keys(micros).length > 0 && <AllNutrients micros={micros} />}
+
       <div className="mt-5">
         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-ink-faint">Log as</p>
         <MealTypePicker value={meal} onChange={onMealChange} />
@@ -163,5 +169,46 @@ export function EstimateCard({
       </Button>
       <p className="mt-2 text-center text-xs text-ink-faint">AI estimates can be off. Edit anything; calories follow your macros.</p>
     </section>
+  );
+}
+
+const MICRO_ROWS = NUTRIENTS.filter((n) => (MICRO_KEYS as string[]).includes(n.key));
+
+/** formatAmount, but small mg / µg amounts keep a decimal (0.4 µg of vitamin D is not "0 µg") */
+function microAmount(value: number, unit: NutrientUnit): string {
+  if (value > 0 && value < 10 && unit !== "g") return `${Math.round(value * 10) / 10} ${unit}`;
+  return formatAmount(value, unit);
+}
+
+/** Collapsed by default: vitamins, minerals and limits for this portion (follows calorie edits) */
+function AllNutrients({ micros }: { micros: Partial<Micros> }) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  const rows = MICRO_ROWS.filter((n) => typeof micros[n.key as keyof Micros] === "number");
+  return (
+    <div className="mt-4 rounded-tile border border-line">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={`${id}-nutrients`}
+        onClick={() => setOpen((o) => !o)}
+        className="flex h-11 w-full items-center justify-between gap-2 rounded-tile px-3 text-left text-sm font-semibold text-ink transition hover:bg-cream/60"
+      >
+        <span>
+          All nutrients <span className="font-medium text-ink-faint">(estimated)</span>
+        </span>
+        <ChevronDown className={cn("size-4 shrink-0 text-ink-faint transition-transform duration-200", open && "rotate-180")} aria-hidden />
+      </button>
+      {open && (
+        <ul id={`${id}-nutrients`} className="grid animate-fade-up grid-cols-2 gap-x-4 border-t border-line px-3 py-1.5">
+          {rows.map((n) => (
+            <li key={n.key} className="flex min-w-0 items-baseline justify-between gap-2 py-1.5 text-[13px]">
+              <span className="truncate text-ink-soft">{n.label}</span>
+              <span className="shrink-0 font-semibold tabular-nums text-ink">{microAmount(micros[n.key as keyof Micros] ?? 0, n.unit)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

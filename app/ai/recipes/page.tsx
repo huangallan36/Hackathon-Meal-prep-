@@ -1,13 +1,13 @@
 "use client";
 
-import { Camera, Refrigerator, SearchX, SlidersHorizontal } from "lucide-react";
+import { Camera, Refrigerator, SearchX } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { RecipeCard, RecipeCardSkeleton } from "@/components/kitchen/RecipeCard";
 import { ButtonLink, IconButton } from "@/components/ui/Button";
 import { SectionHeader } from "@/components/ui/Card";
 import { EmptyState, FallbackNote } from "@/components/ui/Misc";
-import { ScreenHeader } from "@/components/ui/ScreenHeader";
+import { PageTitle, ScreenHeader } from "@/components/ui/ScreenHeader";
 import { SPOONACULAR_BACKLINK } from "@/lib/config";
 import { announceMatches, fetchMatches } from "@/lib/kitchen/client";
 import { ingredientSummary } from "@/lib/kitchen/format";
@@ -16,6 +16,9 @@ import { getCatalog, matchRecipe } from "@/lib/recipes/catalog";
 import { ingredientsKey, useKitchen } from "@/lib/stores/kitchen";
 import { recipePopularity, useSocial } from "@/lib/stores/social";
 import type { Recipe } from "@/lib/types";
+
+/** The planner's header filter icon (Figma 2.3), used here for "Edit ingredients" */
+const ICON_FILTER = "/figma/screens/2-146/icon-filter.svg";
 
 export default function RecipesPage() {
   const router = useRouter();
@@ -48,59 +51,78 @@ export default function RecipesPage() {
   return (
     <>
       <ScreenHeader
-        title="Recipes for you"
-        subtitle={hasIngredients ? `With ${ingredientSummary(ingredients)}` : "Popular with the Sous crowd"}
         back
         right={
-          <IconButton label="Edit ingredients" className="size-11" onClick={() => router.push(FRIDGE_EDIT_HREF)}>
-            <SlidersHorizontal className="size-[18px]" />
+          <IconButton label="Edit ingredients" onClick={() => router.push(FRIDGE_EDIT_HREF)}>
+            <img src={ICON_FILTER} alt="" width={18} height={18} className="size-[18px]" />
           </IconButton>
         }
       />
 
-      <div className="px-5 pb-nav">
-        {!hasIngredients ? (
-          <NoIngredients onCook={cook} />
-        ) : !ready ? (
-          <div className="flex flex-col gap-5 pt-2" aria-busy="true" aria-label="Finding recipes">
-            <div className="skeleton h-4 w-48 rounded-pill" />
-            <RecipeCardSkeleton />
-            <RecipeCardSkeleton />
-          </div>
-        ) : matches.length === 0 ? (
-          <EmptyState
-            icon={<SearchX className="size-6" />}
-            title="No recipes for that combo"
-            body="Try adding a couple more ingredients, like rice, pasta or eggs."
-            action={
-              <ButtonLink href={FRIDGE_EDIT_HREF} variant="soft" icon={<SlidersHorizontal className="size-4" />}>
-                Edit ingredients
-              </ButtonLink>
-            }
-          />
-        ) : (
-          <div className="flex flex-col gap-5 pt-2">
-            <div className="flex flex-wrap items-center justify-between gap-2 animate-fade-up">
-              <p className="text-sm text-ink-soft">
-                <span className="font-semibold text-ink">
-                  {matches.length} idea{matches.length === 1 ? "" : "s"}
-                </span>
-                , best matches first
-              </p>
-              <FallbackNote show={matchesSource === "cache"}>Showing saved recipes</FallbackNote>
+      {/* Figma text uses "normal" line height; children inherit it */}
+      <div className="pb-nav leading-[normal]">
+        <PageTitle
+          title="Recipes for you"
+          subtitle={
+            <span className="text-sm leading-[normal]">
+              {hasIngredients ? `With ${ingredientSummary(ingredients)}` : "Popular with the Sous crowd"}
+            </span>
+          }
+          className="pt-0.5"
+        />
+
+        <div className="px-5 pt-5">
+          {!hasIngredients ? (
+            <NoIngredients onCook={cook} />
+          ) : !ready ? (
+            <div className="flex flex-col gap-4" aria-busy="true" aria-label="Finding recipes">
+              <div className="skeleton h-[22px] w-40 rounded-pill" />
+              <RecipeCardSkeleton />
+              <RecipeCardSkeleton />
             </div>
-            {matches.map((m, i) => (
-              <RecipeCard
-                key={m.recipe.id}
-                match={m}
-                index={i}
-                badge={i === 0 && m.used.length > 0 ? "Best match" : undefined}
-                onCook={cook}
+          ) : matches.length === 0 ? (
+            <div className="rounded-card bg-surface shadow-card">
+              <EmptyState
+                icon={<SearchX className="size-6" />}
+                title="No recipes for that combo"
+                body="Try adding a couple more ingredients, like rice, pasta or eggs."
+                action={
+                  <ButtonLink href={FRIDGE_EDIT_HREF} variant="soft" className="mt-1">
+                    Edit ingredients
+                  </ButtonLink>
+                }
               />
-            ))}
-            <Attribution />
-          </div>
-        )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <SectionHeader
+                  title="Best matches"
+                  action={
+                    <span className="text-meta font-medium text-ink-soft">
+                      {matches.length} idea{matches.length === 1 ? "" : "s"}
+                    </span>
+                  }
+                />
+                {matchesSource === "cache" && (
+                  <div>
+                    <FallbackNote show>Showing saved recipes</FallbackNote>
+                  </div>
+                )}
+              </div>
+              {matches.map((m, i) => (
+                <RecipeCard
+                  key={m.recipe.id}
+                  match={m}
+                  index={i}
+                  badge={i === 0 && m.used.length > 0 ? "Best match" : undefined}
+                  onCook={cook}
+                />
+              ))}
+              <Attribution />
+            </div>
+          )}
+        </div>
       </div>
     </>
   );
@@ -120,7 +142,7 @@ function NoIngredients({ onCook }: { onCook: (recipe: Recipe) => void }) {
   }, [posts, myUpvotes]);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <div className="rounded-card bg-surface shadow-card animate-fade-up">
         <EmptyState
           icon={<Refrigerator className="size-6" />}

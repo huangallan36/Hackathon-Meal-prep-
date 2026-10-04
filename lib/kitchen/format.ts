@@ -54,8 +54,10 @@ export function plural(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-/** Plain-text shopping list for the clipboard */
-export function groceryText(recipe: Recipe, items: Ingredient[]): string {
-  const lines = items.map((i) => `- ${i.original || i.name}`);
-  return [`Groceries for ${recipe.title}`, ...lines, "", "Made with Sous"].join("\n");
+/** Plain-text shopping list for the share sheet / clipboard */
+export function groceryText(recipe: Pick<Recipe, "title">, lines: string[]): string {
+  return [`Groceries for ${recipe.title}`, ...lines.map((l) => `- ${l}`), "", "Made with Sous"].join("\n");
 }
+
+/** One shopping-list line: the recipe's own wording when it has one ("2 chicken breasts") */
+export const groceryLine = (i: Pick<Ingredient, "name" | "original">) => i.original || i.name;

@@ -5,25 +5,29 @@ import { Avatar } from "@/components/ui/Avatar";
 import type { SocialUser } from "@/lib/types";
 import { cn, timeAgo } from "@/lib/utils";
 
-/** Avatar + name + time ago, linking to the author's profile. Never starts a card drag. */
+/**
+ * Avatar + name + "time ago", linking to the author's profile. Never starts a card drag.
+ * Figma list-row type: name 13–14px SemiBold ink, meta 11–12px ink-soft.
+ */
 export function AuthorLink({
   handle,
   user,
   createdAt,
-  tone = "dark",
+  size = "md",
   className,
   onClick,
 }: {
   handle: string;
   user?: SocialUser;
   createdAt: number;
-  /** "light" = white text for photo scrims */
-  tone?: "light" | "dark";
+  /** sm = 30px avatar (swipe card), md = 36px avatar (post sheet) */
+  size?: "sm" | "md";
   className?: string;
   /** e.g. close a sheet before navigating */
   onClick?: () => void;
 }) {
   const name = user?.name ?? handle;
+  const small = size === "sm";
   return (
     <Link
       href={`/social/u/${encodeURIComponent(handle)}`}
@@ -31,24 +35,19 @@ export function AuthorLink({
       onPointerDown={(e) => e.stopPropagation()}
       onClick={onClick}
       className={cn(
-        "inline-flex min-h-11 max-w-full items-center gap-2.5 rounded-pill pr-2 transition active:scale-[0.98]",
+        "inline-flex min-h-11 min-w-0 max-w-full items-center gap-2.5 rounded-pill pr-2 transition active:scale-[0.98]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
         className,
       )}
     >
-      <Avatar
-        src={user?.avatar}
-        name={name}
-        size={34}
-        className={cn("ring-2", tone === "light" ? "ring-white/70" : "ring-surface")}
-      />
-      <span className="flex min-w-0 items-baseline gap-1.5">
-        <span className={cn("truncate text-sm font-semibold", tone === "light" ? "text-white" : "text-ink")}>
+      <Avatar src={user?.avatar} name={name} size={small ? 30 : 36} className="shadow-card" />
+      <span className="flex min-w-0 flex-col leading-tight">
+        <span className={cn("truncate font-semibold text-ink", small ? "text-meta" : "text-sm")}>
           {name}
-          {user?.isMe && <span className={cn("ml-1.5 font-medium", tone === "light" ? "text-white/70" : "text-ink-faint")}>(you)</span>}
+          {user?.isMe && <span className="ml-1 font-medium text-ink-soft">(you)</span>}
         </span>
-        <span className={cn("shrink-0 text-xs", tone === "light" ? "text-white/70" : "text-ink-faint")}>
-          · {timeAgo(createdAt)}
+        <span className={cn("truncate text-ink-soft", small ? "text-caption" : "text-xs")}>
+          @{handle} · {timeAgo(createdAt)}
         </span>
       </span>
     </Link>

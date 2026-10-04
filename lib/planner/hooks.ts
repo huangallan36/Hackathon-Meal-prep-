@@ -9,6 +9,7 @@ import type { ISODate, Recipe } from "@/lib/types";
 import { addDays, formatDay, fromISODate, todayISO } from "@/lib/utils";
 import { fetchPlannerSearch, knownRecipe, peekSearch, searchKey, type PlannerResult } from "./client";
 import { normalizeQuery, type SearchFilters } from "./search";
+import { avoidedByUser, proteinOf } from "./profile";
 import { plannedOn, usePlanner, type PlannedMeal } from "./store";
 
 /** Queries shorter than this browse instead of searching */
@@ -68,19 +69,19 @@ export function usePlannerSearch(
   const have = useKitchen((s) => s.ingredients);
   const haveKey = have.join(",");
   const q = normalizeQuery(query);
-  const { maxMinutes, diet } = filters;
-  const key = q.length >= MIN_QUERY ? searchKey(q, { maxMinutes, diet, have }) : "";
+  const { maxMinutes, diet, highProtein, leftovers } = filters;
+  const key = q.length >= MIN_QUERY ? searchKey(q, { maxMinutes, diet, highProtein, leftovers, have }) : "";
   const [state, setState] = useState<{ key: string; result: PlannerResult } | null>(null);
 
   useEffect(() => {
     if (!key || peekSearch(key)) return;
     const ctrl = new AbortController();
-    const options = { maxMinutes, diet, have: haveKey ? haveKey.split(",") : [] };
+    const options = { maxMinutes, diet, highProtein, leftovers, have: haveKey ? haveKey.split(",") : [] };
     void fetchPlannerSearch(q, options, ctrl.signal).then((result) => {
       if (!ctrl.signal.aborted) setState({ key, result });
     });
     return () => ctrl.abort();
-  }, [key, q, maxMinutes, diet, haveKey]);
+  }, [key, q, maxMinutes, diet, highProtein, leftovers, haveKey]);
 
   const result = !key ? null : state?.key === key ? state.result : (peekSearch(key) ?? null);
   return { result, loading: Boolean(key) && !result, previous: state?.result ?? null };
@@ -92,7 +93,10 @@ export interface PopularRecipe {
   upvotes: number;
 }
 
-/** "Most Popular": recipes ranked by Social upvotes, topped up from the catalog so it never looks empty */
+/**
+ * "Most popular": recipes ranked by Social upvotes (high-protein first on ties), topped up from
+ * the catalog so it never looks empty. Tuned to the user (FOR_YOU): what they avoid is left out.
+ */
 export function usePopularRecipes(limit = 10): PopularRecipe[] {
   const posts = useSocial((s) => s.posts);
   const myUpvotes = useSocial((s) => s.myUpvotes);
@@ -100,12 +104,15 @@ export function usePopularRecipes(limit = 10): PopularRecipe[] {
     const ranked: PopularRecipe[] = [];
     for (const [id, upvotes] of recipePopularity(posts, myUpvotes)) {
       const recipe = knownRecipe(id);
-      if (recipe) ranked.push({ recipe, upvotes });
+      if (recipe && !avoidedByUser(recipe)) ranked.push({ recipe, upvotes });
     }
-    ranked.sort((a, b) => b.upvotes - a.upvotes);
+    ranked.sort((a, b) => b.upvotes - a.upvotes || proteinOf(b.recipe) - proteinOf(a.recipe));
     if (ranked.length < 4) {
       const have = new Set(ranked.map((r) => r.recipe.id));
-      for (const recipe of getCatalog()) if (!have.has(recipe.id)) ranked.push({ recipe, upvotes: 0 });
+      const filler = getCatalog()
+        .filter((r) => !have.has(r.id) && !avoidedByUser(r))
+        .sort((a, b) => proteinOf(b) - proteinOf(a));
+      for (const recipe of filler) ranked.push({ recipe, upvotes: 0 });
     }
     return ranked.slice(0, limit);
   }, [posts, myUpvotes, limit]);

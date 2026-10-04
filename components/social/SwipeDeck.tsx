@@ -1,12 +1,13 @@
 "use client";
 
-import { Flame, PartyPopper, Plus, RotateCcw, Undo2, X } from "lucide-react";
+import { PartyPopper, Plus, RotateCcw, Undo2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Button, ButtonLink } from "@/components/ui/Button";
+import { Button, ButtonLink, IconButton } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/Misc";
 import { feedDeck } from "@/lib/social/feed";
 import { upvotesOf, userByHandle, useSocial } from "@/lib/stores/social";
+import { FigmaIcon } from "./FigmaIcon";
 import { SwipeCard, type SwipeCardHandle, type SwipeDir } from "./SwipeCard";
 
 /** How many cards are rendered: the top one plus two peeking behind */
@@ -76,35 +77,35 @@ export function SwipeDeck() {
 
   if (!visible.length) {
     return (
-      <div className="flex flex-1 items-center justify-center px-5">
+      <div className="flex flex-1 items-center px-5 pt-4">
         <EmptyState
-          className="animate-fade-up rounded-card bg-surface shadow-card"
-          icon={<PartyPopper className="size-6" />}
-          title="You're all caught up"
-          body="You've seen every plate from your cooks. Share your own, or start the feed over."
-          action={
-            <div className="mt-2 flex flex-col items-center gap-2">
-              <Button variant="soft" icon={<RotateCcw className="size-4" />} onClick={startOver}>
-                Start over
-              </Button>
-              <ButtonLink href="/social/new" variant="ghost" icon={<Plus className="size-4" />}>
-                Share a dish
-              </ButtonLink>
-              {canUndo && (
-                <Button variant="ghost" size="sm" icon={<Undo2 className="size-4" />} onClick={undo} className="h-11">
-                  Undo last swipe
+            className="w-full rounded-card bg-surface shadow-card animate-fade-up"
+            icon={<PartyPopper className="size-6" strokeWidth={1.9} />}
+            title="You're all caught up"
+            body="You've seen every plate from your cooks. Share your own, or start the feed over."
+            action={
+              <div className="mt-2 flex w-full max-w-[260px] flex-col items-stretch gap-2.5">
+                <Button full icon={<RotateCcw className="size-[18px]" strokeWidth={1.9} />} onClick={startOver}>
+                  Start over
                 </Button>
-              )}
-            </div>
-          }
-        />
+                <ButtonLink href="/social/new" variant="secondary" full icon={<Plus className="size-[18px]" strokeWidth={1.9} />}>
+                  Share a dish
+                </ButtonLink>
+                {canUndo && (
+                  <Button variant="ghost" full icon={<Undo2 className="size-[18px]" strokeWidth={1.9} />} onClick={undo}>
+                    Undo last swipe
+                  </Button>
+                )}
+              </div>
+            }
+          />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-1 flex-col px-5">
-      <div className="relative mb-9 min-h-[380px] flex-1">
+    <div className="flex flex-1 flex-col px-5 pt-4">
+      <div className="relative mb-8 min-h-[380px] flex-1">
         {visible.map((post, depth) => (
           <SwipeCard
             key={post.id}
@@ -119,25 +120,24 @@ export function SwipeDeck() {
         ))}
       </div>
 
-      <div className="flex items-center justify-center gap-7">
+      {/* Figma cook controls (2.3): a 54px round secondary button + the 54px green primary pill */}
+      <div className="flex items-center justify-center gap-2.5">
         <div className="relative">
           {/* Undo sits to the left of Skip so the main pair stays centered (and clear of the orb) */}
           <AnimatePresence>
             {canUndo && (
-              <motion.button
+              <motion.span
                 key="undo"
-                type="button"
-                aria-label="Undo last swipe"
-                title="Undo last swipe"
-                onClick={undo}
                 initial={{ opacity: 0, scale: 0.6 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.6 }}
                 transition={{ type: "spring", stiffness: 420, damping: 26 }}
-                className="absolute right-full top-1/2 mr-5 -mt-[22px] flex size-11 items-center justify-center rounded-full bg-surface text-ink-soft shadow-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                className="absolute right-full top-1/2 mr-3 -mt-5 flex"
               >
-                <Undo2 className="size-[18px]" strokeWidth={2.4} />
-              </motion.button>
+                <IconButton label="Undo last swipe" onClick={undo}>
+                  <Undo2 className="size-[18px]" strokeWidth={1.9} />
+                </IconButton>
+              </motion.span>
             )}
           </AnimatePresence>
           <button
@@ -145,9 +145,9 @@ export function SwipeDeck() {
             aria-label="Skip"
             title="Skip (left arrow)"
             onClick={() => topRef.current?.fling("left")}
-            className="flex size-14 items-center justify-center rounded-full bg-surface text-ink-soft shadow-card transition hover:text-ink active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="flex size-[54px] items-center justify-center rounded-full bg-cream-deep text-ink transition hover:bg-line active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            <X className="size-6" strokeWidth={2.6} />
+            <X className="size-[22px]" strokeWidth={1.8} />
           </button>
         </div>
         <button
@@ -155,24 +155,27 @@ export function SwipeDeck() {
           aria-label="Yum: upvote this dish"
           title="Yum (right arrow)"
           onClick={() => topRef.current?.fling("right")}
-          className="relative flex size-[68px] items-center justify-center rounded-full bg-accent text-white shadow-accent transition hover:bg-accent-strong active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
+          className="relative flex h-[54px] items-center justify-center gap-2.5 rounded-pill bg-accent pl-3 pr-7 text-base font-semibold text-white transition hover:bg-accent-strong active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
         >
-          <Flame className="size-8" fill="currentColor" strokeWidth={1.8} />
+          <span className="flex size-[30px] items-center justify-center rounded-full bg-surface">
+            <FigmaIcon name="flame18" />
+          </span>
+          Yum
           {yums > 0 && (
             <motion.span
               key={yums}
               aria-hidden
               initial={{ opacity: 1, y: 0, scale: 0.6 }}
-              animate={{ opacity: 0, y: -52, scale: 1.3 }}
+              animate={{ opacity: 0, y: -48, scale: 1.2 }}
               transition={{ duration: 0.8, ease: "easeOut" }}
-              className="pointer-events-none absolute -top-1 rounded-pill bg-accent px-2 py-0.5 text-xs font-bold text-white shadow-accent"
+              className="pointer-events-none absolute -top-2 left-1/2 -ml-4 rounded-pill bg-flame-soft px-2 py-0.5 text-xs font-semibold text-flame"
             >
               +1
             </motion.span>
           )}
         </button>
       </div>
-      <p className="mt-3 hidden text-center text-xs text-ink-faint pointer-fine:block">Swipe, or use the arrow keys</p>
+      <p className="mt-2.5 hidden text-center text-caption text-ink-faint pointer-fine:block">Swipe, or use the arrow keys</p>
     </div>
   );
 }

@@ -26,7 +26,7 @@ export function ScanningPhoto({ src, label = "Gemini is looking..." }: { src: st
   }, []);
 
   return (
-    <div className="relative overflow-hidden rounded-card bg-ink shadow-lift" role="status" aria-live="polite">
+    <div className="relative overflow-hidden rounded-card bg-ink" role="status" aria-live="polite">
       <FridgePhoto
         src={src}
         alt="Your fridge photo"
@@ -44,7 +44,7 @@ export function ScanningPhoto({ src, label = "Gemini is looking..." }: { src: st
       {/* Diagonal shimmer */}
       <div className="pointer-events-none absolute inset-0 animate-shimmer bg-[linear-gradient(110deg,transparent_35%,rgb(255_255_255/0.16)_50%,transparent_65%)] bg-[length:200%_100%]" />
 
-      {/* Sweeping scan line with a glowing trail */}
+      {/* Sweeping scan line with a glowing trail (the call screen's "live" green reads on dark photos) */}
       <motion.div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0"
@@ -52,8 +52,8 @@ export function ScanningPhoto({ src, label = "Gemini is looking..." }: { src: st
         animate={{ top: ["0%", "100%"] }}
         transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut", repeatDelay: 0.2 }}
       >
-        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-b from-transparent to-accent/35" />
-        <div className="absolute inset-x-0 -top-px h-[3px] bg-accent shadow-[0_0_22px_6px_color-mix(in_srgb,var(--color-accent)_70%,transparent)]" />
+        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-b from-transparent to-live/25" />
+        <div className="absolute inset-x-0 -top-px h-[3px] bg-live shadow-[0_0_22px_6px_color-mix(in_srgb,var(--color-live)_55%,transparent)]" />
       </motion.div>
 
       {/* Viewfinder corners */}
@@ -80,7 +80,7 @@ export function ScanningPhoto({ src, label = "Gemini is looking..." }: { src: st
 
       {/* Status pill */}
       <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-1.5 px-4 pb-7">
-        <span className="inline-flex items-center gap-2 rounded-pill bg-surface/95 px-4 py-2 text-sm font-semibold text-ink shadow-lift backdrop-blur">
+        <span className="inline-flex items-center gap-2 rounded-pill bg-surface px-4 py-2 text-sm font-semibold text-ink">
           <motion.span
             animate={{ rotate: [0, 18, -12, 0], scale: [1, 1.15, 1] }}
             transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}

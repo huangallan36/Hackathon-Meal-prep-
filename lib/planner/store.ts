@@ -1,8 +1,9 @@
 "use client";
 
 /**
- * "This week" meal plan. Each planned meal keeps a small snapshot (title, photo, time) so
- * the week strip renders instantly even for live recipes that aren't in the catalog.
+ * "This week" meal plan, plus the recipes the user saved (heart / bookmark). Each entry keeps
+ * a small snapshot (title, photo, time) so it renders instantly even for live recipes that
+ * aren't in the catalog.
  */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
@@ -21,14 +22,25 @@ export interface PlannedMeal {
   addedAt: number;
 }
 
+export interface SavedRecipe {
+  recipeId: number;
+  title: string;
+  image: string;
+  savedAt: number;
+}
+
 interface PlannerState {
   plan: PlannedMeal[];
+  saved: SavedRecipe[];
   /** Adds the recipe on that day, or removes it if already there. Returns true when added. */
   togglePlanned: (date: ISODate, recipe: Recipe) => boolean;
   removePlanned: (id: string) => void;
+  /** Saves or unsaves a recipe. Returns true when saved. */
+  toggleSaved: (recipe: Pick<Recipe, "id" | "title" | "image">) => boolean;
 }
 
 const MAX_PLANNED = 40;
+const MAX_SAVED = 100;
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -54,10 +66,29 @@ function revivePlan(value: unknown): PlannedMeal[] {
   return out.slice(-MAX_PLANNED);
 }
 
+function reviveSaved(value: unknown): SavedRecipe[] {
+  if (!Array.isArray(value)) return [];
+  const out: SavedRecipe[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const s = item as Partial<SavedRecipe>;
+    if (!Number.isSafeInteger(s.recipeId) || typeof s.title !== "string") continue;
+    if (out.some((x) => x.recipeId === s.recipeId)) continue;
+    out.push({
+      recipeId: s.recipeId as number,
+      title: s.title,
+      image: typeof s.image === "string" ? s.image : "",
+      savedAt: typeof s.savedAt === "number" && Number.isFinite(s.savedAt) ? s.savedAt : 0,
+    });
+  }
+  return out.slice(-MAX_SAVED);
+}
+
 export const usePlanner = create<PlannerState>()(
   persist(
     (set, get) => ({
       plan: [],
+      saved: [],
       togglePlanned: (date, recipe) => {
         const existing = get().plan.find((p) => p.date === date && p.recipeId === recipe.id);
         if (existing) {
@@ -79,17 +110,34 @@ export const usePlanner = create<PlannerState>()(
         return true;
       },
       removePlanned: (id) => set((s) => ({ plan: s.plan.filter((p) => p.id !== id) })),
+      toggleSaved: (recipe) => {
+        if (get().saved.some((x) => x.recipeId === recipe.id)) {
+          set((s) => ({ saved: s.saved.filter((x) => x.recipeId !== recipe.id) }));
+          return false;
+        }
+        const item: SavedRecipe = { recipeId: recipe.id, title: recipe.title, image: recipe.image, savedAt: Date.now() };
+        set((s) => ({ saved: [...s.saved, item].slice(-MAX_SAVED) }));
+        return true;
+      },
     }),
     {
       name: storageKey("planner"),
       storage: persistStorage,
-      partialize: (s) => ({ plan: s.plan }),
-      // Whatever is in localStorage, the week strip only ever sees well-formed meals.
-      merge: (persisted, current) => ({ ...current, plan: revivePlan((persisted as { plan?: unknown } | null)?.plan) }),
+      partialize: (s) => ({ plan: s.plan, saved: s.saved }),
+      // Whatever is in localStorage, the screen only ever sees well-formed entries.
+      merge: (persisted, current) => {
+        const p = persisted as { plan?: unknown; saved?: unknown } | null;
+        return { ...current, plan: revivePlan(p?.plan), saved: reviveSaved(p?.saved) };
+      },
     },
   ),
 );
 
 export function plannedOn(plan: PlannedMeal[], date: ISODate): PlannedMeal[] {
   return plan.filter((p) => p.date === date).sort((a, b) => a.addedAt - b.addedAt);
+}
+
+/** Whether a recipe is saved (heart / bookmark), reactive */
+export function useIsSaved(recipeId: number): boolean {
+  return usePlanner((s) => s.saved.some((x) => x.recipeId === recipeId));
 }

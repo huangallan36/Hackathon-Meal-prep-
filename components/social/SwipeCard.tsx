@@ -24,6 +24,7 @@ const SPRING_BACK = { type: "spring", stiffness: 480, damping: 30 } as const;
 /**
  * One post in the swipe stack. Only the top card (depth 0) is draggable; the next
  * two peek out behind it, scaled down. Right = Yum (upvote), left = skip.
+ * Styled as a Figma card: the real post photo on top, a white info panel below.
  */
 export function SwipeCard({
   post,
@@ -103,41 +104,41 @@ export function SwipeCard({
       onDragEnd={handleDragEnd}
       onPointerDown={startDrag}
     >
-      <div
-        className={cn(
-          "relative size-full overflow-hidden rounded-[28px] bg-cream-deep",
-          isTop ? "shadow-lift" : "shadow-card",
-        )}
-      >
-        <div className="absolute inset-0 [&_img]:pointer-events-none">
-          <SmartImage src={post.image} alt={post.dishName} className="size-full" />
+      {/* Figma card: white, radius 22, 1px line, flat. Photo on top, info panel below. */}
+      <div className="flex size-full flex-col overflow-hidden rounded-card bg-surface shadow-card">
+        <div className="relative min-h-0 flex-1 bg-cream-deep [&_img]:pointer-events-none">
+          <div className="absolute inset-0">
+            <SmartImage src={post.image} alt={post.dishName} className="size-full" />
+          </div>
+
+          {/* Like the white overlay buttons on the Figma photo cards (2.1) */}
+          <UpvotePill count={upvotes} className="absolute left-3 top-3" />
+
+          {/* Swipe stamps fade in with the drag */}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <motion.span
+              style={{ opacity: yumOpacity, scale: yumScale }}
+              className="absolute -rotate-6 rounded-tile border-2 border-accent bg-surface/95 px-5 py-1.5 font-display text-title font-semibold text-accent"
+            >
+              Yum!
+            </motion.span>
+            <motion.span
+              style={{ opacity: skipOpacity, scale: skipScale }}
+              className="absolute rotate-6 rounded-tile border-2 border-ink-soft bg-surface/95 px-5 py-1.5 font-display text-title font-semibold text-ink-soft"
+            >
+              Skip
+            </motion.span>
+          </div>
         </div>
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-linear-to-b from-ink/30 to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[64%] bg-linear-to-t from-ink/95 via-ink/55 to-transparent" />
 
-        {/* Swipe stamps fade in with the drag */}
-        <motion.span
-          style={{ opacity: yumOpacity, scale: yumScale }}
-          className="pointer-events-none absolute left-5 top-7 -rotate-12 rounded-tile border-[3px] border-herb bg-herb-soft/95 px-4 py-1 font-display text-[30px] font-bold uppercase tracking-wide text-herb shadow-soft"
-        >
-          Yum!
-        </motion.span>
-        <motion.span
-          style={{ opacity: skipOpacity, scale: skipScale }}
-          className="pointer-events-none absolute right-5 top-7 rotate-12 rounded-tile border-[3px] border-ink-soft bg-surface/90 px-4 py-1 font-display text-[30px] font-bold uppercase tracking-wide text-ink-soft shadow-soft"
-        >
-          Skip
-        </motion.span>
-
-        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1.5 p-5">
-          <AuthorLink handle={post.author} user={author} createdAt={post.createdAt} tone="light" className="-ml-0.5 self-start" />
-          <h2 className="line-clamp-2 text-balance font-display text-[27px] font-semibold leading-[1.08] text-white">
+        <div className="shrink-0 border-t border-line px-4 pb-3 pt-3.5">
+          <h2 className="line-clamp-2 text-balance font-display text-heading font-semibold leading-[1.15] text-ink">
             {post.dishName}
           </h2>
-          {post.caption && <p className="line-clamp-2 text-[15px] leading-snug text-white/85">{post.caption}</p>}
+          {post.caption && <p className="mt-1 line-clamp-2 text-meta leading-snug text-ink-soft">{post.caption}</p>}
           <div className="mt-2 flex items-center justify-between gap-3">
-            <UpvotePill count={upvotes} />
-            <CookThisButton recipeId={post.recipeId} size="md" className="h-11" />
+            <AuthorLink handle={post.author} user={author} createdAt={post.createdAt} size="sm" className="-ml-0.5" />
+            <CookThisButton recipeId={post.recipeId} />
           </div>
         </div>
       </div>

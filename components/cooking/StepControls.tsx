@@ -1,9 +1,10 @@
 "use client";
 
-import { Check, ChevronLeft, ChevronRight, Mic, RotateCcw } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 import type { ComponentProps } from "react";
 import { useVoice } from "@/lib/stores/voice";
 import { cn } from "@/lib/utils";
+import { HandsFreePill } from "./HandsFreePill";
 
 const ring =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface";
@@ -28,7 +29,7 @@ function RoundControl({ className, ...rest }: ComponentProps<"button">) {
  * (same height and baseline, leaving the orb's column free), so orb + dock read as one control
  * bar. During a voice session Sous's caption bubble appears beside the orb, so the dock rises
  * above it and takes the full width. Sticky stays inside its section, so it never covers the
- * video below.
+ * video below. The hands-free pill rides on top of the dock (Figma cooking screen).
  */
 export function StepControls({
   isLast,
@@ -51,6 +52,10 @@ export function StepControls({
           : "bottom-[calc(var(--nav-height)+var(--safe-bottom)+14px)] mr-[66px]",
       )}
     >
+      {/* The orb's column is free above the dock row: the pill spans (and centers on) the full width. */}
+      <div className={cn("mb-2.5 flex justify-center", !voiceActive && "-mr-[66px]")}>
+        <HandsFreePill />
+      </div>
       <div className="flex items-center gap-1 rounded-pill bg-surface/90 p-1 shadow-lift ring-1 ring-line backdrop-blur-md">
         <RoundControl onClick={onBack} aria-label="Previous step" title="Back">
           <ChevronLeft className="size-6" />
@@ -73,22 +78,5 @@ export function StepControls({
         </button>
       </div>
     </div>
-  );
-}
-
-/** Small voice cue under the step card */
-export function VoiceHint({ className }: { className?: string }) {
-  const voiceActive = useVoice((s) => s.sessionActive);
-  return (
-    <p
-      className={cn(
-        "flex items-center justify-center gap-1.5 text-center text-xs text-ink-faint",
-        !voiceActive && "mr-[66px]",
-        className,
-      )}
-    >
-      <Mic className="size-3.5" />
-      Say &ldquo;next&rdquo;, &ldquo;repeat&rdquo; or &ldquo;go back&rdquo;
-    </p>
   );
 }

@@ -1,8 +1,9 @@
 "use client";
 
-import { Camera, Link2, UserRound } from "lucide-react";
+import { Camera, UserRound } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useCallback, useState } from "react";
+import { FigmaIcon } from "@/components/social/FigmaIcon";
 import { PostGrid } from "@/components/social/PostGrid";
 import { PostSheet } from "@/components/social/PostSheet";
 import { ProfileHero, ProfileStatsRow } from "@/components/social/ProfileHero";
@@ -57,11 +58,12 @@ export default function ProfilePage() {
 
   return (
     <div className="pb-nav">
+      {/* Figma 2.4 header bar: back circle left, share circle right */}
       <ScreenHeader
         back="/social"
         right={
-          <IconButton label="Copy profile link" className="size-11" onClick={() => void copyProfileLink(user.handle)}>
-            <Link2 className="size-5" />
+          <IconButton label="Copy profile link" onClick={() => void copyProfileLink(user.handle)}>
+            <FigmaIcon name="share18" />
           </IconButton>
         }
       />
@@ -69,10 +71,14 @@ export default function ProfilePage() {
       <ProfileHero user={user} following={iFollow} onToggleFollow={() => toggleFollow(user.handle)} />
       <ProfileStatsRow stats={stats} />
 
-      <section className="mt-8 px-5">
+      <section className="mt-6 px-5">
         <SectionHeader
           title={user.isMe ? "Your plates" : "Plates"}
-          action={<span className="text-sm text-ink-faint">{userPosts.length} posts</span>}
+          action={
+            <span className="text-meta text-ink-soft">
+              {userPosts.length} {userPosts.length === 1 ? "post" : "posts"}
+            </span>
+          }
         />
         <div className="mt-3">
           {userPosts.length ? (

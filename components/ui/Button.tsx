@@ -9,7 +9,7 @@ type Variant = "primary" | "secondary" | "soft" | "ghost" | "danger" | "voice";
 type Size = "sm" | "md" | "lg";
 
 const base =
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-pill font-semibold transition-[transform,background-color,box-shadow,opacity] duration-200 active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-cream";
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-pill font-semibold [&_svg]:shrink-0 [&_img]:shrink-0 transition-[transform,background-color,box-shadow,opacity] duration-200 active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-cream";
 
 /** Figma: flat pills, no shadows. Primary is forest green; voice actions are orange. */
 const variants: Record<Variant, string> = {
@@ -77,6 +77,10 @@ export function ButtonLink({
   );
 }
 
+/** Figma header buttons: 40px white circles with no border; the ::after keeps a 48px tap target. */
+const iconButtonClass =
+  "relative inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-surface text-ink transition after:absolute after:-inset-1 after:content-[''] active:scale-95 hover:bg-cream-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent";
+
 /** Round icon-only button (back, close, more) */
 export function IconButton({
   label,
@@ -90,13 +94,21 @@ export function IconButton({
       aria-label={label}
       title={label}
       className={cn(
-        // Figma header buttons: 40px white circles with no border; the ::after keeps a 48px tap target.
-        "relative inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-surface text-ink transition after:absolute after:-inset-1 after:content-[''] active:scale-95 hover:bg-cream-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                iconButtonClass,
         className,
       )}
       {...rest}
     >
       {children}
     </button>
+  );
+}
+
+/** Link version of IconButton (same 40px white circle) */
+export function IconLink({ label, className, children, ...rest }: { label: string } & ComponentProps<typeof Link>) {
+  return (
+    <Link aria-label={label} title={label} className={cn(iconButtonClass, className)} {...rest}>
+      {children}
+    </Link>
   );
 }
