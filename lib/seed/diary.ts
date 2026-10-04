@@ -10,7 +10,7 @@ import type { DailyActivity, DiaryEntry, ISODate, MealType, Micros, Nutrition } 
 import { addDays, fromISODate } from "@/lib/utils";
 
 /** Bump when the seed changes shape so persisted stores regenerate it */
-export const SEED_VERSION = 2;
+export const SEED_VERSION = 3;
 
 type SeedMeal = { name: string; portion: string; n: Nutrition; m: Micros };
 
@@ -139,7 +139,11 @@ export function seedDiary(today: ISODate): DiaryEntry[] {
       // Snacks land after whichever meal precedes them
       const baseHour = slot === "snack" && i > 0 ? (SNACK_AFTER[slots[i - 1]] ?? HOURS.snack) : HOURS[slot];
       const at = fromISODate(date);
+      const dayStart = at.getTime();
       at.setHours(Math.floor(baseHour), Math.round((baseHour % 1) * 60) + (seed % 25));
+      // A morning demo must not show lunch "logged" at 12:40 PM: keep today's times in the past
+      const latest = Date.now() - (slots.length - i) * 40 * 60_000;
+      const loggedAt = offset === 0 && at.getTime() > latest ? Math.max(dayStart + i * 60_000, latest) : at.getTime();
       out.push({
         id: `seed-${date}-${slot}-${i}`,
         date,
@@ -149,7 +153,7 @@ export function seedDiary(today: ISODate): DiaryEntry[] {
         nutrition: { ...pick.n },
         micros: { ...pick.m },
         source: "seed",
-        loggedAt: at.getTime(),
+        loggedAt,
       });
     });
   }

@@ -11,6 +11,7 @@ import { thumbnailFromDataUrl, toImageInput } from "@/lib/image";
 import { getCachedRecipe, rankByIngredients } from "@/lib/recipes/catalog";
 import { SAMPLE_FRIDGE_INGREDIENTS } from "@/lib/sample";
 import { ingredientsKey, useKitchen } from "@/lib/stores/kitchen";
+import { useVoice } from "@/lib/stores/voice";
 import type { ByIngredientsResponse, IngredientsRequest, IngredientsResponse, Recipe, RecipeMatch } from "@/lib/types";
 import { speak } from "@/lib/voice/engine";
 import { recipesLine } from "./format";
@@ -109,12 +110,54 @@ export function sayIfSession(text: string): void {
   }
 }
 
+const noop = () => {};
+
+/**
+ * Speak a screen's line during a voice session without talking over Sous: when a voice
+ * turn is mid-reply (e.g. Gemini's "Let me find some recipes" that navigated here), wait
+ * for it to finish. Gives up if the user starts talking, the session ends, or after
+ * `maxWaitMs`. Returns a cancel function (call it on unmount).
+ */
+export function sayWhenFree(text: string, onSpoken?: () => void, maxWaitMs = 15_000): () => void {
+  const isFree = (s: { status: string; paused: boolean }) => s.status === "idle" && !s.paused;
+  const say = () => {
+    onSpoken?.();
+    sayIfSession(text);
+  };
+
+  const v = useVoice.getState();
+  if (!v.sessionActive) return noop;
+  if (isFree(v)) {
+    say();
+    return noop;
+  }
+
+  let done = false;
+  let unsubscribe = noop;
+  const timer = setTimeout(() => cancel(), maxWaitMs);
+  const cancel = () => {
+    done = true;
+    unsubscribe();
+    clearTimeout(timer);
+  };
+  unsubscribe = useVoice.subscribe((s) => {
+    if (done) return;
+    if (!s.sessionActive || s.status === "listening") cancel();
+    else if (isFree(s)) {
+      cancel();
+      say();
+    }
+  });
+  return cancel;
+}
+
 /** Announce suggestions once per ingredient set (not again on back-navigation). */
 let announcedKey: string | null = null;
-export function announceMatches(key: string, matches: RecipeMatch[]): void {
-  if (!key || announcedKey === key) return;
-  announcedKey = key;
-  sayIfSession(recipesLine(matches));
+export function announceMatches(key: string, matches: RecipeMatch[]): () => void {
+  if (!key || announcedKey === key) return noop;
+  return sayWhenFree(recipesLine(matches), () => {
+    announcedKey = key;
+  });
 }
 
 /** Synchronous recipe lookup (cooking -> suggestions -> bundled cache), no network. */

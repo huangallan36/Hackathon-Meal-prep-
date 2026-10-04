@@ -6,6 +6,7 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { SmartImage } from "@/components/ui/Misc";
 import { minutesLabel } from "@/lib/kitchen/format";
+import { groceriesHref } from "@/lib/kitchen/routes";
 import type { Recipe, RecipeMatch } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -116,7 +117,7 @@ export function RecipeCard({
         <div className={cn("flex gap-2", showMatch && "mt-3.5")}>
           {missing.length > 0 && (
             <ButtonLink
-              href={`/ai/groceries/${recipe.id}`}
+              href={groceriesHref(recipe.id)}
               variant="secondary"
               size="sm"
               className="h-11 flex-1"

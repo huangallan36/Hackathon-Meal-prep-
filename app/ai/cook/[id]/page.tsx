@@ -97,12 +97,13 @@ function CookView({ recipe }: { recipe: Recipe }) {
 
   const total = recipe.steps.length;
   const index = Math.min(stepIndex, total - 1);
-  const mode: "overview" | "step" | "done" = finished && total > 0 ? "done" : index < 0 ? "overview" : "step";
+  // "done" only while on the last step, so a voice "go back" from the celebration shows that step again.
+  const mode: "overview" | "step" | "done" = finished && total > 0 && index >= total - 1 ? "done" : index < 0 ? "overview" : "step";
 
-  // Switching overview <-> steps <-> done (by tap or by voice): bring the new content into view.
+  // New step or mode (by tap, key or voice): bring the start of it into view.
   useEffect(() => {
     document.getElementById("sous-scroll")?.scrollTo({ top: 0, behavior: "smooth" });
-  }, [mode]);
+  }, [mode, index]);
 
   // Desktop demo convenience: Right/Space = next, Left = back. Reads the store, so it stays in sync with voice.
   useEffect(() => {
@@ -111,7 +112,7 @@ function CookView({ recipe }: { recipe: Recipe }) {
       const target = e.target instanceof HTMLElement ? e.target : null;
       if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
       const k = useKitchen.getState();
-      if (k.finishedRecipeId === recipe.id || !recipe.steps.length) return;
+      if (!recipe.steps.length || (k.finishedRecipeId === recipe.id && k.stepIndex >= recipe.steps.length - 1)) return;
       if (e.key === "ArrowRight" || e.key === " ") {
         // Let Space press a focused button/link the normal way.
         if (e.key === " " && target?.closest("button, a")) return;

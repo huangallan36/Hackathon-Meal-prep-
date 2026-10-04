@@ -12,6 +12,12 @@ import type { IngredientsResponse } from "@/lib/types";
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
+/**
+ * The shared vision chain plus one more model as a last resort: on the day we tested,
+ * 3.7/3.8 Flash answered 429 (quota) while 3.6 Flash and Flash-Lite still worked.
+ */
+const MODELS = [...new Set([...VISION_MODELS, "gemini-3.6-flash"])];
+
 /** ~5 MB of JSON; client photos are downscaled to ~150-400 KB before upload */
 const MAX_BODY_BYTES = 5 * 1024 * 1024;
 
@@ -82,7 +88,7 @@ export async function POST(req: Request) {
     const part = await imagePart(image, req.url);
     // Hedged rather than strictly sequential: an overloaded model can hang for 40 s.
     const { data, model } = await hedgedJSON<{ ingredients?: DetectedIngredient[] }>({
-      models: VISION_MODELS,
+      models: MODELS,
       parts: [part, { text: PROMPT }],
       schema: SCHEMA,
       systemInstruction: SYSTEM,

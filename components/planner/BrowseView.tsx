@@ -16,7 +16,7 @@ import { WeekStrip } from "./WeekStrip";
 
 const QUICK_COLLAPSED = 3;
 
-/** Empty-query "Read mode": this week, most popular, recently made, quick weeknight, cuisines */
+/** Empty-query "Read mode": most popular, this week, recently made, quick weeknight, cuisines */
 export function BrowseView({
   planTarget,
   busyId,
@@ -52,6 +52,14 @@ export function BrowseView({
 
   return (
     <>
+      <PlannerSection id="popular" title="Most Popular" subtitle="What the Sous community keeps cooking" className="mt-8">
+        <Scroller label="Most popular recipes">
+          {popular.map((p, i) => (
+            <PopularCard key={p.recipe.id} recipe={p.recipe} upvotes={p.upvotes} rank={i + 1} index={i} onOpen={onOpen} />
+          ))}
+        </Scroller>
+      </PlannerSection>
+
       <PlannerSection
         id="week"
         title="This week"
@@ -67,7 +75,6 @@ export function BrowseView({
             </span>
           ) : undefined
         }
-        className="mt-8"
       >
         <WeekStrip days={days} target={planTarget} onDay={onDay} />
         {target && (
@@ -85,14 +92,6 @@ export function BrowseView({
             </button>
           </div>
         )}
-      </PlannerSection>
-
-      <PlannerSection id="popular" title="Most Popular" subtitle="What the Sous community keeps cooking">
-        <Scroller label="Most popular recipes">
-          {popular.map((p, i) => (
-            <PopularCard key={p.recipe.id} recipe={p.recipe} upvotes={p.upvotes} rank={i + 1} index={i} onOpen={onOpen} />
-          ))}
-        </Scroller>
       </PlannerSection>
 
       <PlannerSection id="recent" title="Recently Made" subtitle={recent.length ? "Your greatest hits, one tap from round two" : undefined}>

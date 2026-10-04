@@ -2,13 +2,15 @@
 
 import type { CSSProperties } from "react";
 import { Card, SectionLabel } from "@/components/ui/Card";
-import { fmt, ratio } from "@/lib/diary/stats";
+import { fmt, ratio, splitPercents } from "@/lib/diary/stats";
 import type { Nutrition } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { CountUp } from "./CountUp";
 import { ProgressBar } from "./ProgressBar";
 
 type MacroKey = "protein" | "carbs" | "fat";
+
+const KCAL_PER_GRAM: Record<MacroKey, number> = { protein: 4, carbs: 4, fat: 9 };
 
 export const MACROS: { key: MacroKey; label: string; short: string; bar: string; dot: string }[] = [
   { key: "protein", label: "Protein", short: "P", bar: "bg-protein", dot: "bg-protein" },
@@ -29,19 +31,22 @@ export function MacroBars({
   style?: CSSProperties;
 }) {
   // Share of calories from each macro (4/4/9 kcal per gram), for the split legend
-  const kcal = totals.protein * 4 + totals.carbs * 4 + totals.fat * 9;
-  const perGram: Record<MacroKey, number> = { protein: 4, carbs: 4, fat: 9 };
+  const split = splitPercents(MACROS.map((m) => totals[m.key] * KCAL_PER_GRAM[m.key]));
+  const hasSplit = split.some((p) => p > 0);
 
   return (
     <Card className={cn("p-5", className)} style={style}>
       <div className="flex items-center justify-between gap-3">
         <SectionLabel>Macros</SectionLabel>
-        {kcal > 0 && (
-          <span className="flex items-center gap-2.5 text-[11px] font-semibold tabular-nums text-ink-soft" aria-label="Share of calories">
-            {MACROS.map((m) => (
-              <span key={m.key} className="flex items-center gap-1">
+        {hasSplit && (
+          <span
+            className="flex items-center gap-2.5 text-[11px] font-semibold tabular-nums text-ink-soft"
+            aria-label={`Share of calories: ${MACROS.map((m, i) => `${m.label} ${split[i]}%`).join(", ")}`}
+          >
+            {MACROS.map((m, i) => (
+              <span key={m.key} className="flex items-center gap-1" aria-hidden>
                 <span className={cn("size-1.5 rounded-full", m.dot)} />
-                {Math.round(((totals[m.key] * perGram[m.key]) / kcal) * 100)}%
+                {split[i]}%
               </span>
             ))}
           </span>

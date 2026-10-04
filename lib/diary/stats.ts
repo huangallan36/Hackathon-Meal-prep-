@@ -31,7 +31,24 @@ export function fmt(n: number, decimals = 0): string {
 
 /** value / goal as 0..∞ (0 when the goal is missing) */
 export function ratio(value: number, goal: number): number {
-  return goal > 0 ? Math.max(0, value) / goal : 0;
+  return goal > 0 && Number.isFinite(value) ? Math.max(0, value) / goal : 0;
+}
+
+/** Whole percentages of the total that always add up to 100 (largest remainder) */
+export function splitPercents(values: number[]): number[] {
+  const safe = values.map((v) => (Number.isFinite(v) && v > 0 ? v : 0));
+  const total = safe.reduce((a, b) => a + b, 0);
+  if (total <= 0) return safe.map(() => 0);
+  const raw = safe.map((v) => (v / total) * 100);
+  const out = raw.map(Math.floor);
+  let short = 100 - out.reduce((a, b) => a + b, 0);
+  const order = raw.map((v, i) => [v - Math.floor(v), i] as const).sort((a, b) => b[0] - a[0]);
+  for (const [, i] of order) {
+    if (short <= 0) break;
+    out[i]++;
+    short--;
+  }
+  return out;
 }
 
 /* ------------------------------------------------------------------ */
@@ -101,6 +118,18 @@ export function kcalByDate(entries: DiaryEntry[]): Record<ISODate, number> {
   const out: Record<ISODate, number> = {};
   for (const e of entries) out[e.date] = (out[e.date] ?? 0) + (e.nutrition.calories || 0);
   return out;
+}
+
+/**
+ * Average kcal per logged day of a week. Today is still in progress, so it only counts
+ * when it is the only logged day (otherwise a half-eaten today drags the average down).
+ */
+export function weekAverage(days: ISODate[], kcalByDay: Record<ISODate, number>, today: ISODate): { avg: number; days: number } {
+  const logged = days.filter((d) => d <= today && (kcalByDay[d] ?? 0) > 0);
+  const complete = logged.filter((d) => d !== today);
+  const use = complete.length ? complete : logged;
+  if (!use.length) return { avg: 0, days: 0 };
+  return { avg: use.reduce((a, d) => a + (kcalByDay[d] ?? 0), 0) / use.length, days: use.length };
 }
 
 /** Entries of one day grouped by meal slot, each slot sorted by time */

@@ -97,7 +97,8 @@ export default function NewPostPage() {
       let image = photo;
       if (photo.startsWith("data:")) {
         try {
-          image = await thumbnailFromDataUrl(photo);
+          // Bigger than the diary thumbnail: this photo fills the whole swipe card.
+          image = await thumbnailFromDataUrl(photo, 720, 0.78);
         } catch {
           // Keep the original if the canvas is unavailable; it is already downscaled.
         }
@@ -107,7 +108,8 @@ export default function NewPostPage() {
       setDraft(null);
       toast("Posted!", "success");
       sayIfTalking("Posted! Your dish is live on Social.");
-      router.push("/social");
+      // replace: Back from the feed should not land on an emptied composer
+      router.replace("/social");
     } catch {
       if (!alive.current) return;
       setStatus("idle");

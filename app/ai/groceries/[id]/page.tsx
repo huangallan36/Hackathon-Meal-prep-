@@ -1,6 +1,6 @@
 "use client";
 
-import { ChefHat, CircleCheck, ClipboardCopy, Clock, Refrigerator, SearchX, Users } from "lucide-react";
+import { ChefHat, ChevronRight, CircleCheck, ClipboardCopy, Clock, Refrigerator, SearchX, Users } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -11,9 +11,10 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { SectionHeader } from "@/components/ui/Card";
 import { EmptyState, SmartImage } from "@/components/ui/Misc";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
-import { peekRecipe } from "@/lib/kitchen/client";
-import { groceryText, minutesLabel } from "@/lib/kitchen/format";
+import { copyText, peekRecipe } from "@/lib/kitchen/client";
+import { groceryText, minutesLabel, plural } from "@/lib/kitchen/format";
 import { groceryKey, groceryPlan } from "@/lib/kitchen/groceries";
+import { cookHref, FRIDGE_SCAN_HREF, RECIPES_HREF } from "@/lib/kitchen/routes";
 import { loadRecipe } from "@/lib/recipes/client";
 import { useKitchen } from "@/lib/stores/kitchen";
 import { toast } from "@/lib/stores/toast";
@@ -51,21 +52,18 @@ function GroceryView({ recipe }: { recipe: Recipe }) {
   const fridge = useKitchen((s) => s.ingredients);
   const plan = useMemo(() => groceryPlan(recipe, fridge), [recipe, fridge]);
 
+  /** Copies what's still unticked (or everything once it's all in the cart). */
   async function copyList() {
     const checked = useKitchen.getState().groceryChecked;
     const remaining = plan.need.filter((i) => !checked[groceryKey(recipe.id, i.name)]);
-    const text = groceryText(recipe, remaining.length ? remaining : plan.need);
-    try {
-      await navigator.clipboard.writeText(text);
-      toast(`Copied ${remaining.length || plan.need.length} items`, "success");
-    } catch {
-      toast("Couldn't copy here. Try a screenshot instead.", "warning");
-    }
+    const items = remaining.length ? remaining : plan.need;
+    if (await copyText(groceryText(recipe, items))) toast(`Copied ${plural(items.length, "item")}`, "success");
+    else toast("Couldn't copy here. Try a screenshot instead.", "warning");
   }
 
   function startCooking() {
     useKitchen.getState().startCooking(recipe);
-    router.push(`/ai/cook/${recipe.id}`);
+    router.push(cookHref(recipe.id));
   }
 
   return (
@@ -85,7 +83,7 @@ function GroceryView({ recipe }: { recipe: Recipe }) {
               </span>
               <span className="inline-flex items-center gap-1">
                 <Users className="size-3.5" />
-                {recipe.servings} servings
+                {plural(recipe.servings, "serving")}
               </span>
             </p>
           </div>
@@ -104,16 +102,17 @@ function GroceryView({ recipe }: { recipe: Recipe }) {
             }
           />
           {plan.noScan && plan.need.length > 0 && (
-            <p className="flex items-start gap-2 rounded-tile bg-butter-soft px-4 py-3 text-[13px] leading-relaxed text-ink-soft">
-              <Refrigerator className="mt-0.5 size-4 shrink-0 text-ink" />
-              <span>
+            <Link
+              href={FRIDGE_SCAN_HREF}
+              className="flex min-h-14 items-center gap-3 rounded-tile bg-butter-soft px-4 py-3 text-[13px] leading-snug text-ink-soft transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              <Refrigerator className="size-5 shrink-0 text-ink" />
+              <span className="flex-1">
                 No fridge scan yet, so this is everything.{" "}
-                <Link href="/ai/fridge" className="font-semibold text-accent-strong underline underline-offset-2">
-                  Scan your fridge
-                </Link>{" "}
-                to trim it down.
+                <span className="font-semibold text-accent-strong">Scan your fridge</span> to trim it down.
               </span>
-            </p>
+              <ChevronRight className="size-4 shrink-0 text-ink-faint" />
+            </Link>
           )}
           {plan.need.length > 0 ? (
             <GroceryChecklist recipeId={recipe.id} items={plan.need} />
@@ -185,7 +184,7 @@ function NotFoundView() {
             title="Recipe not found"
             body="It may not be saved on this device, or you're offline right now."
             action={
-              <ButtonLink href="/ai/recipes" variant="soft">
+              <ButtonLink href={RECIPES_HREF} variant="soft">
                 Back to recipes
               </ButtonLink>
             }

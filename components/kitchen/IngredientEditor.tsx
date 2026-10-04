@@ -4,10 +4,13 @@ import { Plus, X } from "lucide-react";
 import { AnimatePresence, motion, type Variants } from "motion/react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { uniqueIngredients } from "@/lib/kitchen/sanitize";
+import { dedupeKey, uniqueIngredients } from "@/lib/kitchen/sanitize";
 import { cn } from "@/lib/utils";
 
 const QUICK_ADD = ["rice", "garlic", "onion", "butter", "pasta", "potatoes", "broccoli", "salmon", "tofu", "lemon"];
+
+/** Chips render 40px tall; this invisible band stretches the hit area to 44px. */
+const HIT_AREA = "relative after:absolute after:inset-x-0 after:-inset-y-0.5 after:content-['']";
 
 const list: Variants = {
   hidden: {},
@@ -22,7 +25,8 @@ const chip: Variants = {
 
 /**
  * Editable ingredient chips + "add ingredient" input. Tapping a chip removes it
- * (the whole chip is the hit target, 40px tall). Comma-separated input adds several.
+ * (the whole chip is the hit target). Enter adds; commas add several at once.
+ * "egg" is treated as already there when "eggs" is on the list.
  */
 export function IngredientEditor({
   ingredients,
@@ -38,11 +42,13 @@ export function IngredientEditor({
   showQuickAdd?: boolean;
 }) {
   const [draft, setDraft] = useState("");
-  const suggestions = QUICK_ADD.filter((s) => !ingredients.includes(s)).slice(0, 6);
+  const have = new Set(ingredients.map(dedupeKey));
+  const suggestions = QUICK_ADD.filter((s) => !have.has(dedupeKey(s))).slice(0, 6);
 
   function submit() {
-    const names = uniqueIngredients(draft.split(/[,\n]/));
-    names.forEach(onAdd);
+    uniqueIngredients(draft.split(/[,;\n]/))
+      .filter((name) => !have.has(dedupeKey(name)))
+      .forEach(onAdd);
     setDraft("");
   }
 
@@ -52,14 +58,17 @@ export function IngredientEditor({
         <motion.ul variants={list} initial="hidden" animate="show" className="relative flex flex-wrap gap-2" aria-label="Your ingredients">
           <AnimatePresence mode="popLayout">
             {ingredients.map((name) => (
-              <motion.li key={name} layout variants={chip} exit="exit">
+              <motion.li key={name} layout variants={chip} exit="exit" className="max-w-full">
                 <button
                   type="button"
                   onClick={() => onRemove(name)}
                   aria-label={`Remove ${name}`}
-                  className="group inline-flex h-10 max-w-[260px] items-center gap-1.5 rounded-pill border border-line bg-surface pl-3.5 pr-1.5 text-[15px] font-medium text-ink shadow-soft transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className={cn(
+                    HIT_AREA,
+                    "group inline-flex h-10 max-w-full items-center gap-1.5 rounded-pill border border-line bg-surface pl-3.5 pr-1.5 text-[15px] font-medium text-ink shadow-soft transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                  )}
                 >
-                  <span className="truncate">{name}</span>
+                  <span className="min-w-0 truncate">{name}</span>
                   <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-cream-deep text-ink-soft transition group-hover:bg-accent-soft group-hover:text-accent-strong">
                     <X className="size-3.5" strokeWidth={2.5} />
                   </span>
@@ -89,6 +98,8 @@ export function IngredientEditor({
           autoFocus={autoFocus}
           autoComplete="off"
           autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           enterKeyHint="done"
           maxLength={120}
           className="h-11 min-w-0 flex-1 bg-transparent text-base text-ink placeholder:text-ink-faint focus:outline-none"
@@ -107,9 +118,11 @@ export function IngredientEditor({
                 key={s}
                 type="button"
                 onClick={() => onAdd(s)}
+                aria-label={`Add ${s}`}
                 className={cn(
+                  HIT_AREA,
                   "inline-flex h-10 items-center gap-1 rounded-pill border border-dashed border-line px-3.5 text-sm font-medium text-ink-soft transition",
-                  "hover:border-accent/40 hover:text-accent-strong active:scale-95",
+                  "hover:border-accent/40 hover:text-accent-strong active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                 )}
               >
                 <Plus className="size-3.5" />

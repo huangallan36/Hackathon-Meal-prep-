@@ -37,7 +37,9 @@ export function recipesLine(matches: RecipeMatch[]): string {
   return `I found ${ideas}. The ${spokenTitle(best.recipe.title)} uses the most of what you have${tail}.`;
 }
 
-export function minutesLabel(min: number): string {
+export function minutesLabel(minutes: number): string {
+  if (!Number.isFinite(minutes) || minutes <= 0) return "Quick";
+  const min = Math.round(minutes);
   if (min < 60) return `${min} min`;
   const h = Math.floor(min / 60);
   const m = min % 60;
@@ -46,6 +48,10 @@ export function minutesLabel(min: number): string {
 
 export function capitalize(s: string): string {
   return s ? s[0].toUpperCase() + s.slice(1) : s;
+}
+
+export function plural(n: number, one: string, many = `${one}s`): string {
+  return `${n} ${n === 1 ? one : many}`;
 }
 
 /** Plain-text shopping list for the clipboard */

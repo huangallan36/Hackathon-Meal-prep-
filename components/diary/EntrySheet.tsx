@@ -12,20 +12,29 @@ import { toast } from "@/lib/stores/toast";
 import type { DiaryEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { EstimatedBadge, FoodThumb, SousTag } from "./EntryBits";
+import { HIT_AREA } from "./hitArea";
 
 /**
  * Bottom sheet with an entry's full nutrition, "Share to Social" (photo entries) and a
  * two-step delete. Pass `entry = undefined` to close; it animates out.
  */
 export function EntrySheet({ entry, onClose }: { entry: DiaryEntry | undefined; onClose: () => void }) {
+  const open = !!entry;
   useEffect(() => {
-    if (!entry) return;
+    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [entry, onClose]);
+    // The sheet sits over the phone's scroll container: freeze it while open
+    const scroller = document.getElementById("sous-scroll");
+    const prevOverflow = scroller?.style.overflowY ?? "";
+    if (scroller) scroller.style.overflowY = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      if (scroller) scroller.style.overflowY = prevOverflow;
+    };
+  }, [open, onClose]);
 
   return (
     <AnimatePresence>
@@ -101,14 +110,12 @@ function SheetBody({ entry, onClose }: { entry: DiaryEntry; onClose: () => void 
           <h2 className="mt-1 font-display text-[22px] font-semibold leading-tight text-ink">{entry.name}</h2>
           <p className="mt-0.5 text-sm text-ink-soft">{entry.portion}</p>
         </div>
-        <IconButton label="Close" onClick={onClose} className="shrink-0">
+        <IconButton label="Close" onClick={onClose} className={cn(HIT_AREA, "shrink-0")}>
           <X className="size-5" />
         </IconButton>
       </div>
 
-      {entry.image ? (
-        <FoodThumb entry={entry} className="mt-4 h-44 w-full rounded-card" />
-      ) : null}
+      {entry.image ? <FoodThumb entry={entry} rounded="rounded-card" className="mt-4 h-44 w-full" /> : null}
 
       <div className="mt-4 flex items-center gap-4 rounded-tile bg-cream p-4">
         {!entry.image && <FoodThumb entry={entry} className="size-14" />}

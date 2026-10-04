@@ -44,15 +44,19 @@ export function RecipeMeta({
 export function RecipeEyebrow({
   recipe,
   max = 2,
+  maxChars = 24,
   onPhoto,
   className,
 }: {
   recipe: Recipe;
   max?: number;
+  /** Drop trailing tags rather than truncating mid-word */
+  maxChars?: number;
   onPhoto?: boolean;
   className?: string;
 }) {
   const tags = recipeTags(recipe, max);
+  while (tags.length > 1 && tags.join(" · ").length > maxChars) tags.pop();
   if (!tags.length) return null;
   return (
     <span

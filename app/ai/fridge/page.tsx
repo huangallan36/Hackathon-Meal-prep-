@@ -2,20 +2,23 @@
 
 import { ArrowRight, Camera, Keyboard, Lightbulb, RefreshCw, Sparkles, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { FridgeHero } from "@/components/kitchen/FridgeHero";
+import { FridgePhoto } from "@/components/kitchen/FridgePhoto";
 import { IngredientEditor } from "@/components/kitchen/IngredientEditor";
 import { ScanningPhoto } from "@/components/kitchen/ScanningPhoto";
 import { StickyAction } from "@/components/kitchen/StickyAction";
 import { Button } from "@/components/ui/Button";
-import { FallbackNote, SmartImage } from "@/components/ui/Misc";
+import { FallbackNote } from "@/components/ui/Misc";
 import { PhotoPicker } from "@/components/ui/PhotoPicker";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
-import { fetchMatches, fridgeThumbnail, sayIfSession, scanFridge, wait } from "@/lib/kitchen/client";
+import { fetchMatches, fridgeThumbnail, replaceQuery, sayWhenFree, scanFridge, wait } from "@/lib/kitchen/client";
 import { fridgeLine } from "@/lib/kitchen/format";
+import { RECIPES_HREF } from "@/lib/kitchen/routes";
 import { SAMPLE_FRIDGE_PHOTO } from "@/lib/sample";
 import { useKitchen } from "@/lib/stores/kitchen";
+import { useVoice } from "@/lib/stores/voice";
 
 type Phase = "pick" | "scanning" | "results";
 
@@ -29,36 +32,63 @@ const fade = {
   transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] as const },
 };
 
-/**
- * Existing chips open straight into the results step, unless the caller asked for a
- * fresh scan with /ai/fridge?scan=1 (e.g. Gemini's open_fridge_camera action).
- */
-function initialPhase(): Phase {
-  const forceScan = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("scan");
-  return !forceScan && useKitchen.getState().ingredients.length > 0 ? "results" : "pick";
+/** Which step to open on (see lib/kitchen/routes.ts for the query contract). */
+function initialPhase(search: Pick<URLSearchParams, "has">): Phase {
+  if (search.has("scan") || useKitchen.getState().ingredients.length === 0) return "pick";
+  if (search.has("edit")) return "results";
+  // In a voice session the way here is Gemini's open_fridge_camera action: show the camera,
+  // not chips left over from an earlier run. "Back to my N ingredients" is one tap away.
+  return useVoice.getState().sessionActive ? "pick" : "results";
 }
 
+// useSearchParams needs a Suspense boundary for prerendering.
 export default function FridgePage() {
+  return (
+    <Suspense fallback={<ScreenHeader title="What's in your fridge?" back />}>
+      <FridgeScreen />
+    </Suspense>
+  );
+}
+
+function FridgeScreen() {
   const router = useRouter();
+  const search = useSearchParams();
   const ingredients = useKitchen((s) => s.ingredients);
   const source = useKitchen((s) => s.ingredientsSource);
   const storedPhoto = useKitchen((s) => s.fridgePhoto);
   const addIngredient = useKitchen((s) => s.addIngredient);
   const removeIngredient = useKitchen((s) => s.removeIngredient);
 
-  const [phase, setPhase] = useState<Phase>(initialPhase);
+  const [phase, setPhase] = useState<Phase>(() => initialPhase(search));
   const [scanSrc, setScanSrc] = useState<string | null>(null);
   const [focusInput, setFocusInput] = useState(false);
+
+  // A new ?scan=1 while this screen is open (e.g. "scan my fridge again") reopens the camera.
+  const scanParam = search.get("scan");
+  const [seenScanParam, setSeenScanParam] = useState(scanParam);
+  if (scanParam !== seenScanParam) {
+    setSeenScanParam(scanParam);
+    if (scanParam !== null && phase === "results") setPhase("pick");
+  }
 
   /** Bumped on every new scan / cancel so a stale scan can't overwrite a newer choice */
   const scanToken = useRef(0);
   const mounted = useRef(true);
+  /** Cancels a pending "I can see..." line when the screen goes away */
+  const cancelLine = useRef<() => void>(() => {});
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
+      cancelLine.current();
     };
   }, []);
+
+  /** Show the chips, and make Back from /ai/recipes land here again (not on the camera). */
+  function showResults() {
+    setPhase("results");
+    replaceQuery("edit=1");
+  }
 
   async function handlePick(src: string) {
     const token = ++scanToken.current;
@@ -75,13 +105,16 @@ export default function FridgePage() {
     if (!mounted.current) return;
 
     setFocusInput(false);
-    setPhase("results");
-    sayIfSession(fridgeLine(result.ingredients));
+    showResults();
+    cancelLine.current();
+    cancelLine.current = sayWhenFree(fridgeLine(result.ingredients));
   }
 
   function cancelScan() {
     scanToken.current++;
-    setPhase(useKitchen.getState().ingredients.length > 0 ? "results" : "pick");
+    setScanSrc(null);
+    if (useKitchen.getState().ingredients.length > 0) showResults();
+    else setPhase("pick");
   }
 
   function typeInstead() {
@@ -91,13 +124,14 @@ export default function FridgePage() {
     kitchen.setFridgePhoto(null);
     setScanSrc(null);
     setFocusInput(true);
-    setPhase("results");
+    showResults();
   }
 
   function findRecipes() {
     // Warm the request; /ai/recipes reuses the in-flight promise and the stored result.
     void fetchMatches(useKitchen.getState().ingredients);
-    router.push("/ai/recipes");
+    replaceQuery("edit=1");
+    router.push(RECIPES_HREF);
   }
 
   const photo = scanSrc ?? storedPhoto;
@@ -126,15 +160,16 @@ export default function FridgePage() {
                 <span className="h-px flex-1 bg-line" />
               </div>
 
-              <Button variant="ghost" full icon={<Keyboard className="size-5" />} onClick={typeInstead}>
-                Type ingredients instead
-              </Button>
-
-              {ingredients.length > 0 && (
-                <Button variant="ghost" full icon={<ArrowRight className="size-5" />} onClick={() => setPhase("results")}>
-                  Back to my {ingredients.length} ingredients
+              <div className="flex flex-col gap-1">
+                {ingredients.length > 0 && (
+                  <Button variant="secondary" full icon={<ArrowRight className="size-5" />} onClick={showResults}>
+                    Back to my {ingredients.length} ingredient{ingredients.length === 1 ? "" : "s"}
+                  </Button>
+                )}
+                <Button variant="ghost" full icon={<Keyboard className="size-5" />} onClick={typeInstead}>
+                  Type ingredients instead
                 </Button>
-              )}
+              </div>
 
               <p className="flex items-start gap-2.5 rounded-tile bg-butter-soft px-4 py-3 text-[13px] leading-relaxed text-ink-soft">
                 <Lightbulb className="mt-0.5 size-4 shrink-0 text-ink" />
@@ -160,7 +195,11 @@ export default function FridgePage() {
                 photo={photo}
                 onRescan={() => setPhase("pick")}
               />
-              <FallbackNote show={source === "fallback"}>Showing a sample scan. Edit it to match your fridge.</FallbackNote>
+              {source === "fallback" && (
+                <div className="-mt-2">
+                  <FallbackNote show>Showing a sample scan. Edit it to match your fridge.</FallbackNote>
+                </div>
+              )}
               <IngredientEditor
                 ingredients={ingredients}
                 onAdd={addIngredient}
@@ -220,7 +259,7 @@ function ResultsHeader({
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
           className="relative shrink-0"
         >
-          <SmartImage src={photo} alt="Your fridge" className="size-20 rounded-tile border-4 border-surface shadow-card" />
+          <FridgePhoto src={photo} className="size-20 rounded-tile border-4 border-surface shadow-card" />
           <span className="absolute -bottom-1.5 -right-1.5 flex size-7 items-center justify-center rounded-full bg-accent text-white shadow-accent">
             <Sparkles className="size-3.5" />
           </span>

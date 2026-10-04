@@ -8,6 +8,7 @@ import { MacroBars } from "@/components/diary/MacroBars";
 import { MealsPreview } from "@/components/diary/MealsPreview";
 import { MonthCalendar } from "@/components/diary/MonthCalendar";
 import { NutrientGrid } from "@/components/diary/NutrientGrid";
+import { HIT_AREA } from "@/components/diary/hitArea";
 import { stagger } from "@/components/diary/stagger";
 import { WeekChart } from "@/components/diary/WeekChart";
 import { WeekStrip } from "@/components/diary/WeekStrip";
@@ -17,7 +18,7 @@ import { currentStreak, dayTotals, formatWeekRange, kcalByDate, longDayLabel, re
 import { effectiveSelection, useDiaryView } from "@/lib/diary/view";
 import { lastUserLogAt, loggedDates, useDiary } from "@/lib/stores/diary";
 import type { ISODate } from "@/lib/types";
-import { addDays, todayISO, weekRange } from "@/lib/utils";
+import { addDays, cn, todayISO, weekRange } from "@/lib/utils";
 
 export default function DiaryPage() {
   const router = useRouter();
@@ -55,14 +56,14 @@ export default function DiaryPage() {
         subtitle={formatWeekRange(week.start, week.end)}
         right={
           <>
-            <IconButton label="Previous week" onClick={() => shiftWeek(-1)}>
+            <IconButton label="Previous week" className={HIT_AREA} onClick={() => shiftWeek(-1)}>
               <ChevronLeft className="size-5" />
             </IconButton>
             <IconButton
               label="Next week"
               disabled={isCurrentWeek}
               onClick={() => shiftWeek(1)}
-              className="disabled:pointer-events-none disabled:opacity-35"
+              className={cn(HIT_AREA, "disabled:pointer-events-none disabled:opacity-35")}
             >
               <ChevronRight className="size-5" />
             </IconButton>

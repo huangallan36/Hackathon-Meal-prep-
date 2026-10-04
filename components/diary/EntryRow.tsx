@@ -14,6 +14,7 @@ export function EntryRow({ entry, onOpen, className }: { entry: DiaryEntry; onOp
     <button
       type="button"
       onClick={() => onOpen(entry.id)}
+      data-entry-id={entry.id}
       aria-label={`${entry.name}, ${fmt(entry.nutrition.calories)} kcal. Open details`}
       className={cn(
         "flex w-full items-start gap-3 rounded-tile p-2 text-left transition hover:bg-cream active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",

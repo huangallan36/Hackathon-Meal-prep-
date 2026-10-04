@@ -3,7 +3,7 @@
 import { motion } from "motion/react";
 import type { CSSProperties } from "react";
 import { Card, SectionLabel } from "@/components/ui/Card";
-import { fmt, longDayLabel, WEEKDAY_INITIALS } from "@/lib/diary/stats";
+import { fmt, longDayLabel, WEEKDAY_INITIALS, weekAverage } from "@/lib/diary/stats";
 import type { ISODate } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -32,9 +32,8 @@ export function WeekChart({
   className?: string;
   style?: CSSProperties;
 }) {
-  const values = days.map((d) => Math.max(0, kcalByDay[d] ?? 0));
-  const logged = values.filter((v) => v > 0);
-  const avg = logged.length ? logged.reduce((a, b) => a + b, 0) / logged.length : 0;
+  const values = days.map((d) => (Number.isFinite(kcalByDay[d]) ? Math.max(0, kcalByDay[d]) : 0));
+  const { avg } = weekAverage(days, kcalByDay, today);
   // Headroom above the tallest bar for its direct label
   const max = Math.max(goal * 1.25, ...values.map((v) => v * 1.18), 1);
   const goalY = (goal / max) * CHART_H;
@@ -44,9 +43,13 @@ export function WeekChart({
       <div className="flex items-start justify-between gap-3">
         <div>
           <SectionLabel>This week</SectionLabel>
-          <p className="mt-1 text-sm text-ink-soft">
-            <span className="font-display text-xl font-semibold text-ink">{fmt(avg)}</span> kcal / day avg
-          </p>
+          {avg > 0 ? (
+            <p className="mt-1 text-sm text-ink-soft">
+              <span className="font-display text-xl font-semibold text-ink">{fmt(avg)}</span> kcal / day avg
+            </p>
+          ) : (
+            <p className="mt-1.5 text-sm text-ink-faint">No meals logged this week</p>
+          )}
         </div>
         <span className="mt-0.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-faint">
           <span className="w-4 border-t-2 border-dashed border-ink-faint/60" aria-hidden />

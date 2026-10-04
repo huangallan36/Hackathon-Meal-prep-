@@ -3,10 +3,13 @@
 /**
  * Personal food diary. Seed entries are regenerated relative to today on every new day
  * (so the demo always looks current); entries logged through the AI flow are kept.
+ * Everything coming in (addEntry/updateEntry callers, localStorage) is sanitized, so
+ * the Diary never renders NaN or crashes on a malformed entry.
  */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { DEFAULT_GOALS, storageKey } from "@/lib/config";
+import { cleanEntryFields, reviveActivity, reviveEntries, reviveGoals } from "@/lib/diary/sanitize";
 import { SEED_VERSION, seedActivity, seedDiary } from "@/lib/seed/diary";
 import { persistStorage } from "@/lib/storage";
 import type { DailyActivity, DiaryEntry, ISODate, Micros, Nutrition, NutritionGoals } from "@/lib/types";
@@ -38,23 +41,31 @@ export const useDiary = create<DiaryState>()(
       goals: { ...DEFAULT_GOALS },
 
       addEntry: (entry) => {
-        const full: DiaryEntry = { ...entry, id: uid("d"), loggedAt: entry.loggedAt ?? Date.now() };
+        const loggedAt = typeof entry.loggedAt === "number" && Number.isFinite(entry.loggedAt) ? entry.loggedAt : Date.now();
+        const full: DiaryEntry = { ...entry, ...cleanEntryFields(entry), id: uid("d"), loggedAt };
         set((s) => ({ entries: [...s.entries, full] }));
         return full;
       },
-      updateEntry: (id, patch) => set((s) => ({ entries: s.entries.map((e) => (e.id === id ? { ...e, ...patch } : e)) })),
+      updateEntry: (id, patch) => {
+        const clean = cleanEntryFields(patch);
+        set((s) => ({ entries: s.entries.map((e) => (e.id === id ? { ...e, ...clean, id: e.id } : e)) }));
+      },
       removeEntry: (id) => set((s) => ({ entries: s.entries.filter((e) => e.id !== id) })),
     }),
     {
       name: storageKey("diary"),
       storage: persistStorage,
       merge: (persisted, current) => {
-        const p = (persisted ?? {}) as Partial<DiaryState>;
-        if (p.seededFor === todayISO() && p.seedVersion === SEED_VERSION) return { ...current, ...p };
+        const p = (persisted ?? {}) as Partial<Record<keyof DiaryState, unknown>>;
+        const entries = reviveEntries(p.entries);
+        const goals = reviveGoals(p.goals);
+        if (p.seededFor === todayISO() && p.seedVersion === SEED_VERSION) {
+          return { ...current, entries, goals, activity: reviveActivity(p.activity) ?? current.activity, seededFor: todayISO(), seedVersion: SEED_VERSION };
+        }
         // New day (or new seed): refresh seed data, keep everything the user logged.
         const seed = freshSeed();
-        const userEntries = (p.entries ?? []).filter((e) => e.source !== "seed");
-        return { ...current, ...p, ...seed, entries: [...seed.entries, ...userEntries] };
+        const userEntries = entries.filter((e) => e.source !== "seed");
+        return { ...current, ...seed, goals, entries: [...seed.entries, ...userEntries] };
       },
     },
   ),

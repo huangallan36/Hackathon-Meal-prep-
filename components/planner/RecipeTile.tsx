@@ -15,6 +15,7 @@ export function RecipeTile({
   index = 0,
   wide,
   overlay,
+  extra,
   onOpen,
 }: {
   recipe: Recipe;
@@ -22,6 +23,8 @@ export function RecipeTile({
   wide?: boolean;
   /** Extra content laid over the photo (e.g. pairing pills) */
   overlay?: ReactNode;
+  /** Extra content under the title, in the text column */
+  extra?: ReactNode;
   onOpen: (recipe: Recipe) => void;
 }) {
   return (
@@ -55,6 +58,7 @@ export function RecipeTile({
         >
           {recipe.title}
         </span>
+        {extra}
         <RecipeMeta recipe={recipe} compact={!wide} className="mt-auto pt-2" />
       </span>
     </button>

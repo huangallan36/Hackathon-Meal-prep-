@@ -8,13 +8,22 @@ import type { DiaryEntry, Nutrition } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /** Photo when the entry has one, otherwise a tinted food icon tile. Size via className. */
-export function FoodThumb({ entry, className = "size-14" }: { entry: DiaryEntry; className?: string }) {
+export function FoodThumb({
+  entry,
+  className = "size-14",
+  rounded = "rounded-tile",
+}: {
+  entry: DiaryEntry;
+  className?: string;
+  /** Radius utility (kept separate so it never fights a default) */
+  rounded?: string;
+}) {
   if (entry.image) {
-    return <SmartImage src={entry.image} alt={entry.name} className={cn("shrink-0 rounded-tile", className)} />;
+    return <SmartImage src={entry.image} alt={entry.name} className={cn("shrink-0", rounded, className)} />;
   }
-  const Icon = FOOD_ICONS[foodIconKey(entry.name, entry.meal)];
+  const Icon = FOOD_ICONS[foodIconKey(entry.name, entry.meal)] ?? FOOD_ICONS.grain;
   return (
-    <span className={cn("flex shrink-0 items-center justify-center rounded-tile", MEAL_TINT[entry.meal], className)} aria-hidden>
+    <span className={cn("flex shrink-0 items-center justify-center", rounded, MEAL_TINT[entry.meal] ?? MEAL_TINT.snack, className)} aria-hidden>
       <Icon className="size-[46%]" strokeWidth={1.9} />
     </span>
   );

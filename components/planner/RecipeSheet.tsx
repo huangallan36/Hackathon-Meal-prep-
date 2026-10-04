@@ -140,7 +140,7 @@ function SheetBody({
 
   return (
     <>
-      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6">
+      <div className="no-scrollbar min-h-0 overflow-y-auto overscroll-contain px-5 pb-6">
         <div className="relative overflow-hidden rounded-card bg-cream-deep shadow-card">
           <SmartImage src={recipe.image} alt={recipe.title} className="aspect-[16/11] w-full" />
           {upvotes > 0 && (
@@ -161,7 +161,7 @@ function SheetBody({
         {recipe.sourceName && <p className="mt-1 truncate text-sm text-ink-faint">by {recipe.sourceName}</p>}
 
         <div className="mt-4 grid grid-cols-4 rounded-tile bg-cream py-3">
-          <Stat icon={<Clock className="size-4" />} value={minutesLabel(recipe.readyInMinutes)} label="Total" />
+          <Stat icon={<Clock className="size-4" />} value={minutesLabel(recipe.readyInMinutes)} label="Time" />
           <Stat icon={<Users className="size-4" />} value={String(recipe.servings)} label="Servings" />
           <Stat icon={<ShoppingBasket className="size-4" />} value={String(ingredients.length)} label="Ingredients" />
           <Stat icon={<ListOrdered className="size-4" />} value={String(recipe.steps.length)} label="Steps" />
@@ -260,7 +260,7 @@ function PlanPicker({
         <h3 className="font-display text-lg font-semibold text-ink">Plan it</h3>
         <span className="truncate text-xs font-medium text-ink-faint">
           {plannedDays.length
-            ? `On your plan: ${plannedDays.map((d) => (d.label === "Today" || d.label === "Tomorrow" ? d.label : d.weekday)).join(", ")}`
+            ? `On your plan: ${plannedDays.map((d) => d.label).join(", ")}`
             : "Pick a day this week"}
         </span>
       </div>
@@ -294,7 +294,7 @@ function PlanPicker({
               )}
             >
               <span className={cn("text-[10px] font-semibold uppercase tracking-[0.06em]", on ? "text-white/70" : "text-ink-faint")}>
-                {day.label === "Today" ? "Today" : day.weekday.slice(0, 3)}
+                {day.label}
               </span>
               <span className="text-[15px] font-semibold leading-tight">{on ? <Check className="mx-auto size-4" /> : day.dayOfMonth}</span>
             </button>

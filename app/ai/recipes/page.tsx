@@ -11,6 +11,7 @@ import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { SPOONACULAR_BACKLINK } from "@/lib/config";
 import { announceMatches, fetchMatches } from "@/lib/kitchen/client";
 import { ingredientSummary } from "@/lib/kitchen/format";
+import { cookHref, FRIDGE_EDIT_HREF, FRIDGE_SCAN_HREF } from "@/lib/kitchen/routes";
 import { getCatalog, matchRecipe } from "@/lib/recipes/catalog";
 import { ingredientsKey, useKitchen } from "@/lib/stores/kitchen";
 import { recipePopularity, useSocial } from "@/lib/stores/social";
@@ -33,13 +34,15 @@ export default function RecipesPage() {
     if (hasIngredients && !ready) void fetchMatches(ingredients);
   }, [hasIngredients, ready, ingredients]);
 
+  // One spoken summary per fridge, during a voice session, after Sous finishes its own line.
   useEffect(() => {
-    if (ready) announceMatches(key, matches);
+    if (!ready) return;
+    return announceMatches(key, matches);
   }, [ready, key, matches]);
 
   function cook(recipe: Recipe) {
     useKitchen.getState().startCooking(recipe);
-    router.push(`/ai/cook/${recipe.id}`);
+    router.push(cookHref(recipe.id));
   }
 
   return (
@@ -49,7 +52,7 @@ export default function RecipesPage() {
         subtitle={hasIngredients ? `With ${ingredientSummary(ingredients)}` : "Popular with the Sous crowd"}
         back
         right={
-          <IconButton label="Edit ingredients" onClick={() => router.push("/ai/fridge")}>
+          <IconButton label="Edit ingredients" className="size-11" onClick={() => router.push(FRIDGE_EDIT_HREF)}>
             <SlidersHorizontal className="size-[18px]" />
           </IconButton>
         }
@@ -70,7 +73,7 @@ export default function RecipesPage() {
             title="No recipes for that combo"
             body="Try adding a couple more ingredients, like rice, pasta or eggs."
             action={
-              <ButtonLink href="/ai/fridge" variant="soft" icon={<SlidersHorizontal className="size-4" />}>
+              <ButtonLink href={FRIDGE_EDIT_HREF} variant="soft" icon={<SlidersHorizontal className="size-4" />}>
                 Edit ingredients
               </ButtonLink>
             }
@@ -124,7 +127,7 @@ function NoIngredients({ onCook }: { onCook: (recipe: Recipe) => void }) {
           title="Let's see what you've got"
           body="Scan your fridge and I'll match recipes to what's already inside."
           action={
-            <ButtonLink href="/ai/fridge" icon={<Camera className="size-4" />} className="mt-1">
+            <ButtonLink href={FRIDGE_SCAN_HREF} icon={<Camera className="size-4" />} className="mt-1">
               Scan my fridge
             </ButtonLink>
           }

@@ -134,7 +134,7 @@ export function useRecentRecipes(limit = 10): RecentItem[] {
 
 export interface PlanDay {
   date: ISODate;
-  /** "Today", "Tomorrow", "Mon" */
+  /** "Today", then weekday names ("Sun", "Mon") */
   label: string;
   /** "Mon", "Tue" (always the weekday) */
   weekday: string;
@@ -152,7 +152,7 @@ export function useWeekPlan(): PlanDay[] {
       const weekday = formatDay(date, { weekday: "short" });
       return {
         date,
-        label: i === 0 ? "Today" : i === 1 ? "Tomorrow" : weekday,
+        label: i === 0 ? "Today" : weekday,
         weekday,
         dayOfMonth: fromISODate(date).getDate(),
         meals: plannedOn(plan, date),
