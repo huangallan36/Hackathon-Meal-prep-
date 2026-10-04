@@ -1,0 +1,21 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="voice orb" clip-path="url(#clip0_0_121)">
+<circle id="Ellipse" cx="15" cy="15" r="15" fill="url(#paint0_radial_0_121)"/>
+<rect id="Rectangle" x="2.6" y="13.185" width="2" height="3.63" rx="1" fill="white" fill-opacity="0.95"/>
+<rect id="Rectangle_2" x="6.4" y="11.7" width="2" height="6.6" rx="1" fill="white" fill-opacity="0.95"/>
+<rect id="Rectangle_3" x="10.2" y="9.885" width="2" height="10.23" rx="1" fill="white" fill-opacity="0.95"/>
+<rect id="Rectangle_4" x="14" y="8.4" width="2" height="13.2" rx="1" fill="white" fill-opacity="0.95"/>
+<rect id="Rectangle_5" x="17.8" y="9.885" width="2" height="10.23" rx="1" fill="white" fill-opacity="0.95"/>
+<rect id="Rectangle_6" x="21.6" y="11.7" width="2" height="6.6" rx="1" fill="white" fill-opacity="0.95"/>
+<rect id="Rectangle_7" x="25.4" y="13.185" width="2" height="3.63" rx="1" fill="white" fill-opacity="0.95"/>
+</g>
+<defs>
+<radialGradient id="paint0_radial_0_121" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(15 15) scale(15)">
+<stop stop-color="#F7CF7A"/>
+<stop offset="1" stop-color="#E0603A"/>
+</radialGradient>
+<clipPath id="clip0_0_121">
+<rect width="30" height="30" fill="white"/>
+</clipPath>
+</defs>
+</svg>

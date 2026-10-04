@@ -40,6 +40,10 @@ export interface Nutrition {
   fiber: number;
 }
 
+/**
+ * Nutrients tracked beyond the core five. Units and daily targets live in lib/nutrients.ts.
+ * iron/calcium/vitaminA are always present on totals; the rest are optional per entry.
+ */
 export interface Micros {
   /** mg */
   iron: number;
@@ -47,10 +51,20 @@ export interface Micros {
   calcium: number;
   /** micrograms RAE */
   vitaminA: number;
-  /** mg (Figma 3.2 highlighted nutrients) */
+  /** mg */
   vitaminC?: number;
-  /** mg (Figma 3.2 highlighted nutrients; over target is bad) */
+  /** micrograms */
+  vitaminD?: number;
+  /** mg */
+  potassium?: number;
+  /** mg (limit) */
   sodium?: number;
+  /** g (limit) */
+  sugar?: number;
+  /** g (limit) */
+  saturatedFat?: number;
+  /** mg (limit) */
+  cholesterol?: number;
 }
 
 export interface Recipe {
@@ -186,11 +200,14 @@ export interface SpokenFood {
   carbs: number;
   fat: number;
   fiber: number;
+  /** Everything else Gemini estimated (vitamins, minerals, sugar, sodium...) */
+  micros?: Partial<Micros>;
 }
 
 export interface SousAction {
   name: SousActionName;
-  args?: { recipeId?: number; meal?: MealType; items?: SpokenFood[] };
+  /** log_food: `description` is what the user said they ate; the client estimates it via /api/nutrition/estimate */
+  args?: { recipeId?: number; meal?: MealType; description?: string; items?: SpokenFood[] };
 }
 
 export interface ChatTurn {
@@ -291,6 +308,19 @@ export interface MealEstimate {
   /** e.g. "1 plate (about 450 g)" */
   portion: string;
   confidence: "low" | "medium" | "high";
+  /** Vitamins, minerals, sugar, sodium... (estimates) */
+  micros?: Partial<Micros>;
+}
+
+/** POST /api/nutrition/estimate: estimate foods described in words ("chicken wrap and a latte") */
+export interface FoodEstimateRequest {
+  text: string;
+  meal?: MealType;
+}
+
+export interface FoodEstimateResponse {
+  items: SpokenFood[];
+  source: "gemini" | "fallback";
 }
 
 export interface MealEstimateRequest {

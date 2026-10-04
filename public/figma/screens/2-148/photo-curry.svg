@@ -1,0 +1,34 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="photo/curry">
+<g clip-path="url(#clip0_0_111)">
+<rect width="32" height="32" rx="16" fill="#FCEBD2"/>
+<g id="Ellipse" filter="url(#filter0_d_0_111)">
+<circle cx="16" cy="16" r="12.8" fill="white"/>
+</g>
+<circle id="Ellipse_2" cx="16" cy="16" r="9.216" fill="url(#paint0_radial_0_111)"/>
+<circle id="Ellipse_3" cx="11.945" cy="12.6822" r="1.19808" fill="#F4EBD6"/>
+<circle id="Ellipse_4" cx="19.3178" cy="15.0784" r="1.19808" fill="#7BB36A"/>
+<circle id="Ellipse_5" cx="15.0784" cy="19.6864" r="1.19808" fill="#F4EBD6"/>
+<circle id="Ellipse_6" cx="19.6864" cy="20.055" r="1.19808" fill="#7BB36A"/>
+<circle id="Ellipse_7" cx="11.392" cy="18.2118" r="1.19808" fill="#7BB36A"/>
+</g>
+</g>
+<defs>
+<filter id="filter0_d_0_111" x="-4.8" y="-1.8" width="41.6" height="41.6" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dy="3"/>
+<feGaussianBlur stdDeviation="4"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0.3 0 0 0 0 0.2 0 0 0 0 0.1 0 0 0 0.12 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_0_111"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_0_111" result="shape"/>
+</filter>
+<radialGradient id="paint0_radial_0_111" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(16 16) scale(9.216)">
+<stop stop-color="#EDB04A"/>
+<stop offset="1" stop-color="#B8641C"/>
+</radialGradient>
+<clipPath id="clip0_0_111">
+<rect width="32" height="32" rx="16" fill="white"/>
+</clipPath>
+</defs>
+</svg>

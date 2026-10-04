@@ -122,23 +122,50 @@ function ingredients(info: SpoonacularRecipeInfo): Ingredient[] {
   return out;
 }
 
+/**
+ * Spoonacular nutrient name -> our key, with a converter from the unit Spoonacular reports
+ * to the unit in lib/nutrients.ts. Vitamin A comes in IU (x0.3 -> µg RAE, approx.);
+ * vitamin D comes in µg, but older payloads use IU (/40).
+ */
+const MICRO_SOURCES: { name: string; key: keyof Micros; convert?: (amount: number, unit: string) => number }[] = [
+  { name: "Iron", key: "iron" },
+  { name: "Calcium", key: "calcium" },
+  { name: "Potassium", key: "potassium" },
+  { name: "Vitamin A", key: "vitaminA", convert: (a, unit) => (/IU/i.test(unit) || !unit ? a * 0.3 : a) },
+  { name: "Vitamin C", key: "vitaminC" },
+  { name: "Vitamin D", key: "vitaminD", convert: (a, unit) => (/IU/i.test(unit) ? a / 40 : a) },
+  { name: "Sodium", key: "sodium" },
+  { name: "Sugar", key: "sugar" },
+  { name: "Saturated Fat", key: "saturatedFat" },
+  { name: "Cholesterol", key: "cholesterol" },
+];
+
 function nutrition(info: SpoonacularRecipeInfo): (Nutrition & Partial<Micros>) | undefined {
   const list = info.nutrition?.nutrients;
   if (!list?.length) return undefined;
-  const get = (name: string) => list.find((n) => n.name.toLowerCase() === name.toLowerCase())?.amount;
+  const find = (name: string) => {
+    const hit = list.find((n) => typeof n?.name === "string" && n.name.toLowerCase() === name.toLowerCase());
+    return hit && typeof hit.amount === "number" && Number.isFinite(hit.amount) && hit.amount >= 0 ? hit : undefined;
+  };
+  const get = (name: string) => find(name)?.amount;
   const calories = get("Calories");
   if (calories == null) return undefined;
   const round = (n: number | undefined) => Math.round((n ?? 0) * 10) / 10;
-  return {
+  const out: Nutrition & Partial<Micros> = {
     calories: Math.round(calories),
     protein: round(get("Protein")),
     carbs: round(get("Carbohydrates")),
     fat: round(get("Fat")),
     fiber: round(get("Fiber")),
-    iron: get("Iron") != null ? round(get("Iron")) : undefined,
-    calcium: get("Calcium") != null ? Math.round(get("Calcium")!) : undefined,
-    vitaminA: get("Vitamin A") != null ? Math.round(get("Vitamin A")! * 0.3) : undefined, // IU -> mcg RAE (approx.)
   };
+  for (const s of MICRO_SOURCES) {
+    const hit = find(s.name);
+    if (!hit) continue;
+    const value = s.convert ? s.convert(hit.amount, hit.unit ?? "") : hit.amount;
+    // Grams and small amounts keep one decimal; mg / µg above 10 are whole numbers
+    out[s.key] = value < 10 || s.key === "sugar" || s.key === "saturatedFat" ? round(value) : Math.round(value);
+  }
+  return out;
 }
 
 export function normalizeRecipe(info: SpoonacularRecipeInfo, youtubeId?: string): Recipe {

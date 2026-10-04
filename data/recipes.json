@@ -32,7 +32,11 @@
       { "name": "Calories", "amount": 620, "unit": "kcal" }, { "name": "Protein", "amount": 48, "unit": "g" },
       { "name": "Carbohydrates", "amount": 62, "unit": "g" }, { "name": "Fat", "amount": 18, "unit": "g" },
       { "name": "Fiber", "amount": 3, "unit": "g" }, { "name": "Iron", "amount": 3.2, "unit": "mg" },
-      { "name": "Calcium", "amount": 90, "unit": "mg" }, { "name": "Vitamin A", "amount": 3000, "unit": "IU" }
+      { "name": "Calcium", "amount": 90, "unit": "mg" }, { "name": "Vitamin A", "amount": 3000, "unit": "IU" },
+      { "name": "Sugar", "amount": 2, "unit": "g" }, { "name": "Saturated Fat", "amount": 9, "unit": "g" },
+      { "name": "Sodium", "amount": 780, "unit": "mg" }, { "name": "Potassium", "amount": 720, "unit": "mg" },
+      { "name": "Cholesterol", "amount": 140, "unit": "mg" }, { "name": "Vitamin C", "amount": 9, "unit": "mg" },
+      { "name": "Vitamin D", "amount": 0.4, "unit": "µg" }
     ] }
   },
   {
@@ -66,7 +70,11 @@
       { "name": "Calories", "amount": 480, "unit": "kcal" }, { "name": "Protein", "amount": 17, "unit": "g" },
       { "name": "Carbohydrates", "amount": 70, "unit": "g" }, { "name": "Fat", "amount": 13, "unit": "g" },
       { "name": "Fiber", "amount": 5, "unit": "g" }, { "name": "Iron", "amount": 2.6, "unit": "mg" },
-      { "name": "Calcium", "amount": 70, "unit": "mg" }, { "name": "Vitamin A", "amount": 6000, "unit": "IU" }
+      { "name": "Calcium", "amount": 70, "unit": "mg" }, { "name": "Vitamin A", "amount": 6000, "unit": "IU" },
+      { "name": "Sugar", "amount": 6, "unit": "g" }, { "name": "Saturated Fat", "amount": 3, "unit": "g" },
+      { "name": "Sodium", "amount": 980, "unit": "mg" }, { "name": "Potassium", "amount": 420, "unit": "mg" },
+      { "name": "Cholesterol", "amount": 190, "unit": "mg" }, { "name": "Vitamin C", "amount": 14, "unit": "mg" },
+      { "name": "Vitamin D", "amount": 1.1, "unit": "µg" }
     ] }
   },
   {
@@ -98,7 +106,11 @@
       { "name": "Calories", "amount": 430, "unit": "kcal" }, { "name": "Protein", "amount": 38, "unit": "g" },
       { "name": "Carbohydrates", "amount": 14, "unit": "g" }, { "name": "Fat", "amount": 24, "unit": "g" },
       { "name": "Fiber", "amount": 5, "unit": "g" }, { "name": "Iron", "amount": 1.8, "unit": "mg" },
-      { "name": "Calcium", "amount": 80, "unit": "mg" }, { "name": "Vitamin A", "amount": 1100, "unit": "IU" }
+      { "name": "Calcium", "amount": 80, "unit": "mg" }, { "name": "Vitamin A", "amount": 1100, "unit": "IU" },
+      { "name": "Sugar", "amount": 3, "unit": "g" }, { "name": "Saturated Fat", "amount": 4.5, "unit": "g" },
+      { "name": "Sodium", "amount": 420, "unit": "mg" }, { "name": "Potassium", "amount": 980, "unit": "mg" },
+      { "name": "Cholesterol", "amount": 95, "unit": "mg" }, { "name": "Vitamin C", "amount": 95, "unit": "mg" },
+      { "name": "Vitamin D", "amount": 14, "unit": "µg" }
     ] }
   }
 ]

@@ -52,7 +52,24 @@ const MAX_READY_MINUTES = 60;
 const GAP_MS = 1100;
 const TIMEOUT_MS = 15_000;
 
-const NUTRIENTS = new Set(["Calories", "Protein", "Carbohydrates", "Fat", "Fiber", "Iron", "Calcium", "Vitamin A"]);
+/** Every nutrient lib/recipes/normalize.ts reads (see lib/nutrients.ts for the registry) */
+const NUTRIENTS = new Set([
+  "Calories",
+  "Protein",
+  "Carbohydrates",
+  "Fat",
+  "Fiber",
+  "Sugar",
+  "Saturated Fat",
+  "Sodium",
+  "Potassium",
+  "Cholesterol",
+  "Iron",
+  "Calcium",
+  "Vitamin A",
+  "Vitamin C",
+  "Vitamin D",
+]);
 
 /** Not dinner: the planner, cooking mode and Diary expect actual meals */
 const NOT_A_MEAL_TYPES = /\b(dessert|beverage|drink|sauce|condiment|dip|spread|marinade)\b/i;

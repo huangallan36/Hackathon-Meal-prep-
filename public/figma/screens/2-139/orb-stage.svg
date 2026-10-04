@@ -1,0 +1,26 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="375" height="290" viewBox="0 0 375 290" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="orb stage">
+<circle id="Ellipse" cx="187.5" cy="145" r="135" fill="white" fill-opacity="0.04"/>
+<circle id="Ellipse_2" cx="187.5" cy="145" r="107" fill="white" fill-opacity="0.07"/>
+<circle id="Ellipse_3" cx="187.5" cy="145" r="83" fill="white" fill-opacity="0.11"/>
+<g id="voice orb" clip-path="url(#clip0_0_29)">
+<circle id="Ellipse_4" cx="187.5" cy="145" r="62" fill="url(#paint0_radial_0_29)"/>
+<rect id="Rectangle" x="152.904" y="137.498" width="5.58" height="15.004" rx="2.79" fill="white" fill-opacity="0.95"/>
+<rect id="Rectangle_2" x="163.506" y="131.36" width="5.58" height="27.28" rx="2.79" fill="white" fill-opacity="0.95"/>
+<rect id="Rectangle_3" x="174.108" y="123.858" width="5.58" height="42.284" rx="2.79" fill="white" fill-opacity="0.95"/>
+<rect id="Rectangle_4" x="184.71" y="117.72" width="5.58" height="54.56" rx="2.79" fill="white" fill-opacity="0.95"/>
+<rect id="Rectangle_5" x="195.312" y="123.858" width="5.58" height="42.284" rx="2.79" fill="white" fill-opacity="0.95"/>
+<rect id="Rectangle_6" x="205.914" y="131.36" width="5.58" height="27.28" rx="2.79" fill="white" fill-opacity="0.95"/>
+<rect id="Rectangle_7" x="216.516" y="137.498" width="5.58" height="15.004" rx="2.79" fill="white" fill-opacity="0.95"/>
+</g>
+</g>
+<defs>
+<radialGradient id="paint0_radial_0_29" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(187.5 145) scale(62)">
+<stop stop-color="#F7CF7A"/>
+<stop offset="1" stop-color="#E0603A"/>
+</radialGradient>
+<clipPath id="clip0_0_29">
+<rect width="124" height="124" fill="white" transform="translate(125.5 83)"/>
+</clipPath>
+</defs>
+</svg>
