@@ -1,0 +1,104 @@
+[
+  {
+    "id": 900001,
+    "title": "Garlic Butter Chicken & Rice",
+    "image": "/placeholder-dish.svg",
+    "servings": 2,
+    "readyInMinutes": 35,
+    "sourceName": "Sous Test Kitchen",
+    "summary": "A cozy one-pan chicken and rice dinner with garlic butter and spinach.",
+    "cuisines": ["American"],
+    "dishTypes": ["main course", "dinner"],
+    "diets": ["gluten free"],
+    "extendedIngredients": [
+      { "id": 5062, "name": "chicken breast", "original": "2 chicken breasts", "amount": 2, "unit": "", "image": "chicken-breasts.png", "aisle": "Meat" },
+      { "id": 20444, "name": "rice", "original": "1 cup long grain rice", "amount": 1, "unit": "cup", "image": "uncooked-white-rice.png", "aisle": "Pasta and Rice" },
+      { "id": 11215, "name": "garlic", "original": "4 cloves garlic, minced", "amount": 4, "unit": "cloves", "image": "garlic.png", "aisle": "Produce" },
+      { "id": 1001, "name": "butter", "original": "2 tbsp butter", "amount": 2, "unit": "tbsp", "image": "butter-sliced.jpg", "aisle": "Milk, Eggs, Other Dairy" },
+      { "id": 10011457, "name": "spinach", "original": "2 handfuls baby spinach", "amount": 2, "unit": "handfuls", "image": "spinach.jpg", "aisle": "Produce" },
+      { "id": 6194, "name": "chicken broth", "original": "2 cups chicken broth", "amount": 2, "unit": "cups", "image": "chicken-broth.png", "aisle": "Canned and Jarred" }
+    ],
+    "analyzedInstructions": [
+      { "name": "", "steps": [
+        { "number": 1, "step": "Season the chicken breasts with salt and pepper on both sides." },
+        { "number": 2, "step": "Melt the butter in a large pan over medium-high heat and sear the chicken for 5 minutes per side until golden. Move it to a plate.", "length": { "number": 10, "unit": "minutes" } },
+        { "number": 3, "step": "Add the garlic to the pan and cook for 1 minute until fragrant.", "length": { "number": 1, "unit": "minutes" } },
+        { "number": 4, "step": "Stir in the rice and broth, bring to a simmer, then nestle the chicken back on top." },
+        { "number": 5, "step": "Cover and cook on low for 18 minutes until the rice is tender.", "length": { "number": 18, "unit": "minutes" } },
+        { "number": 6, "step": "Fold in the spinach until wilted, then slice the chicken and serve." }
+      ] }
+    ],
+    "nutrition": { "nutrients": [
+      { "name": "Calories", "amount": 620, "unit": "kcal" }, { "name": "Protein", "amount": 48, "unit": "g" },
+      { "name": "Carbohydrates", "amount": 62, "unit": "g" }, { "name": "Fat", "amount": 18, "unit": "g" },
+      { "name": "Fiber", "amount": 3, "unit": "g" }, { "name": "Iron", "amount": 3.2, "unit": "mg" },
+      { "name": "Calcium", "amount": 90, "unit": "mg" }, { "name": "Vitamin A", "amount": 3000, "unit": "IU" }
+    ] }
+  },
+  {
+    "id": 900002,
+    "title": "Veggie Fried Rice with Eggs",
+    "image": "/placeholder-dish.svg",
+    "servings": 2,
+    "readyInMinutes": 20,
+    "sourceName": "Sous Test Kitchen",
+    "summary": "Fast fried rice that turns leftover rice, eggs and whatever veggies you have into dinner.",
+    "cuisines": ["Chinese", "Asian"],
+    "dishTypes": ["main course", "dinner"],
+    "diets": ["vegetarian"],
+    "extendedIngredients": [
+      { "id": 20444, "name": "rice", "original": "3 cups cooked rice", "amount": 3, "unit": "cups", "image": "uncooked-white-rice.png", "aisle": "Pasta and Rice" },
+      { "id": 1123, "name": "eggs", "original": "3 eggs", "amount": 3, "unit": "", "image": "egg.png", "aisle": "Milk, Eggs, Other Dairy" },
+      { "id": 11124, "name": "carrot", "original": "1 carrot, diced", "amount": 1, "unit": "", "image": "sliced-carrot.png", "aisle": "Produce" },
+      { "id": 11304, "name": "peas", "original": "1/2 cup frozen peas", "amount": 0.5, "unit": "cup", "image": "peas.jpg", "aisle": "Frozen" },
+      { "id": 11291, "name": "green onions", "original": "3 green onions, sliced", "amount": 3, "unit": "", "image": "spring-onions.jpg", "aisle": "Produce" },
+      { "id": 16124, "name": "soy sauce", "original": "2 tbsp soy sauce", "amount": 2, "unit": "tbsp", "image": "soy-sauce.jpg", "aisle": "Ethnic Foods" }
+    ],
+    "analyzedInstructions": [
+      { "name": "", "steps": [
+        { "number": 1, "step": "Heat a splash of oil in a wok over high heat and scramble the eggs until just set. Move them to a plate." },
+        { "number": 2, "step": "Add the carrot and peas and stir fry for 3 minutes.", "length": { "number": 3, "unit": "minutes" } },
+        { "number": 3, "step": "Add the rice, pressing it against the hot pan, and fry for 4 minutes until it starts to crisp.", "length": { "number": 4, "unit": "minutes" } },
+        { "number": 4, "step": "Stir in the soy sauce, the eggs and the green onions, toss well and serve hot." }
+      ] }
+    ],
+    "nutrition": { "nutrients": [
+      { "name": "Calories", "amount": 480, "unit": "kcal" }, { "name": "Protein", "amount": 17, "unit": "g" },
+      { "name": "Carbohydrates", "amount": 70, "unit": "g" }, { "name": "Fat", "amount": 13, "unit": "g" },
+      { "name": "Fiber", "amount": 5, "unit": "g" }, { "name": "Iron", "amount": 2.6, "unit": "mg" },
+      { "name": "Calcium", "amount": 70, "unit": "mg" }, { "name": "Vitamin A", "amount": 6000, "unit": "IU" }
+    ] }
+  },
+  {
+    "id": 900003,
+    "title": "Lemon Garlic Salmon with Broccoli",
+    "image": "/placeholder-dish.svg",
+    "servings": 2,
+    "readyInMinutes": 25,
+    "sourceName": "Sous Test Kitchen",
+    "summary": "Sheet-pan salmon and broccoli with lemon and garlic, done in under half an hour.",
+    "cuisines": ["Mediterranean"],
+    "dishTypes": ["main course", "dinner"],
+    "diets": ["gluten free", "dairy free"],
+    "extendedIngredients": [
+      { "id": 15076, "name": "salmon fillets", "original": "2 salmon fillets", "amount": 2, "unit": "", "image": "salmon.png", "aisle": "Seafood" },
+      { "id": 11090, "name": "broccoli", "original": "1 head broccoli, cut into florets", "amount": 1, "unit": "head", "image": "broccoli.jpg", "aisle": "Produce" },
+      { "id": 9150, "name": "lemon", "original": "1 lemon", "amount": 1, "unit": "", "image": "lemon.png", "aisle": "Produce" },
+      { "id": 11215, "name": "garlic", "original": "2 cloves garlic, minced", "amount": 2, "unit": "cloves", "image": "garlic.png", "aisle": "Produce" }
+    ],
+    "analyzedInstructions": [
+      { "name": "", "steps": [
+        { "number": 1, "step": "Preheat the oven to 425 degrees F and line a sheet pan with parchment." },
+        { "number": 2, "step": "Toss the broccoli with olive oil, salt and half the garlic and roast for 10 minutes.", "length": { "number": 10, "unit": "minutes" } },
+        { "number": 3, "step": "Add the salmon to the pan, top with the remaining garlic and lemon slices, and roast for 12 more minutes.", "length": { "number": 12, "unit": "minutes" } },
+        { "number": 4, "step": "Squeeze the rest of the lemon over everything and serve." }
+      ] }
+    ],
+    "nutrition": { "nutrients": [
+      { "name": "Calories", "amount": 430, "unit": "kcal" }, { "name": "Protein", "amount": 38, "unit": "g" },
+      { "name": "Carbohydrates", "amount": 14, "unit": "g" }, { "name": "Fat", "amount": 24, "unit": "g" },
+      { "name": "Fiber", "amount": 5, "unit": "g" }, { "name": "Iron", "amount": 1.8, "unit": "mg" },
+      { "name": "Calcium", "amount": 80, "unit": "mg" }, { "name": "Vitamin A", "amount": 1100, "unit": "IU" }
+    ] }
+  }
+]

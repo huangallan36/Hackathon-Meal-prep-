@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+/*
+ * Sous design tokens. Everything visual hangs off these, so restyling to the
+ * Figma file is a token swap. Tailwind v4 turns each token into utilities:
+ *   --color-accent  -> bg-accent / text-accent / border-accent / ring-accent
+ *   --radius-card   -> rounded-card
+ *   --shadow-card   -> shadow-card
+ *   --font-display  -> font-display
+ */
+@theme {
+  /* Surfaces */
+  --color-cream: #fff8f0;
+  --color-cream-deep: #fbefe2;
+  --color-surface: #ffffff;
+  --color-line: #efe4d8;
+
+  /* Text */
+  --color-ink: #1f1a17;
+  --color-ink-soft: #6b625c;
+  --color-ink-faint: #a39a93;
+
+  /* The one strong accent (tomato) */
+  --color-accent: #f2542d;
+  --color-accent-strong: #d9431e;
+  --color-accent-soft: #ffe4d9;
+
+  /* Supporting */
+  --color-herb: #3f8f5b;
+  --color-herb-soft: #e2f2e7;
+  --color-butter: #f6c350;
+  --color-butter-soft: #fff3d1;
+  --color-danger: #d64545;
+
+  /* Nutrition */
+  --color-protein: #e8664a;
+  --color-carbs: #f2b544;
+  --color-fat: #6a8de0;
+  --color-fiber: #4fa36b;
+
+  /* Radii */
+  --radius-card: 24px;
+  --radius-tile: 18px;
+  --radius-pill: 999px;
+  --radius-phone: 48px;
+
+  /* Shadows */
+  --shadow-soft: 0 6px 24px -10px rgb(70 35 10 / 0.18);
+  --shadow-card: 0 1px 2px rgb(70 35 10 / 0.05), 0 12px 32px -14px rgb(70 35 10 / 0.22);
+  --shadow-lift: 0 18px 40px -16px rgb(70 35 10 / 0.35);
+  --shadow-accent: 0 12px 28px -10px rgb(242 84 45 / 0.55);
+  --shadow-phone: 0 40px 90px -30px rgb(60 30 10 / 0.45), 0 0 0 10px #1f1a17, 0 0 0 11px #3a322d;
+
+  /* Motion */
+  --ease-spring: cubic-bezier(0.22, 1.2, 0.36, 1);
+  --animate-fade-up: fade-up 0.45s var(--ease-spring) both;
+  --animate-pop: pop 0.35s var(--ease-spring) both;
+  --animate-shimmer: shimmer 1.4s linear infinite;
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pop {
+    0% { opacity: 0; transform: scale(0.92); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  @keyframes shimmer {
+    from { background-position: -200% 0; }
+    to { background-position: 200% 0; }
+  }
+}
+
+/* next/font variables are set on <html>; map them into Tailwind's font tokens. */
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+}
+
+:root {
+  /* Fixed UI measurements shared by the shell and screens */
+  --nav-height: 78px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+  color-scheme: light;
+}
+
+html,
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+/* Utility classes shared by every screen */
+@utility skeleton {
+  background: linear-gradient(90deg, var(--color-cream-deep) 0%, #fff 50%, var(--color-cream-deep) 100%);
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Room for the bottom nav + floating orb at the end of every scrolling screen */
+@utility pb-nav {
+  padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 96px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
