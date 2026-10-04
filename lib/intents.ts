@@ -129,6 +129,7 @@ const UNITS: [RegExp, string, string][] = [
   [/^(cm)$/i, "centimeter", "centimeters"],
   [/^(cups?)$/i, "cup", "cups"],
 ];
+const DETERMINER = /^(the|your|it|of|a|an|each|every|this|that|those|these|my)$/i;
 const UNIT_WORD = /^(tablespoon|teaspoon|ounce|pound|gram|kilogram|milliliter|minute|hour|second|centimeter|cup|can|clove|pinch|handful|stick|slice|piece|inch)$/;
 
 function unitFor(token: string, plural: boolean): string | null {
@@ -165,11 +166,10 @@ export function speakable(input: string): string {
 
   // Quantity + unit abbreviation: "2 tbsp" -> "2 tablespoons", "1/2 tsp" -> "1/2 teaspoon"
   s = s.replace(
-    /(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?)\s*([a-z]+)\.?(?=[\s,.;:!?)]|$)/gi,
-    (match, qty: string, unit: string) => {
-      const plural = isPluralQuantity(qty);
-      const word = unitFor(unit, plural);
-      return word ? `${qty} ${word}` : match;
+    /(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?)\s*([a-z]+)(\.?)(?=[\s,;:!?)]|$)/gi,
+    (match, qty: string, unit: string, dot: string) => {
+      const word = unitFor(unit, isPluralQuantity(qty));
+      return word ? `${qty} ${word}${dot}` : match;
     },
   );
 
@@ -185,6 +185,7 @@ export function speakable(input: string): string {
     const frac = fractionWords(Number(num), Number(den));
     if (!frac) return `${num} over ${den}${rest ?? ""}`;
     if (!word) return frac === "half" ? "a half" : frac;
+    if (DETERMINER.test(word)) return frac === "half" ? `half ${word}` : `${frac} of ${word}`;
     const article = /^[aeiou]/i.test(word) ? "an" : "a";
     if (frac === "half") return `half ${article} ${word}`;
     return UNIT_WORD.test(word.toLowerCase()) ? `${frac} of ${article} ${word}` : `${frac} ${word}`;
@@ -336,12 +337,15 @@ const RE = {
   thanks: /\b(thanks|thank you|cheers|appreciate it)\b/,
   greeting: /^(hi|hey|hello|yo|hiya|good (morning|afternoon|evening))( there)?( sous)?$/,
   help: /\b(help|what can you do|how does this work|what do you do)\b/,
-  log: /\b(log (it|this|that|my|the|meal|dinner|lunch|breakfast)|log$|track (it|this|that)|add (it|this|that) to (my )?diary|diary|i ate|ive eaten|i just ate|done eating|finished eating|all done|im full|that was (so )?(delicious|good|great|amazing|tasty)|(snap|photo|picture of) (my|the) (meal|plate|dish|food))\b/,
-  groceries: /\b(grocer(y|ies)|shopping|shop|buy|missing|need to get|pick up|supermarket|dont have|do i need|what do i need)\b/,
-  showRecipes: /\b(recipes?|ideas?|suggest(ions?)?|options|what can i (make|cook)|what could i (make|cook)|something else|what else|show me)\b/,
+  log: /\b(log (it|this|that|my|the|meal|dinner|lunch|breakfast)|log$|track (it|this|that)|add (it|this|that) to (my )?diary|i ate|ive eaten|i just ate|done eating|finished eating|all done|im full|that was (so )?(delicious|good|great|amazing|tasty)|(snap|photo|picture of) (my|the) (meal|plate|dish|food))\b/,
+  groceries: /\b(grocer(y|ies)|shopping|shop|buy|missing|need to get|pick up|supermarket|do i need|what do i need)\b/,
+  showRecipes: /\b(recipes?|(?<!no )ideas?|suggest(ions?)?|options|what can i (make|cook)|what could i (make|cook)|something else|what else|show me)\b/,
+  strongList: /\b((?<!no )ideas?|suggest(ions?)?|options|what (else )?can i (make|cook)|what could i (make|cook)|something else|what else|other recipes|more recipes)\b/,
+  switchCue: /\b(switch to|instead|lets (do|make|cook|try)|go with|change to|ill (do|make|have))\b/,
   pickCue: /\b(lets|let us|ill|i will|i want|id like|i would like|go with|do|make|cook|try|pick|choose|start|sounds (good|great)|that one|this one|one)\b/,
   fridge: /\b(fridge|scan|camera|look in|whats in|ingredients)\b/,
-  tired: /\b(tired|wiped|exhausted|beat|drained|long day|rough day|hungry|starving|dinner|lunch|breakfast|no idea|dont know what|not sure what|what (should|do|can) i (cook|make|eat)|what to (cook|make|eat)|something to eat|feed me|cook tonight|whats for dinner)\b/,
+  tired: /\b(tired|wiped|exhausted|im beat|drained|long day|rough day|hungry|starving|dinner|lunch|breakfast|no idea|dont know what|not sure what|what (should|do|can) i (cook|make|eat)|what to (cook|make|eat)|something to eat|feed me|cook tonight|whats for dinner)\b/,
+  weary: /\b(tired|wiped|exhausted|im beat|drained|long day|rough day)\b/,
   question: /\b(how|what|when|why|which|is it|should i|can i|do i|does it|how long|ready|done yet|substitute|instead)\b/,
 };
 
@@ -370,7 +374,7 @@ export function fallbackReply(message: string, context: ChatContext): ChatRespon
     return reply("Love that. Snap a quick photo of your plate and I'll log it to your diary.", [{ name: "log_meal" }]);
   }
 
-  if (RE.groceries.test(text)) {
+  if (RE.groceries.test(text) && !RE.strongList.test(text)) {
     const id = active?.id ?? pickRecipe(text, recipes) ?? recipes[0]?.id;
     if (id == null) return reply("Pick a recipe first, then I can tell you exactly what you're missing.");
     return reply("Here's what you're missing. I put it all on a little shopping list.", [
@@ -378,9 +382,14 @@ export function fallbackReply(message: string, context: ChatContext): ChatRespon
     ]);
   }
 
+  // Mid-cook, most messages are about the current step, so switching recipes needs a clear cue.
+  const midCook = active && cooking && active.stepIndex >= 0 ? active : null;
   const wantsList = RE.showRecipes.test(text);
   if (recipes.length > 0 && !wantsList && !(cooking && /\bstep\b/.test(text))) {
-    const id = RE.pickCue.test(text) || /\b(first|second|third|fourth|fifth|last one)\b/.test(text) ? pickRecipe(text, recipes) : null;
+    const cued = midCook
+      ? RE.switchCue.test(text)
+      : RE.pickCue.test(text) || /\b(first|second|third|fourth|fifth|last one)\b/.test(text);
+    const id = cued ? pickRecipe(text, recipes) : null;
     if (id != null) {
       const title = recipes.find((r) => r.id === id)?.title ?? "that one";
       return reply(`Great pick. Let's make ${title}. Say next when you're ready for step one.`, [
@@ -396,16 +405,17 @@ export function fallbackReply(message: string, context: ChatContext): ChatRespon
     return reply("Let's see what you've got first. Snap a quick photo of your fridge.", [{ name: "open_fridge_camera" }]);
   }
 
-  if (RE.fridge.test(text) || RE.tired.test(text)) {
-    const opener = /\b(tired|wiped|exhausted|beat|drained|long day|rough day)\b/.test(text) ? "Long day, huh. " : "";
+  // Don't yank a mid-cook question over to the fridge; re-read the step instead.
+  if (midCook && RE.question.test(text) && !RE.fridge.test(text)) {
+    const step = midCook.steps[Math.min(midCook.stepIndex, midCook.steps.length - 1)];
+    return reply(`I'm having trouble connecting right now, so here's the step again. ${step}`);
+  }
+
+  if (RE.fridge.test(text) || (!midCook && RE.tired.test(text))) {
+    const opener = RE.weary.test(text) ? "Long day, huh. " : "";
     return reply(`${opener}Let's see what you've got. Snap a quick photo of your fridge and I'll find something easy.`, [
       { name: "open_fridge_camera" },
     ]);
-  }
-
-  if (cooking && active && active.stepIndex >= 0 && RE.question.test(text)) {
-    const step = active.steps[Math.min(active.stepIndex, active.steps.length - 1)];
-    return reply(`I'm having trouble connecting right now, so here's the step again. ${step}`);
   }
 
   if (RE.greeting.test(text)) return reply("Hey! Tell me how your day's going, or say scan my fridge and we'll figure out dinner.");

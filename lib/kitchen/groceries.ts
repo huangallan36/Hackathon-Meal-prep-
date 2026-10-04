@@ -13,14 +13,20 @@ export interface GroceryPlan {
   noScan: boolean;
 }
 
+/** Recipes sometimes list one ingredient twice ("butter" for the pan and for the sauce) */
+function uniqueByName(list: Ingredient[]): Ingredient[] {
+  const seen = new Set<string>();
+  return list.filter((i) => (seen.has(i.name) ? false : (seen.add(i.name), true)));
+}
+
 export function groceryPlan(recipe: Recipe, fridge: string[]): GroceryPlan {
-  const pantry = recipe.ingredients.filter((i) => isPantry(i.name));
+  const pantry = uniqueByName(recipe.ingredients.filter((i) => isPantry(i.name)));
   if (fridge.length === 0) {
-    return { need: recipe.ingredients.filter((i) => !isPantry(i.name)), have: [], pantry, noScan: true };
+    return { need: uniqueByName(recipe.ingredients.filter((i) => !isPantry(i.name))), have: [], pantry, noScan: true };
   }
-  const { missing } = matchRecipe(recipe, fridge);
-  const missingSet = new Set(missing);
-  const have = recipe.ingredients.filter((i) => !isPantry(i.name) && !missingSet.has(i));
+  const missing = uniqueByName(matchRecipe(recipe, fridge).missing);
+  const missingNames = new Set(missing.map((i) => i.name));
+  const have = uniqueByName(recipe.ingredients.filter((i) => !isPantry(i.name) && !missingNames.has(i.name)));
   return { need: missing, have, pantry, noScan: false };
 }
 

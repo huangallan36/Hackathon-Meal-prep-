@@ -3,9 +3,10 @@
  * Any failure (no key, model chain down, bad image, empty answer) returns the sample
  * fridge list with source "fallback", so the demo path never dead-ends.
  */
+import { hedgedJSON } from "@/lib/kitchen/hedge";
 import { cleanIngredientList, isImageInput, type DetectedIngredient } from "@/lib/kitchen/sanitize";
-import { SAMPLE_FRIDGE_INGREDIENTS } from "@/lib/sample";
-import { describeError, generateJSON, hasGeminiKey, imagePart, VISION_MODELS } from "@/lib/server/gemini";
+import { SAMPLE_FRIDGE_INGREDIENTS, SAMPLE_FRIDGE_PHOTO } from "@/lib/sample";
+import { describeError, hasGeminiKey, imagePart, VISION_MODELS } from "@/lib/server/gemini";
 import type { IngredientsResponse } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -75,18 +76,23 @@ export async function POST(req: Request) {
       return fallback();
     }
 
+    // The canned list matches the sample photo, so the demo photo gets a tighter budget:
+    // falling back early looks identical to a slow success.
+    const isSample = "url" in image && image.url === SAMPLE_FRIDGE_PHOTO;
     const part = await imagePart(image, req.url);
-    const { data, model } = await generateJSON<{ ingredients?: DetectedIngredient[] }>({
+    // Hedged rather than strictly sequential: an overloaded model can hang for 40 s.
+    const { data, model } = await hedgedJSON<{ ingredients?: DetectedIngredient[] }>({
       models: VISION_MODELS,
       parts: [part, { text: PROMPT }],
       schema: SCHEMA,
       systemInstruction: SYSTEM,
-      timeoutMs: 20_000,
-      attemptTimeoutMs: 12_000,
+      timeoutMs: isSample ? 9_000 : 20_000,
+      staggerMs: isSample ? 3_000 : 3_500,
       label: "ingredients",
+      accept: (d) => cleanIngredientList(d?.ingredients).length > 0,
     });
 
-    const ingredients = cleanIngredientList(data.ingredients);
+    const ingredients = cleanIngredientList(data?.ingredients);
     if (ingredients.length === 0) {
       console.warn(`[vision:ingredients] ${model} found no ingredients, serving sample list`);
       return fallback();

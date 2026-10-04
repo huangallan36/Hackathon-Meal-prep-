@@ -1,6 +1,7 @@
 /**
- * Seeded social graph: 8 fake users + the demo user, and ~20 posts built from the
+ * Seeded social graph: 8 fake users + the demo user, and ~30 posts built from the
  * cached recipe catalog (so post photos are real dish photos and "Cook this" works).
+ * Everything is deterministic for a given `now`, so Most Popular stays stable.
  */
 import { DEMO_USER } from "@/lib/config";
 import { getCatalog } from "@/lib/recipes/catalog";
@@ -46,10 +47,34 @@ const CAPTIONS = [
   "Simple, cozy, no notes.",
   "This one is all about the sauce.",
   "Sunday reset meal prep.",
+  "Rainy Vancouver evening called for exactly this.",
+  "Swapped in what I had and it still slapped.",
+  "Ten out of ten, would burn my tongue again.",
+  "Plated it nicely for once. Felt fancy for a Tuesday.",
+  "Leftovers tomorrow are going to be even better.",
+  "Tried it with extra garlic. No regrets, only garlic.",
+  "Finally nailed the timing on this one.",
+  "Cooked this for my parents and they asked for the recipe!",
 ];
+
+/** One extra, older post per cook in their own voice, so profiles feel lived-in */
+const SIGNATURE: Record<string, string> = {
+  "maya.makes": "Grandma would say it needs more ginger. Grandma is always right.",
+  "dev.eats": "One pan, one fork, zero dishes left for my roommates to complain about.",
+  "sofia.sazon": "Added a little chipotle because of course I did.",
+  "jordan.grills": "Not grilled, I know. Branching out. Growth.",
+  "priya.plates": "Meal prep Sunday: five lunches, zero sad desk salads.",
+  "liam.loaf": "Gary (the starter) approves of this pairing.",
+  "hana.bento": "Packed half of it into tomorrow's bento already.",
+  "noah.kitchen": "No smoke alarm this time. Personal best.",
+};
 
 /** Deterministic upvote counts so the feed (and Most Popular) are stable across reloads */
 const UPVOTES = [482, 37, 215, 96, 341, 18, 127, 264, 59, 403, 12, 188, 73, 299, 44, 156, 231, 88, 367, 25];
+const SIGNATURE_UPVOTES = [142, 61, 318, 77, 405, 53, 196, 9];
+
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
 
 export function seedPosts(now: number): SocialPost[] {
   const catalog = getCatalog();
@@ -62,13 +87,27 @@ export function seedPosts(now: number): SocialPost[] {
       id: `seed-post-${i}`,
       author: authors[i % authors.length],
       dishName: recipe.title,
-      caption: CAPTIONS[(i * 5) % CAPTIONS.length],
+      caption: CAPTIONS[(i * 7) % CAPTIONS.length],
       image: recipe.image,
       recipeId: recipe.id,
       upvotes: UPVOTES[i % UPVOTES.length],
-      createdAt: now - (i * 3 + 1) * 60 * 60 * 1000 - (i % 4) * 17 * 60 * 1000,
+      createdAt: now - (i * 3 + 1) * HOUR - (i % 4) * 17 * 60 * 1000,
     });
   }
+  // A signature post per cook, 3-10 days old (fills out profile grids, sinks to the end of the feed)
+  SEED_USERS.forEach((user, j) => {
+    const recipe = catalog[(j * 5 + 3) % catalog.length];
+    posts.push({
+      id: `seed-sig-${j}`,
+      author: user.handle,
+      dishName: recipe.title,
+      caption: SIGNATURE[user.handle] ?? CAPTIONS[j % CAPTIONS.length],
+      image: recipe.image,
+      recipeId: recipe.id,
+      upvotes: SIGNATURE_UPVOTES[j % SIGNATURE_UPVOTES.length],
+      createdAt: now - (3 + j) * DAY - (j % 3) * 5 * HOUR,
+    });
+  });
   // Two older posts from the demo user so their profile grid isn't empty
   for (let j = 0; j < 2; j++) {
     const recipe = catalog[(j * 3 + 1) % catalog.length];
@@ -80,7 +119,7 @@ export function seedPosts(now: number): SocialPost[] {
       image: recipe.image,
       recipeId: recipe.id,
       upvotes: j === 0 ? 64 : 21,
-      createdAt: now - (2 + j * 3) * 24 * 60 * 60 * 1000,
+      createdAt: now - (2 + j * 3) * DAY,
     });
   }
   return posts;

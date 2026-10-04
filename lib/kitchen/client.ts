@@ -8,10 +8,12 @@
 import { TIMEOUTS } from "@/lib/config";
 import { fetchJSON, postJSON } from "@/lib/http";
 import { thumbnailFromDataUrl, toImageInput } from "@/lib/image";
-import { rankByIngredients } from "@/lib/recipes/catalog";
+import { getCachedRecipe, rankByIngredients } from "@/lib/recipes/catalog";
 import { SAMPLE_FRIDGE_INGREDIENTS } from "@/lib/sample";
 import { ingredientsKey, useKitchen } from "@/lib/stores/kitchen";
-import type { ByIngredientsResponse, IngredientsRequest, IngredientsResponse, RecipeMatch } from "@/lib/types";
+import type { ByIngredientsResponse, IngredientsRequest, IngredientsResponse, Recipe, RecipeMatch } from "@/lib/types";
+import { speak } from "@/lib/voice/engine";
+import { recipesLine } from "./format";
 import { uniqueIngredients } from "./sanitize";
 
 export interface ScanResult {
@@ -83,3 +85,35 @@ export function fetchMatches(ingredients: string[]): Promise<MatchesResult> {
   void run.finally(() => inflight.delete(key));
   return run;
 }
+
+/* ------------------------------------------------------------------ */
+/* Voice + misc                                                         */
+/* ------------------------------------------------------------------ */
+
+/** Speak only during a voice session; a TTS hiccup must never break a screen. */
+export function sayIfSession(text: string): void {
+  try {
+    void speak(text, { onlyIfSession: true, source: "local" }).catch(() => undefined);
+  } catch {
+    /* engine not ready */
+  }
+}
+
+/** Announce suggestions once per ingredient set (not again on back-navigation). */
+let announcedKey: string | null = null;
+export function announceMatches(key: string, matches: RecipeMatch[]): void {
+  if (!key || announcedKey === key) return;
+  announcedKey = key;
+  sayIfSession(recipesLine(matches));
+}
+
+/** Synchronous recipe lookup (cooking -> suggestions -> bundled cache), no network. */
+export function peekRecipe(id: number): Recipe | null {
+  const k = useKitchen.getState();
+  if (k.activeRecipe?.id === id) return k.activeRecipe;
+  const fromMatches = k.matches.find((m) => m.recipe.id === id)?.recipe;
+  if (fromMatches?.steps.length) return fromMatches;
+  return getCachedRecipe(id) ?? null;
+}
+
+export const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));

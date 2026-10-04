@@ -7,7 +7,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { DEFAULT_GOALS, storageKey } from "@/lib/config";
-import { seedActivity, seedDiary } from "@/lib/seed/diary";
+import { SEED_VERSION, seedActivity, seedDiary } from "@/lib/seed/diary";
 import { persistStorage } from "@/lib/storage";
 import type { DailyActivity, DiaryEntry, ISODate, Micros, Nutrition, NutritionGoals } from "@/lib/types";
 import { todayISO, uid } from "@/lib/utils";
@@ -18,6 +18,8 @@ interface DiaryState {
   goals: NutritionGoals;
   /** The local date the seed data was generated for */
   seededFor: ISODate;
+  /** Seed generator version the persisted seed came from */
+  seedVersion: number;
 
   addEntry: (entry: Omit<DiaryEntry, "id" | "loggedAt"> & { loggedAt?: number }) => DiaryEntry;
   updateEntry: (id: string, patch: Partial<DiaryEntry>) => void;
@@ -26,7 +28,7 @@ interface DiaryState {
 
 function freshSeed() {
   const today = todayISO();
-  return { entries: seedDiary(today), activity: seedActivity(today), seededFor: today };
+  return { entries: seedDiary(today), activity: seedActivity(today), seededFor: today, seedVersion: SEED_VERSION };
 }
 
 export const useDiary = create<DiaryState>()(
@@ -48,8 +50,8 @@ export const useDiary = create<DiaryState>()(
       storage: persistStorage,
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<DiaryState>;
-        if (p.seededFor === todayISO()) return { ...current, ...p };
-        // New day: refresh seed data, keep everything the user logged.
+        if (p.seededFor === todayISO() && p.seedVersion === SEED_VERSION) return { ...current, ...p };
+        // New day (or new seed): refresh seed data, keep everything the user logged.
         const seed = freshSeed();
         const userEntries = (p.entries ?? []).filter((e) => e.source !== "seed");
         return { ...current, ...p, ...seed, entries: [...seed.entries, ...userEntries] };
@@ -84,4 +86,11 @@ export function totalsOn(entries: DiaryEntry[], date: ISODate): Nutrition & Micr
 
 export function loggedDates(entries: DiaryEntry[]): Set<ISODate> {
   return new Set(entries.map((e) => e.date));
+}
+
+/** Epoch ms of the most recent entry the user logged (not seed); 0 when none */
+export function lastUserLogAt(entries: DiaryEntry[]): number {
+  let latest = 0;
+  for (const e of entries) if (e.source !== "seed" && e.loggedAt > latest) latest = e.loggedAt;
+  return latest;
 }

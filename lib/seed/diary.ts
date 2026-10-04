@@ -70,6 +70,13 @@ const TREAT_DINNERS: SeedMeal[] = [
   meal("Pad thai with chicken", "1 plate", [720, 34, 88, 24, 4], [3.6, 120, 90]),
 ];
 
+/** Weekend evening extras: why a few days land over goal */
+const TREAT_SNACKS: SeedMeal[] = [
+  meal("Salted caramel ice cream", "1 scoop", [290, 5, 34, 15, 1], [0.2, 150, 120]),
+  meal("Chocolate chip cookies", "2 cookies", [260, 3, 36, 12, 1], [1.2, 20, 40]),
+  meal("Cheese & crackers", "1 small plate", [310, 13, 20, 20, 1], [0.9, 290, 160]),
+];
+
 /** Today's entries are fixed so the live demo always starts from the same numbers */
 const TODAY: Partial<Record<MealType, SeedMeal>> = {
   breakfast: POOL.breakfast[0],
@@ -78,6 +85,7 @@ const TODAY: Partial<Record<MealType, SeedMeal>> = {
 
 /** Typical hour + minute jitter range for each slot */
 const HOURS: Record<MealType, number> = { breakfast: 8, lunch: 12.5, dinner: 19, snack: 15.5 };
+const SNACK_AFTER: Partial<Record<MealType, number>> = { breakfast: 10.5, lunch: 15.5, dinner: 21 };
 
 /** How far back the history goes (days) */
 const HISTORY_DAYS = 40;
@@ -115,7 +123,7 @@ export function seedDiary(today: ISODate): DiaryEntry[] {
     const date = addDays(today, offset);
     const h = hash(date);
     const dow = fromISODate(date).getDay();
-    const treatNight = dow === 5 || dow === 6;
+    const treatNight = dow === 5 || dow === 6 || dow === 0;
     const slots: MealType[] = offset === 0 ? ["breakfast", "lunch"] : slotsFor(date, h);
 
     slots.forEach((slot, i) => {
@@ -125,9 +133,11 @@ export function seedDiary(today: ISODate): DiaryEntry[] {
           ? TODAY[slot]
           : slot === "dinner" && treatNight
             ? pickFrom(TREAT_DINNERS, seed)
-            : pickFrom(POOL[slot], seed);
-      // Second snack of the day lands in the evening
-      const baseHour = slot === "snack" && i > 2 ? 21 : HOURS[slot];
+            : slot === "snack" && treatNight && slots[i - 1] === "dinner"
+              ? pickFrom(TREAT_SNACKS, seed)
+              : pickFrom(POOL[slot], seed);
+      // Snacks land after whichever meal precedes them
+      const baseHour = slot === "snack" && i > 0 ? (SNACK_AFTER[slots[i - 1]] ?? HOURS.snack) : HOURS[slot];
       const at = fromISODate(date);
       at.setHours(Math.floor(baseHour), Math.round((baseHour % 1) * 60) + (seed % 25));
       out.push({
