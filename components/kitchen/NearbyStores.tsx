@@ -2,9 +2,9 @@
 
 import { Fragment } from "react";
 import { SectionHeader } from "@/components/ui/Card";
+import { useMapView } from "@/lib/stores/map";
 import {
   CHEAPEST_STORE,
-  directionsUrl,
   formatDollars,
   NEARBY_STORES,
   storeEstimate,
@@ -14,8 +14,8 @@ import type { Ingredient } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /**
- * Figma 2.4 "Nearby stores": Bricolage 18 header with a "Map" link (opens the selected store in
- * Google Maps), then the store cards side by side: the storefront photo (84px, radius 12), the
+ * Figma 2.4 "Nearby stores": Bricolage 18 header with a "Map" link (shows the selected store on
+ * the in-app map, MapSheet), then the store cards side by side: the storefront photo (84px, radius 12), the
  * name (15 SemiBold), distance and hours (11, ink-soft) and "About $18.40" for what's still on
  * the list. The cheapest store starts selected (1.5px avocado border + "Cheapest" badge).
  * The photos are credited right under the cards.
@@ -31,21 +31,21 @@ export function NearbyStores({
   onSelect: (index: number) => void;
 }) {
   const store = NEARBY_STORES[selected] ?? NEARBY_STORES[CHEAPEST_STORE];
+  const openMap = useMapView((s) => s.open);
   return (
     // id: Sous scrolls here when asked "where can I get groceries?"
     <section id="nearby-stores" className="flex scroll-mt-16 flex-col gap-3 px-5 pt-5" aria-label="Nearby stores">
       <SectionHeader
         title="Nearby stores"
         action={
-          <a
-            href={directionsUrl(store)}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={`Open ${store.name} in Maps`}
+          <button
+            type="button"
+            onClick={() => openMap(NEARBY_STORES.indexOf(store))}
+            aria-label={`Show ${store.name} on the map`}
             className="relative text-meta font-semibold text-accent after:absolute after:-inset-3 after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             Map
-          </a>
+          </button>
         }
       />
       <div className="flex gap-2.5">

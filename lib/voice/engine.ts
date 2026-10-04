@@ -16,7 +16,10 @@
  */
 import { TIMEOUTS } from "@/lib/config";
 import { postJSON } from "@/lib/http";
-import { fallbackReply, quickCookingIntent, stepNumberIntent } from "@/lib/intents";
+import { fallbackReply, quickAppIntent, quickCookingIntent, stepNumberIntent } from "@/lib/intents";
+import { NEARBY_STORES } from "@/lib/kitchen/groceries";
+import { useMapView } from "@/lib/stores/map";
+import { useVideo } from "@/lib/stores/video";
 import { useKitchen } from "@/lib/stores/kitchen";
 import { usePrefs } from "@/lib/stores/prefs";
 import { toast } from "@/lib/stores/toast";
@@ -110,7 +113,8 @@ function cancelAutoListen(): void {
 /** Hands-free wants the mic in this session right now (ignoring what Sous is doing). */
 function loopWanted(): boolean {
   const v = voice();
-  return handsFreeOn() && v.sessionActive && !v.paused && isSttSupported();
+  // A playing recipe video would be heard as the user talking: wait until it's closed.
+  return handsFreeOn() && v.sessionActive && !v.paused && isSttSupported() && useVideo.getState().recipeId == null;
 }
 
 /** Nothing else is using the conversation: no audio, no open mic, no turn in flight, no typing. */
@@ -552,6 +556,26 @@ function safeQuickIntent(text: string): SousAction["name"] | null {
   }
 }
 
+function safeAppIntent(text: string): SousAction | null {
+  try {
+    return quickAppIntent(text);
+  } catch {
+    return null;
+  }
+}
+
+/** What Sous says after a local map / video command that has no line of its own */
+function appLine(action: SousAction): string {
+  if (action.name === "open_map") {
+    const i = useMapView.getState().store;
+    const store = i == null ? undefined : NEARBY_STORES[i];
+    return store
+      ? `Here's ${store.short} on the map, ${store.km} kilometres away and ${store.hours}. Tap Directions when you're ready.`
+      : "Here's the map.";
+  }
+  return action.args?.hide ? "Okay, video closed." : "Here's the video. Tap it to pause.";
+}
+
 function safeStepJump(text: string): number | null {
   try {
     return stepNumberIntent(text, useKitchen.getState().activeRecipe?.steps.length ?? 0);
@@ -592,6 +616,15 @@ async function runTurn(text: string, id: number): Promise<void> {
   voice().setInterim("");
   voice().addLine("user", text);
   try {
+    // Fast path: "open map", "show video" and "close the video" need no network at all.
+    const app = safeAppIntent(text);
+    if (app) {
+      const line = await applyActions([app]);
+      if (id !== turnSeq) return;
+      await speak(line ?? appLine(app), { source: "local" });
+      return;
+    }
+
     // Fast path: "next", "repeat", "go back", "go to step five" while cooking need no network at all.
     if (quickPathOn()) {
       const jump = safeStepJump(text);
@@ -636,6 +669,25 @@ async function runTurn(text: string, id: number): Promise<void> {
       scheduleAutoListen();
     }
   }
+}
+
+// The recipe video and hands-free share the kitchen: opening the video closes a waiting
+// hands-free mic, closing it lets hands-free listen again.
+if (typeof window !== "undefined") {
+  useVideo.subscribe((s, prev) => {
+    if (s.recipeId === prev.recipeId) return;
+    if (s.recipeId == null) {
+      scheduleAutoListen();
+      return;
+    }
+    cancelAutoListen();
+    const v = voice();
+    if (v.status === "listening" && handsFreeOn()) {
+      turnSeq++;
+      abortListening();
+      v.setStatus("idle");
+    }
+  });
 }
 
 /** Register the router so Gemini's function calls can navigate. Called once by the floating orb. */

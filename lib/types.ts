@@ -203,7 +203,11 @@ export type SousActionName =
   /** Open one of the app's main screens (diary, planner, nutrients...) */
   | "open_screen"
   /** Search recipes by dish or ingredient in the planner */
-  | "search_recipes";
+  | "search_recipes"
+  /** Play (or with hide, close) the recipe's video inside cooking mode */
+  | "show_video"
+  /** Show a nearby store on the in-app map */
+  | "open_map";
 
 /** Screens Sous can open with open_screen */
 export type AppScreen = "home" | "planner" | "diary" | "calendar" | "nutrients" | "profile" | "social";
@@ -227,9 +231,12 @@ export interface SousAction {
   /**
    * log_food: `description` is what the user said they ate; the client estimates it via /api/nutrition/estimate.
    * go_to_step: `step` is 1-based. open_screen: `screen`. search_recipes: `query`.
-   * show_groceries: `section: "stores"` scrolls to the nearby stores.
+   * show_groceries: `section: "stores"` scrolls to the nearby stores. show_video: `hide` closes it.
+   * open_map: `store` names the store ("Walmart"); left out = the cheapest.
    */
   args?: {
+    hide?: boolean;
+    store?: string;
     recipeId?: number;
     meal?: MealType;
     description?: string;
@@ -262,6 +269,8 @@ export interface ChatContext {
     steps: string[];
     /** -1 = overview (not started), else 0-based index into steps */
     stepIndex: number;
+    /** It has a demonstration video Sous can play (show_video) */
+    video?: boolean;
   };
   /** e.g. "12:30 left on pasta timer" */
   timer?: string;

@@ -1,8 +1,10 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { StepTutorial } from "@/lib/cooking/tutorial";
+import { useVideo } from "@/lib/stores/video";
+import { useVoice } from "@/lib/stores/voice";
 import type { Recipe } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { COOK_ICON } from "./icons";
@@ -16,27 +18,40 @@ const youtubeSearch = (query: string) => `https://www.youtube.com/results?search
  * the 28px play button, "TUTORIAL" (10 Bold tomato, 0.8px tracking), the title (14 SemiBold)
  * and a meta line (12, ink-soft).
  *
- * - `tutorial` (a technique found in the step, "How to dice an onion"): opens YouTube's search
- *   for it in a new tab.
- * - Otherwise the recipe's own tutorial. YouTube policy: the thumbnail is our own card, never a
- *   fake player. With a known video, tapping it opens the real (privacy-enhanced) embed below
- *   the card: 16:9, at least 200px tall, nothing layered on top. Without one it opens
- *   YouTube's search for the recipe.
+ * With a known recipe video, tapping the card (or saying "show me the video", see useVideo)
+ * plays the real privacy-enhanced YouTube embed right below it, inside the app: 16:9, at least
+ * 200px tall, nothing layered on top. The card is our own thumbnail, never a fake player. When
+ * the step has a technique ("How to dice an onion") the card keeps that title and plays the
+ * recipe's video. Without a video it opens YouTube's search in a new tab.
  */
 export function TutorialCard({
   recipe,
   tutorial,
   className,
 }: {
-  recipe: Pick<Recipe, "title" | "youtubeId">;
+  recipe: Pick<Recipe, "id" | "title" | "youtubeId">;
   /** The current step's technique, when it has one */
   tutorial?: StepTutorial | null;
   className?: string;
 }) {
-  const [open, setOpen] = useState(false);
   const id = useId();
-  const videoId = !tutorial && recipe.youtubeId && VALID_ID.test(recipe.youtubeId) ? recipe.youtubeId : null;
+  const videoId = recipe.youtubeId && VALID_ID.test(recipe.youtubeId) ? recipe.youtubeId : null;
+  const open = useVideo((s) => s.recipeId === recipe.id) && videoId != null;
+  const toggle = useVideo((s) => s.toggle);
+  // Opened by voice: start once Sous has finished saying so, so the two don't talk over each
+  // other. Once started, the player stays (Sous talking later never restarts the video).
+  const sousSpeaking = useVoice((s) => s.status === "speaking");
+  const [started, setStarted] = useState(false);
+  if (!open && started) setStarted(false);
+  if (open && !sousSpeaking && !started) setStarted(true);
+  const playerRef = useRef<HTMLDivElement>(null);
   const title = tutorial?.title ?? `How to make ${recipe.title}`;
+
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => playerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
+    return () => clearTimeout(t);
+  }, [open]);
 
   const body = (
     <>
@@ -49,7 +64,13 @@ export function TutorialCard({
         <span className="text-micro font-bold tracking-[0.8px] text-flame">TUTORIAL</span>
         <span className="line-clamp-2 text-sm font-semibold text-ink">{title}</span>
         <span className="truncate text-xs text-ink-soft">
-          {videoId ? (open ? "Playing below · tap to hide" : "Video · plays right here") : "YouTube · opens in a new tab"}
+          {videoId
+            ? open
+              ? "Playing below · tap to hide"
+              : tutorial
+                ? "Recipe video · plays right here"
+                : "Video · plays right here"
+            : "YouTube · opens in a new tab"}
         </span>
       </span>
     </>
@@ -77,7 +98,7 @@ export function TutorialCard({
   const src = `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1&autoplay=1`;
   return (
     <div className={cn("flex w-full flex-col gap-2", className)}>
-      <button type="button" aria-expanded={open} aria-controls={`${id}-video`} onClick={() => setOpen((o) => !o)} className={cardClass}>
+      <button type="button" aria-expanded={open} aria-controls={`${id}-video`} onClick={() => toggle(recipe.id)} className={cardClass}>
         {body}
       </button>
       <AnimatePresence initial={false}>
@@ -85,6 +106,7 @@ export function TutorialCard({
           <motion.div
             id={`${id}-video`}
             key="video"
+            ref={playerRef}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
@@ -92,14 +114,18 @@ export function TutorialCard({
             className="overflow-hidden"
           >
             <div className="aspect-video min-h-[200px] w-full min-w-[200px] overflow-hidden rounded-[16px] bg-ink">
-              <iframe
-                src={src}
-                title={`${recipe.title}: video tutorial`}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                referrerPolicy="strict-origin-when-cross-origin"
-                className="block size-full border-0"
-              />
+              {!started ? (
+                <p className="flex size-full items-center justify-center text-sm text-white/80">Starting the video…</p>
+              ) : (
+                <iframe
+                  src={src}
+                  title={`${recipe.title}: video tutorial`}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  className="block size-full border-0"
+                />
+              )}
             </div>
           </motion.div>
         )}

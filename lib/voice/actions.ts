@@ -9,9 +9,12 @@
 import { estimateFoods, logFoods } from "@/lib/diary/estimate";
 import { dayTotals, MEAL_LABEL } from "@/lib/diary/stats";
 import { loadRecipe } from "@/lib/recipes/client";
+import { CHEAPEST_STORE, NEARBY_STORES } from "@/lib/kitchen/groceries";
 import { FRIDGE_SCAN_HREF } from "@/lib/kitchen/routes";
 import { useDiary } from "@/lib/stores/diary";
 import { useKitchen } from "@/lib/stores/kitchen";
+import { useMapView } from "@/lib/stores/map";
+import { useVideo } from "@/lib/stores/video";
 import { toast } from "@/lib/stores/toast";
 import type { AppScreen, MealType, Recipe, SousAction, SousActionName } from "@/lib/types";
 import { mealForNow, todayISO } from "@/lib/utils";
@@ -31,6 +34,8 @@ const KNOWN: ReadonlySet<SousActionName> = new Set<SousActionName>([
   "go_to_step",
   "open_screen",
   "search_recipes",
+  "show_video",
+  "open_map",
 ]);
 
 const MEALS: readonly MealType[] = ["breakfast", "lunch", "dinner", "snack"];
@@ -134,6 +139,36 @@ function goToStep(step: unknown): string {
   if (k.finishedRecipeId === r.id) useKitchen.setState({ finishedRecipeId: null });
   k.goToStep(n - 1);
   return speakStep(n - 1);
+}
+
+/**
+ * Play the recipe's video inside cooking mode (the tutorial card on the current step shows the
+ * player), or close it. Not started yet: step one opens so there's a card to play it on.
+ */
+function showVideo(hide: unknown): string | null {
+  if (hide === true) {
+    useVideo.getState().hide();
+    return null;
+  }
+  const k = useKitchen.getState();
+  const r = k.activeRecipe;
+  if (!r) return "Pick a recipe first and I'll pull up its video.";
+  if (!r.youtubeId) return `Sorry, I don't have a video for ${r.title}.`;
+  showCookScreen(r.id);
+  if (k.finishedRecipeId === r.id) useKitchen.setState({ finishedRecipeId: null });
+  if (k.stepIndex < 0) k.goToStep(0);
+  useVideo.getState().show(r.id);
+  return null;
+}
+
+/** The in-app map for a store named by voice ("Walmart"), else the cheapest one */
+function openMap(name: unknown): void {
+  const wanted = typeof name === "string" ? name.toLowerCase().trim() : "";
+  const byName = wanted
+    ? NEARBY_STORES.findIndex((s) => s.name.toLowerCase().includes(wanted) || wanted.includes(s.short.toLowerCase()))
+    : -1;
+  const nearest = /\b(closest|nearest)\b/.test(wanted) ? 0 : -1;
+  useMapView.getState().open(byName >= 0 ? byName : nearest >= 0 ? nearest : CHEAPEST_STORE);
 }
 
 /** Planner search for a dish or ingredient (the planner opens straight into the results) */
@@ -259,6 +294,11 @@ async function applyOne(action: SousAction): Promise<string | null> {
     }
     case "search_recipes":
       searchRecipes(action.args?.query);
+      return null;
+    case "show_video":
+      return showVideo(action.args?.hide);
+    case "open_map":
+      openMap(action.args?.store);
       return null;
     case "log_meal":
       logMeal();

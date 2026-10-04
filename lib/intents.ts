@@ -497,6 +497,25 @@ export function jumpReply(step: number, context: Pick<ChatContext, "activeRecipe
   return speakable(`${label} ${steps[i]}`);
 }
 
+const APP_LEAD = String.raw`^(?:(?:ok|okay|so|can you|could you|please|lets|now)\s+)*`;
+const VIDEO_SHOW = new RegExp(
+  `${APP_LEAD}(?:show|play|open|start|watch|pull up)(?: me)?(?: the| a)? (?:demo |demonstration |tutorial |recipe |cooking )?(?:video|demo|demonstration|tutorial)(?: please)?$`,
+);
+const VIDEO_HIDE = new RegExp(`${APP_LEAD}(?:close|hide|stop|exit)(?: the)? (?:video|demo|demonstration|tutorial)(?: please)?$`);
+const MAP_OPEN = new RegExp(`${APP_LEAD}(?:open|show|pull up|bring up)(?: me)?(?: the)? maps?(?: please)?$`);
+
+/**
+ * Whole-utterance app commands that need no network: "show video", "show demonstration video",
+ * "close the video", "open map". Null for anything longer or different (Gemini handles it).
+ */
+export function quickAppIntent(message: string): SousAction | null {
+  const text = normalizeUtterance(message);
+  if (VIDEO_HIDE.test(text)) return { name: "show_video", args: { hide: true } };
+  if (VIDEO_SHOW.test(text)) return { name: "show_video" };
+  if (MAP_OPEN.test(text) || text === "map") return { name: "open_map" };
+  return null;
+}
+
 /** "Where can I get groceries?", "which store is closest?", "is anywhere open?" */
 const WHERE_TO_SHOP = /\b(where|which|closest|nearest|nearby|cheapest|open)\b.*\b(grocer(y|ies)|stores?|shop|supermarket|buy)\b|\b(stores?|supermarket)\b.*\b(near|close|open|cheapest)\b/;
 
@@ -525,6 +544,17 @@ export function fallbackReply(message: string, context: ChatContext): ChatRespon
   const cooking = Boolean(active && active.steps.length > 0);
 
   if (!text) return reply("Sorry, I didn't catch that. Try saying scan my fridge.");
+
+  const app = quickAppIntent(text);
+  if (app) {
+    const line =
+      app.name === "open_map"
+        ? "Here's the map. Tap Directions when you're ready to go."
+        : app.args?.hide
+          ? "Okay, video closed."
+          : "Here's the video. Tap it to pause.";
+    return reply(line, [app]);
+  }
 
   if (cooking) {
     const jump = stepNumberIntent(text, active?.steps.length ?? 0);

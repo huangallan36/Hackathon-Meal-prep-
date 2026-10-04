@@ -10,6 +10,7 @@ import { getCachedRecipe } from "@/lib/recipes/catalog";
 import { useDiary } from "@/lib/stores/diary";
 import { useKitchen, type KitchenTimer } from "@/lib/stores/kitchen";
 import { usePrefs } from "@/lib/stores/prefs";
+import { useVideo } from "@/lib/stores/video";
 import type { ChatContext, Recipe } from "@/lib/types";
 import { todayISO } from "@/lib/utils";
 import { currentPersona } from "./persona";
@@ -22,6 +23,8 @@ export function setCurrentPath(path: string): void {
   if (path === currentPath) return;
   previousPath = currentPath;
   currentPath = path;
+  // Leaving cooking mode closes its video (hands-free listening waits while one is open).
+  if (!path.startsWith("/ai/cook/") && useVideo.getState().recipeId != null) useVideo.getState().hide();
 }
 
 export function getCurrentPath(): string {
@@ -92,6 +95,7 @@ export function buildChatContext(): ChatContext {
       title: k.activeRecipe.title,
       steps: k.activeRecipe.steps.slice(0, MAX_STEPS).map((s) => s.text.slice(0, MAX_STEP_CHARS)),
       stepIndex: k.stepIndex,
+      video: Boolean(k.activeRecipe.youtubeId),
     };
   }
   if (k.timer) context.timer = formatTimer(k.timer, now);

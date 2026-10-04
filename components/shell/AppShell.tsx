@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { GlobalTimer } from "@/components/cooking/GlobalTimer";
 import { PhoneHomeScreen } from "@/components/dock/PhoneHomeScreen";
+import { MapSheet } from "@/components/kitchen/MapSheet";
 import { SousLogo } from "@/components/mascot/Mascot";
 import { FloatingOrb } from "@/components/orb/FloatingOrb";
 import { Toaster } from "@/components/ui/Misc";
@@ -62,6 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {mounted && <FloatingOrb />}
         {mounted && !fullscreen && !docked && <BottomNav />}
         <AnimatePresence>{docked && <PhoneHomeScreen key="phone-home" />}</AnimatePresence>
+        {mounted && <MapSheet />}
         <Toaster />
         {/* Figma home indicator: 134x5, 8px from the bottom (desktop frame only) */}
         <span

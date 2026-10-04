@@ -40,6 +40,8 @@ export const SOUS_ACTIONS: readonly SousActionName[] = [
   "go_to_step",
   "open_screen",
   "search_recipes",
+  "show_video",
+  "open_map",
 ];
 
 const MEALS: readonly MealType[] = ["breakfast", "lunch", "dinner", "snack"];
@@ -153,6 +155,20 @@ export const SOUS_TOOLS: FunctionDeclaration[] = [
     ),
   },
   {
+    name: "show_video",
+    description:
+      'Play the recipe\'s demonstration video inside the app (cooking mode), or close it with hide true. Call for "show the video", "show me a demonstration", "can I watch how to do this?", "play the tutorial"; and with hide for "close the video", "stop the video", "hide it".',
+    parametersJsonSchema: params({ hide: { type: "boolean", description: "true to close the video instead of playing it" } }),
+  },
+  {
+    name: "open_map",
+    description:
+      'Show a nearby grocery store on the map inside the app, with directions. Call for "open the map", "show me the map", "where is it?", "how do I get there?", "show Walmart on the map". Without a store it shows the cheapest one.',
+    parametersJsonSchema: params({
+      store: { type: "string", description: 'Store name from APP STATE when they name or clearly mean one ("Walmart", "Superstore", the closest one = the first store); leave out otherwise' },
+    }),
+  },
+  {
     name: "search_recipes",
     description:
       'Search all recipes for a dish or ingredient and show the results in the meal planner: "find me a salmon recipe", "any beef ideas?", "show me something with chicken", "I want pasta tonight". Use show_recipes instead when they want ideas from their fridge scan.',
@@ -227,6 +243,7 @@ function cleanContext(raw: unknown): ChatContext {
         title: str(a.title, 120) || "this recipe",
         steps,
         stepIndex: Math.max(-1, Math.min(idx, steps.length - 1)),
+        video: a.video === true,
       };
     }
   }
@@ -348,7 +365,8 @@ function describeState(ctx: ChatContext): string {
     const background = ctx.screen.startsWith("/ai/cook/")
       ? ""
       : " It's open in the background; they're not on the cooking screen right now.";
-    lines.push(`- Cooking: "${a.title}" (id ${a.id}), ${where}.${background}`);
+    const video = a.video ? " It has a demonstration video you can play with show_video." : " It has no video.";
+    lines.push(`- Cooking: "${a.title}" (id ${a.id}), ${where}.${background}${video}`);
   } else {
     lines.push("- Cooking: nothing yet.");
   }
@@ -432,6 +450,8 @@ ${toolsIntro}
 - next_step, previous_step, repeat_step: while cooking, "next", "done", "continue", "what's next" call next_step; "back", "go back", "previous" call previous_step; "repeat", "say that again", "what was that" call repeat_step. The app reads the step out loud itself, so your text for these is just "Okay."
 - go_to_step: they name a step by number or position ("go to step five", "skip to step three", "what's the last step?", "start over from step one"). Pass the step number, starting at one. The app opens that step and reads it.
 - open_screen: they want to see their diary, planner, calendar or streak, nutrients, profile or the social feed, or they ask something that screen answers (today's calories or protein: diary; vitamins this week: nutrients; their streak: calendar). Answer the question in say too.
+- show_video: they want to see the video, a demonstration or the tutorial while a recipe is open. The app plays it right in cooking mode; say one short line. hide true when they want it closed.
+- open_map: they want to see a store on the map or how to get there ("open the map", "how do I get to Walmart?"). The app opens the map; tell them the distance and hours of that store.
 - search_recipes: they ask for a kind of dish or an ingredient ("find me a salmon recipe", "any beef ideas?", "something with chicken"), whether or not they've scanned their fridge. Pass one to three words.
 - Don't reopen the screen they're already on just to talk; but do call the tool when it moves them somewhere useful on it (show_groceries with section "stores" scrolls to the stores).
 
@@ -455,6 +475,8 @@ EXAMPLES
 - "Where can I get groceries?" -> show_groceries(recipeId: <grocery or active recipe id>, section: "stores", say: "Walmart's closest, about one point two kilometres away and open till eleven. Superstore's a bit further but cheaper, around seventeen bucks for your list. I pulled them up for you.") Use the real stores and prices from APP STATE.
 - "How much protein have I had today?" -> open_screen(screen: "diary", say: <today's protein and goal from APP STATE, and one easy tip if they're low>)
 - "Find me a salmon recipe." -> search_recipes(query: "salmon", say: "Ooh, good call. Here are a few salmon ideas.")
+- "Show me the demonstration video." (cooking) -> show_video(say: "Here's the video. Tap it to pause.")
+- "Open the map." -> open_map(say: <that store, its distance and hours from APP STATE>)
 
 APP STATE (live, this turn)
 ${describeState(ctx)}
@@ -515,6 +537,8 @@ const CANNED: Record<SousActionName, string> = {
   go_to_step: "Okay.",
   open_screen: "Here you go.",
   search_recipes: "Here's what I found.",
+  show_video: "Here's the video. Tap it to pause.",
+  open_map: "Here's the map. Tap Directions when you're ready to go.",
 };
 
 const isStep = (name: SousActionName): name is StepActionName => (STEP_ACTIONS as readonly string[]).includes(name);
@@ -616,6 +640,13 @@ export function toActions(calls: FunctionCall[] | undefined, ctx: ChatContext, m
       const query = cleanQuery(call.args?.query);
       if (!query) dropped.push(name);
       else screen = { name, args: { query } };
+    } else if (name === "show_video") {
+      const hide = call.args?.hide === true;
+      if (!hide && !ctx.activeRecipe?.video) dropped.push(name);
+      else screen = hide ? { name, args: { hide: true } } : { name };
+    } else if (name === "open_map") {
+      const store = typeof call.args?.store === "string" ? call.args.store.replace(/[^\w '&-]/g, "").trim().slice(0, 40) : "";
+      screen = store ? { name, args: { store } } : { name };
     } else if (name === "log_food") {
       // The model sometimes drops the description; the user's own words are the next best thing.
       const description = cleanFoodDescription(call.args?.description) || cleanFoodDescription(message);
@@ -740,6 +771,9 @@ export function finalizeReply(rawText: string, parsed: ParsedActions, ctx: ChatC
   if (actions.length === 0 && dropped.length > 0) {
     const first = dropped[0];
     if (first === "start_cooking") return "Which one sounds good? You can say the first one, or tell me the name.";
+    if (first === "show_video") {
+      return ctx.activeRecipe ? "Sorry, this recipe doesn't have a video." : "Pick a recipe first and I'll pull up its video.";
+    }
     if (first === "go_to_step") {
       const total = ctx.activeRecipe?.steps.length ?? 0;
       return total ? speakable(`This one has ${total} steps. Which step do you want?`) : "Pick a recipe first and I'll walk you through it.";
