@@ -21,13 +21,23 @@ function mentions(text: string, phrase: string): boolean {
 }
 
 export function ingredientsInStep(stepText: string, ingredients: Ingredient[], max = 4): Ingredient[] {
-  const out: Ingredient[] = [];
-  for (const ing of ingredients) {
+  const parsed = ingredients.map((ing) => {
     const name = ing.name.toLowerCase().trim();
-    if (!name) continue;
     const words = name.split(/\s+/).filter(Boolean);
-    const head = singular(words[words.length - 1] ?? "");
-    const hit = mentions(stepText, singular(name)) || (head.length > 2 && !WEAK.has(head) && mentions(stepText, head));
+    return { ing, name, head: singular(words[words.length - 1] ?? "") };
+  });
+  // Distinct ingredient names per head noun: "green onions" and "yellow onion" share "onion"
+  const sharing = new Map<string, Set<string>>();
+  for (const p of parsed) if (p.name) sharing.set(p.head, (sharing.get(p.head) ?? new Set()).add(p.name));
+
+  const out: Ingredient[] = [];
+  for (const { ing, name, head } of parsed) {
+    if (!name) continue;
+    // A bare head noun ("Dice the onion") is ambiguous when two ingredients share it, so it only
+    // counts for an ingredient that is the only one with that head.
+    const byHead =
+      head.length > 2 && !WEAK.has(head) && (sharing.get(head)?.size ?? 0) < 2 && mentions(stepText, head);
+    const hit = mentions(stepText, singular(name)) || byHead;
     if (hit && !out.some((o) => o.original === ing.original)) out.push(ing);
     if (out.length >= max) break;
   }

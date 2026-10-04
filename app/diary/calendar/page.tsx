@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useMemo, useState } from "react";
+import { BackLink } from "@/components/diary/BackLink";
 import { DayPreviewCard } from "@/components/diary/DayPreviewCard";
 import { MonthCalendar } from "@/components/diary/MonthCalendar";
 import { stagger } from "@/components/diary/stagger";
@@ -47,11 +48,11 @@ export default function DiaryCalendarPage({
   return (
     <>
       <ScreenHeader
-        back={back}
+        left={<BackLink href={back} icon="/figma/v2/2014-1669/icon-chev-l.svg" />}
         title="Diary"
         right={
           <IconButton label="Jump to today" onClick={jumpToToday}>
-            <img src="/figma/screens/2-161/icon-cal.svg" alt="" width={18} height={18} className="block size-[18px]" />
+            <img src="/figma/v2/2014-1669/icon-cal.svg" alt="" width={18} height={18} className="block size-[18px]" />
           </IconButton>
         }
       />
@@ -63,10 +64,10 @@ export default function DiaryCalendarPage({
           </h1>
           <div className="flex shrink-0 items-start gap-1.5">
             <button type="button" aria-label="Previous month" title="Previous month" disabled={!canPrev} onClick={() => setMonth((m) => shiftMonth(m, -1))} className={monthBtn}>
-              <img src="/figma/screens/2-161/icon-chev-l-1.svg" alt="" width={16} height={16} className="block size-4" />
+              <img src="/figma/v2/2014-1669/icon-chev-l-1.svg" alt="" width={16} height={16} className="block size-4" />
             </button>
             <button type="button" aria-label="Next month" title="Next month" disabled={!canNext} onClick={() => setMonth((m) => shiftMonth(m, 1))} className={cn(monthBtn)}>
-              <img src="/figma/screens/2-161/icon-chev-r.svg" alt="" width={16} height={16} className="block size-4" />
+              <img src="/figma/v2/2014-1669/icon-chev-r.svg" alt="" width={16} height={16} className="block size-4" />
             </button>
           </div>
         </div>

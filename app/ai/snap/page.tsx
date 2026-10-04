@@ -6,6 +6,7 @@ import { EstimateCard } from "@/components/cooking/snap/EstimateCard";
 import { LoggedCard } from "@/components/cooking/snap/LoggedCard";
 import { EstimateSkeleton, ScanningPhoto } from "@/components/cooking/snap/ScanningPhoto";
 import { BackToCooked, CookedRecipeCard, MealPhoto, SnapViewfinder } from "@/components/cooking/snap/SnapPrompt";
+import { SousLine } from "@/components/kitchen/SousLine";
 import { PhotoPicker } from "@/components/ui/PhotoPicker";
 import { PageTitle, ScreenHeader } from "@/components/ui/ScreenHeader";
 import { say } from "@/lib/cooking/actions";
@@ -79,6 +80,8 @@ export default function SnapPage() {
     /** The estimate as it came back: micros scale with any calorie edit (edited / estimated) */
     calories: number;
     micros?: Partial<Micros>;
+    /** What Sous said about it (also shown, with its mascot) */
+    line: string;
   } | null>(null);
   const [meal, setMeal] = useState<MealType>(() => mealForNow());
   const [logging, setLogging] = useState(false);
@@ -119,14 +122,14 @@ export default function SnapPage() {
     if (wait > 0) await new Promise((r) => setTimeout(r, wait));
     if (req !== requestId.current) return; // retaken or left meanwhile
 
-    setDraft(toDraft(estimateResult));
-    setResult({ source, confidence: estimateResult.confidence, calories: estimateResult.calories, micros: estimateResult.micros });
-    setPhase("review");
-    say(
+    const line =
       source === "gemini"
         ? `That looks like ${estimateResult.dishName}, about ${estimateResult.calories} calories. Check the numbers, then log it.`
-        : `I estimated about ${estimateResult.calories} calories. Adjust anything, then log it.`,
-    );
+        : `I estimated about ${estimateResult.calories} calories. Adjust anything, then log it.`;
+    setDraft(toDraft(estimateResult));
+    setResult({ source, confidence: estimateResult.confidence, calories: estimateResult.calories, micros: estimateResult.micros, line });
+    setPhase("review");
+    say(line);
   }
 
   function retake() {
@@ -199,7 +202,7 @@ export default function SnapPage() {
       <ScreenHeader back={cooked ? `/ai/cook/${cooked.id}` : "/ai"} />
       <PageTitle
         title="How did it turn out?"
-        subtitle={recipe ? "Snap your plate and Sous estimates the nutrition" : "Snap any meal to log it"}
+        subtitle={recipe ? "One photo logs it to your diary" : "Snap any meal to log it"}
         className="pt-1"
       />
 
@@ -229,6 +232,7 @@ export default function SnapPage() {
         {phase === "review" && photo && draft && result && (
           <>
             <MealPhoto src={photo} onRetake={retake} />
+            <SousLine live>{result.line}</SousLine>
             <EstimateCard
               draft={draft}
               onChange={(patch) => setDraft((d) => (d ? patchDraft(d, patch) : d))}

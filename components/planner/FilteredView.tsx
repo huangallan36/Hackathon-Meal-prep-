@@ -1,7 +1,7 @@
 "use client";
 
-import { Refrigerator, SlidersHorizontal } from "lucide-react";
 import { useMemo, useState } from "react";
+import { MascotAvatar } from "@/components/mascot/Mascot";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/Misc";
 import { filtersTitle } from "@/lib/planner/format";
@@ -10,6 +10,7 @@ import { applyFilters, fridgeCount, type SearchFilters } from "@/lib/planner/sea
 import { getCatalog } from "@/lib/recipes/catalog";
 import { useKitchen } from "@/lib/stores/kitchen";
 import type { Recipe } from "@/lib/types";
+import { usePersona } from "@/lib/voice/persona";
 import { PlannerSection } from "./PlannerSection";
 import { RecipeRow } from "./RecipeRow";
 
@@ -18,6 +19,7 @@ const COLLAPSED = 6;
 /**
  * A chip filter on, no query: every catalog recipe that fits, as Figma "Similar" rows.
  * Leftovers first by how much of the fridge they use, otherwise most popular first.
+ * Empty states show the chosen sous-chef (design rules v1).
  */
 export function FilteredView({
   filters,
@@ -29,6 +31,7 @@ export function FilteredView({
   onClear: () => void;
 }) {
   const popularity = usePopularityMap();
+  const persona = usePersona();
   const fridge = useKitchen((s) => s.ingredients);
   const [open, setOpen] = useState(false);
   const recipes = useMemo(
@@ -46,9 +49,9 @@ export function FilteredView({
     return (
       <EmptyState
         className="animate-fade-up"
-        icon={<Refrigerator className="size-6" />}
+        icon={<MascotAvatar persona={persona} size={56} />}
         title="What's in your fridge?"
-        body="Snap your fridge and Sous finds recipes that use it up."
+        body={`Snap your fridge and ${persona.name} finds recipes that use it up.`}
         action={
           <ButtonLink href="/ai/fridge" variant="soft" size="sm" className="h-11">
             Snap my fridge
@@ -62,7 +65,7 @@ export function FilteredView({
     return (
       <EmptyState
         className="animate-fade-up"
-        icon={<SlidersHorizontal className="size-6" />}
+        icon={<MascotAvatar persona={persona} size={56} />}
         title="Nothing fits those filters yet"
         body="Loosen a filter, or search for something specific."
         action={

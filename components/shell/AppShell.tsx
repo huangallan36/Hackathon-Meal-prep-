@@ -5,8 +5,10 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { GlobalTimer } from "@/components/cooking/GlobalTimer";
 import { PhoneHomeScreen } from "@/components/dock/PhoneHomeScreen";
+import { SousLogo } from "@/components/mascot/Mascot";
 import { FloatingOrb } from "@/components/orb/FloatingOrb";
 import { Toaster } from "@/components/ui/Misc";
+import { usePrefersDark } from "@/components/voice/useCallTheme";
 import { isDarkScreen, isFullscreen } from "@/lib/nav";
 import { useDock } from "@/lib/stores/dock";
 import { useVoice } from "@/lib/stores/voice";
@@ -37,12 +39,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   const fullscreen = isFullscreen(pathname);
-  // The call screen is dark, except its light typing view (Figma 1.3)
+  // The call screen follows the phone (white, or #0B0B0B in dark mode); its typing view is always light (Figma 1.3)
   const talkTyping = useVoice((s) => s.typing) && pathname === "/ai/talk";
-  const dark = (isDarkScreen(pathname) && !talkTyping) || docked;
+  const phoneDark = usePrefersDark();
+  const dark = (isDarkScreen(pathname) && !talkTyping && phoneDark) || docked;
 
   return (
-    <div className="flex min-h-dvh w-full items-center justify-center bg-cream sm:bg-[radial-gradient(circle_at_20%_10%,#fdfaf5,transparent_50%),radial-gradient(circle_at_85%_90%,#e2ede5,transparent_45%),#efe9df] sm:p-6">
+    <div className="flex min-h-dvh w-full items-center justify-center bg-cream sm:bg-[radial-gradient(circle_at_20%_10%,#fdfaf5,transparent_50%),radial-gradient(circle_at_85%_90%,#e7efdc,transparent_45%),#efe9df] sm:p-6">
       <div
         id="sous-phone"
         className="relative h-dvh w-full overflow-hidden bg-cream [transform:translateZ(0)] sm:h-[min(844px,calc(100dvh-48px))] sm:w-[390px] sm:rounded-phone sm:shadow-phone sm:[--safe-bottom:22px] sm:[--safe-top:50px]"
@@ -75,13 +78,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 function Splash() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3">
-      <img src="/figma/voices/orb-maya.svg" alt="" width={46} height={46} className="size-16 animate-pulse" />
+      <SousLogo size={64} className="animate-pulse" />
       <p className="font-display text-2xl font-semibold text-ink">Sous</p>
     </div>
   );
 }
 
-/** Figma "Status Bar" (2:26), desktop frame only. Light on cream, Dark on the call screen. */
+/** Figma "Status Bar" (2:26), desktop frame only. Light on cream, Dark on the dark-mode call and the docked home screen. */
 function StatusBar({ dark }: { dark: boolean }) {
   const [time, setTime] = useState("9:41");
   useEffect(() => {

@@ -41,7 +41,7 @@ export function CalorieRing({
         stroke={13}
         cap="butt"
         colorClass="stroke-accent"
-        trackSrc="/figma/screens/2-155/ellipse.svg"
+        trackSrc="/figma/v2/2014-1326/ellipse.svg"
         label={`${fmt(eaten)} of ${fmt(target)} kcal a day`}
       >
         <CountUp value={eaten} className="font-display text-title font-semibold leading-[normal] text-ink" />

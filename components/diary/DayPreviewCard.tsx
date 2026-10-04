@@ -7,10 +7,16 @@ import { Chip } from "@/components/ui/Chip";
 import { DAY_STATUS_LABEL, fmt, type DayInfo } from "@/lib/diary/stats";
 import type { ISODate } from "@/lib/types";
 import { cn, formatDay } from "@/lib/utils";
+import { MascotNote } from "./MascotNote";
+
+/** The sous-chef's streak cheer: "12 days in a row. Keep it going." */
+function streakLine(streak: number): string {
+  return streak === 1 ? "Day one of a streak. Keep it going." : `${fmt(streak)} days in a row. Keep it going.`;
+}
 
 /**
  * Figma 3.4 selected-day card: "Wed, Sep 30", "2,140 kcal · on target", "Open diary",
- * P / C / F chips and the logging streak that day belongs to.
+ * P / C / F chips and, for a logged day, the sous-chef celebrating the streak it belongs to.
  */
 export function DayPreviewCard({
   info,
@@ -67,12 +73,9 @@ export function DayPreviewCard({
       )}
 
       {streak > 0 && (
-        <p className="flex items-center gap-1.5">
-          <img src="/figma/screens/2-161/icon-flame.svg" alt="" width={16} height={16} className="block size-4 shrink-0" />
-          <span className="text-meta font-medium leading-[normal] text-ink-soft">
-            {streak}-day logging streak
-          </span>
-        </p>
+        <MascotNote size={30} square textClassName="text-accent" className="pt-1">
+          {streakLine(streak)}
+        </MascotNote>
       )}
     </Card>
   );

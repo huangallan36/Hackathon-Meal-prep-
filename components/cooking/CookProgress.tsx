@@ -8,8 +8,8 @@ import { cn } from "@/lib/utils";
 export const COOK_PROGRESS_STICKY = "sticky top-[calc(var(--safe-top)+54px)] z-10 bg-cream/90 pb-2 pt-2 backdrop-blur-md";
 
 /**
- * Figma 2.3 progress: "Step 2 of 6" (13 SemiBold) and "~18 min left" (13, ink-soft) over a
- * 6px segmented bar with 4px gaps: done steps green, the current one butter, the rest line.
+ * Figma 2.3 progress: "Step 2 of 6" (13 SemiBold) and "About 18 min left" (13, ink-soft) over
+ * a 6px segmented bar with 4px gaps: done steps avocado, the current one lemon, the rest line.
  * The page keeps it stuck under the header (see COOK_PROGRESS_STICKY) so it never scrolls away.
  */
 export function CookProgress({
@@ -34,7 +34,7 @@ export function CookProgress({
           {done ? `All ${total} steps done` : `Step ${index + 1} of ${total}`}
         </p>
         <p className="text-ink-soft">
-          {done ? "Ready to serve" : minutesLeft != null ? `~${formatDuration(minutesLeft * 60)} left` : null}
+          {done ? "Ready to serve" : minutesLeft != null ? `About ${formatDuration(minutesLeft * 60)} left` : null}
         </p>
       </div>
       <div

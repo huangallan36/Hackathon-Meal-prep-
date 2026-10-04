@@ -16,7 +16,7 @@ import { useDiary } from "@/lib/stores/diary";
 
 const MACRO_KEYS = new Set(["protein", "carbs", "fat"]);
 
-/** Me tab (Figma 3.1 personal): weekly averages, energy targets, calendar + activity, community */
+/** Me tab (Figma 3.1 personal): weekly averages, macros, calendar + activity, community */
 export default function MePage() {
   const entries = useDiary((s) => s.entries);
   const goals = useDiary((s) => s.goals);
@@ -42,8 +42,8 @@ export default function MePage() {
           canNext={week.canNext}
           onPrev={week.prev}
           onNext={week.next}
-          chevLeft="/figma/screens/2-155/icon-chev-l.svg"
-          chevRight="/figma/screens/2-155/icon-chev-r.svg"
+          chevLeft="/figma/v2/2014-1326/icon-chev-l.svg"
+          chevRight="/figma/v2/2014-1326/icon-chev-r.svg"
         />
       </div>
 
@@ -52,15 +52,16 @@ export default function MePage() {
         {empty && <p className="px-1 pt-2 text-xs text-ink-faint">Nothing logged that week.</p>}
       </section>
 
-      <section aria-label="Energy targets" className="animate-fade-up px-5 pt-3" style={stagger(1)}>
+      <section aria-label="Macros, daily average" className="animate-fade-up px-5 pt-3" style={stagger(1)}>
         <Card className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-3 leading-[normal]">
-            <h2 className="text-base font-semibold text-ink">Energy targets</h2>
+            <h2 className="text-base font-semibold text-ink">Macros</h2>
             <Link
               href="/me/nutrients"
+              aria-label="See all nutrients"
               className="relative text-meta font-semibold text-accent after:absolute after:-inset-x-2 after:-inset-y-3 after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
-              Nutrients ›
+              See all
             </Link>
           </div>
           <MacroBars key={week.end} rows={macros} />

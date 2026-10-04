@@ -5,8 +5,8 @@ import { AnimatePresence, motion } from "motion/react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-/** Figma 2.4 assets */
-const ICON_CHECK = "/figma/screens/2-152/icon-check.svg";
+/** Figma 2.4 assets (updated file, node 2014-1255) */
+const ICON_CHECK = "/figma/v2/2014-1255/icon-check.svg";
 
 export interface GroceryLine {
   /** useKitchen.groceryChecked key */
@@ -65,7 +65,7 @@ export function Segmented<T extends string>({
   );
 }
 
-/** 22px circle: 1.5px line-strong ring, or accent with the design's white check */
+/** 22px circle: 1.5px line-strong ring, or avocado with the design's white 13px check */
 export function CheckCircle({ on }: { on: boolean }) {
   return (
     <span

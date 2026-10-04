@@ -14,6 +14,10 @@ export interface Persona {
   name: string;
   /** One-word vibe under the name in the picker */
   vibe: string;
+  /** What they are in the app ("sous-chef", Brock is the "coach"); the chat prompt says "the Sous <role>" */
+  role: string;
+  /** How they talk, for the chat prompt (the voice and the words should match the mascot) */
+  style: string;
   /** What the mascot is (for alt text) */
   mascotLabel: string;
   /** ElevenLabs premade voice id (verified on this account) */
@@ -27,10 +31,6 @@ export interface Persona {
   body: string;
   /** Final per-state art where the design has it (Leo); others use `body` for every state */
   states?: Partial<Record<MascotState, string>>;
-  /** Legacy orb fields (gradient voice orb), kept for surfaces not yet moved to mascots */
-  orb: string;
-  orbFrom: string;
-  orbTo: string;
   /** In-character intro played when the persona is picked */
   greeting: string;
   /** Pre-recorded greeting (scripts/gen-voice-samples.mjs); live TTS of `greeting` is the fallback */
@@ -42,15 +42,15 @@ export const PERSONAS: readonly Persona[] = [
     id: "maya",
     name: "Maya",
     vibe: "Warm",
+    role: "sous-chef",
+    style:
+      "You're warm and cozy, like a friend pulling up a stool in their kitchen: gentle, reassuring and a little playful, with a soft spot for comforting one-pan dinners.",
     mascotLabel: "Maya the tomato",
     voiceId: "cgSgspJ2msm6clMCkdW9",
     tint: "#b8452e",
     soft: "#f8e4dd",
     head: "/mascots/maya/head.svg",
     body: "/mascots/maya/body.svg",
-    orb: "/figma/voices/orb-maya.svg",
-    orbFrom: "#f7cf7a",
-    orbTo: "#e0603a",
     greeting: "Hey, I'm Maya. Long day? Pull up a stool and tell me what's in your fridge. We'll make something cozy together.",
     sample: "/voices/maya.mp3",
   },
@@ -58,6 +58,9 @@ export const PERSONAS: readonly Persona[] = [
     id: "leo",
     name: "Leo",
     vibe: "Calm",
+    role: "sous-chef",
+    style:
+      "You're calm and unhurried: steady, reassuring and low pressure, taking things one easy step at a time. Never rushed, never fussy.",
     mascotLabel: "Leo the avocado",
     voiceId: "nPczCjzI2devNBz1zQrb",
     tint: "#3d6b2e",
@@ -70,9 +73,6 @@ export const PERSONAS: readonly Persona[] = [
       thinking: "/mascots/leo/thinking.svg",
       speaking: "/mascots/leo/speaking.svg",
     },
-    orb: "/figma/voices/orb-leo.svg",
-    orbFrom: "#9bc7ae",
-    orbTo: "#2f5d46",
     greeting: "Hi, I'm Leo. No rush tonight. Tell me what you've got, and I'll walk you through dinner, one easy step at a time.",
     sample: "/voices/leo.mp3",
   },
@@ -80,15 +80,15 @@ export const PERSONAS: readonly Persona[] = [
     id: "nova",
     name: "Nova",
     vibe: "Upbeat",
+    role: "sous-chef",
+    style:
+      "You're upbeat and bubbly: bright energy, playful, quick to cheer them on, with a fun, punchy way of putting things.",
     mascotLabel: "Nova the lemon",
     voiceId: "FGY2WhTYpPnrIDTdsKH5",
     tint: "#8a6d0e",
     soft: "#fbf0d9",
     head: "/mascots/nova/head.svg",
     body: "/mascots/nova/body.svg",
-    orb: "/figma/voices/orb-nova.svg",
-    orbFrom: "#a9c4ea",
-    orbTo: "#4f7fb8",
     greeting: "Hey hey, I'm Nova! Let's turn whatever's in your fridge into something delicious. Ready when you are!",
     sample: "/voices/nova.mp3",
   },
@@ -96,15 +96,15 @@ export const PERSONAS: readonly Persona[] = [
     id: "brock",
     name: "Brock",
     vibe: "Coach",
+    role: "coach",
+    style:
+      "You're their coach: direct and motivating, short punchy lines, a little tough love, and you keep them on plan. You're protein-aware: whenever food comes up, work in roughly how many grams of protein it has or a quick protein swap. If they want takeout, push them to cook something fast instead. Never shaming, never a lecture.",
     mascotLabel: "Brock the broccoli",
     voiceId: "IKne3meq5aSn9XLyUdCD",
     tint: "#2e6b3a",
     soft: "#e3efe4",
     head: "/mascots/brock/head.svg",
     body: "/mascots/brock/body.svg",
-    orb: "/figma/voices/orb-leo.svg",
-    orbFrom: "#9bc7ae",
-    orbTo: "#2e6b3a",
     greeting: "Brock here. Let's hit your protein and keep it simple. Tell me what you've got and we'll get cooking.",
     sample: "/voices/brock.mp3",
   },
@@ -116,6 +116,12 @@ export const DEFAULT_PERSONA: Persona = PERSONAS.find((p) => p.id === "leo")!;
 /** Persona for a stored voice id (unknown or unset -> Leo) */
 export function personaFor(voiceId?: string | null): Persona {
   return PERSONAS.find((p) => p.voiceId === voiceId) ?? DEFAULT_PERSONA;
+}
+
+/** Persona by display name ("brock", any case); null when it isn't one of the four */
+export function personaNamed(name?: string | null): Persona | null {
+  const key = (name ?? "").trim().toLowerCase();
+  return PERSONAS.find((p) => p.name.toLowerCase() === key) ?? null;
 }
 
 export function isPersonaVoice(voiceId?: string | null): boolean {

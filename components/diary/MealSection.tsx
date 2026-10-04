@@ -10,9 +10,9 @@ import { EntryRow } from "./EntryRow";
 const CARD_TITLE: Record<MealType, string> = { ...MEAL_LABEL, snack: "Snacks" };
 
 /**
- * Figma 3.3 meal card: Fraunces title, the meal's kcal ("—" when empty) and a green "+"
- * that opens the add sheet, then one row per food. `empty` renders under the header when
- * nothing is logged (the dinner card's "Log dinner by voice").
+ * Figma 3.3 meal card: Bricolage title, the meal's kcal ("0 kcal" when empty) and an avocado
+ * "+" that opens the add sheet, then one row per food. `empty` renders under the header when
+ * nothing is logged (the dinner card's mascot note and "Log dinner" voice button).
  */
 export function MealSection({
   meal,
@@ -44,7 +44,7 @@ export function MealSection({
       <div className={cn("flex items-center gap-2", has && "pb-2")}>
         <h2 className="min-w-0 flex-1 truncate font-display text-base font-semibold leading-[normal] text-ink">{CARD_TITLE[meal]}</h2>
         <span className="shrink-0 whitespace-nowrap text-meta font-semibold leading-[normal] tabular-nums text-ink-soft">
-          {has ? `${fmt(total.calories)} kcal` : "—"}
+          {fmt(total.calories)} kcal
         </span>
         {onAdd && (
           <button
@@ -52,9 +52,9 @@ export function MealSection({
             onClick={() => onAdd(meal)}
             aria-label={`Add to ${MEAL_LABEL[meal]}`}
             title={`Add to ${MEAL_LABEL[meal]}`}
-            className="relative inline-flex size-[26px] shrink-0 items-center justify-center rounded-full bg-accent-soft transition after:absolute after:-inset-[9px] after:content-[''] hover:bg-[#d5e6da] active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="relative inline-flex size-[26px] shrink-0 items-center justify-center rounded-full bg-accent-soft transition after:absolute after:-inset-[9px] after:content-[''] hover:bg-[#dbe6d0] active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            <img src="/figma/screens/2-159/icon-plus.svg" alt="" width={14} height={14} className="block size-3.5" />
+            <img src="/figma/v2/2014-1536/icon-plus.svg" alt="" width={14} height={14} className="block size-3.5" />
           </button>
         )}
       </div>

@@ -105,13 +105,14 @@ export function Composer({
           aria-label={dictating ? "Stop dictating" : "Dictate a message"}
           aria-pressed={dictating}
           className={cn(
-            "relative flex size-9 shrink-0 items-center justify-center rounded-full transition active:scale-90",
+            // 36px target, laid out as the design's bare 20px icon (8px gaps either side)
+            "relative -mx-2 flex size-9 shrink-0 items-center justify-center rounded-full transition active:scale-90",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
             dictating ? "bg-flame-soft" : "hover:bg-cream",
           )}
         >
           {dictating && <span aria-hidden className="absolute inset-0 animate-ping rounded-full bg-flame/25" />}
-          <img src="/figma/screens/2-141/icon-mic-1.svg" alt="" width={20} height={20} className="relative block size-5" />
+          <img src="/figma/v2/2014-814/icon-mic-1.svg" alt="" width={20} height={20} className="relative block size-5" />
         </button>
       )}
       <button
@@ -120,7 +121,7 @@ export function Composer({
         disabled={!shown.trim() || thinking || dictating}
         className="flex size-10 shrink-0 items-center justify-center rounded-[20px] bg-accent transition hover:bg-accent-strong active:scale-95 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
       >
-        <img src="/figma/screens/2-141/icon-send.svg" alt="" width={18} height={18} className="block size-[18px]" />
+        <img src="/figma/v2/2014-814/icon-send.svg" alt="" width={18} height={18} className="block size-[18px]" />
       </button>
     </form>
   );

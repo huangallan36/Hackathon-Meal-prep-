@@ -11,11 +11,11 @@ const SPARKS = [
   { left: "78%", top: "70%", delay: 1.4 },
 ];
 
-/** The meal photo (radius 22) with a scanning sweep while Gemini estimates nutrition */
+/** The meal photo (photo frame, radius 18) with a scanning sweep while Gemini estimates nutrition */
 export function ScanningPhoto({ src, label = "Estimating nutrition…" }: { src: string; label?: string }) {
   const reduce = useReducedMotion();
   return (
-    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-card bg-cream-deep" aria-busy="true">
+    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-tile bg-cream-deep" aria-busy="true">
       <SmartImage src={src} alt="Your meal" className="size-full" />
       <div className="absolute inset-0 bg-ink/15" />
 

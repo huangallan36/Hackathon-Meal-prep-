@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { amountOnly } from "./NutrientRow";
 import { ProgressBar } from "./ProgressBar";
 
-/** Figma 3.1 bar colors: protein green, carbs amber, fat orange (fiber blue for the diary) */
+/** Figma 3.1 bar colors: protein avocado, carbs lemon, fat tomato (fiber info blue for the diary) */
 export const MACRO_BAR: Partial<Record<NutrientKey, string>> = {
   protein: "bg-protein",
   carbs: "bg-carbs",
@@ -15,7 +15,7 @@ export const MACRO_BAR: Partial<Record<NutrientKey, string>> = {
 };
 
 /**
- * Figma 3.1 "Energy targets" rows: "Protein ... 128 / 150 g" over a 6px bar on a line-colored
+ * Figma 3.1 "Macros" rows: "Protein ... 128 / 150 g" over a 6px bar on a line-colored
  * track. Rows are 12px apart.
  */
 export function MacroBars({ rows, className }: { rows: NutrientRow[]; className?: string }) {

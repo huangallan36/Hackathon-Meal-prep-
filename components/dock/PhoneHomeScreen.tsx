@@ -32,11 +32,11 @@ import {
 import { motion, useIsPresent, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { SousLogo } from "@/components/mascot/Mascot";
 import { useDock } from "@/lib/stores/dock";
 import { useVoice } from "@/lib/stores/voice";
 import { cn } from "@/lib/utils";
 import { endSession, unlockAudio } from "@/lib/voice/engine";
-import { usePersona } from "@/lib/voice/persona";
 import { LiveActivity } from "./LiveActivity";
 import { SousBubble } from "./SousBubble";
 
@@ -212,10 +212,9 @@ function AppIcon({ app, index = 0, bare = false }: { app: App; index?: number; b
   );
 }
 
-/** Sous's own app icon: opens the app again (where you left it). */
+/** Sous's own app icon (the brand mark, Figma "logo/Leo listening"): opens the app again (where you left it). */
 function SousTile({ index }: { index: number }) {
   const reduce = useReducedMotion() ?? false;
-  const persona = usePersona();
   return (
     <motion.button
       type="button"
@@ -230,9 +229,7 @@ function SousTile({ index }: { index: number }) {
       }}
       whileTap={reduce ? undefined : { scale: 0.9 }}
     >
-      <span className="flex size-[60px] items-center justify-center rounded-[16px] bg-cream shadow-[0_6px_14px_-8px_rgb(0_0_0/0.55)]">
-        <img src={persona.orb} alt="" width={40} height={40} className="size-10" />
-      </span>
+      <SousLogo size={60} radius={16} className="shadow-[0_6px_14px_-8px_rgb(0_0_0/0.55)]" />
       <span className="max-w-full truncate text-[11px] font-medium leading-tight text-white [text-shadow:0_1px_2px_rgb(0_0_0/0.45)]">
         Sous
       </span>

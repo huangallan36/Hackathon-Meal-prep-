@@ -2,25 +2,41 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useId, useState } from "react";
+import type { StepTutorial } from "@/lib/cooking/tutorial";
 import type { Recipe } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { COOK_ICON } from "./icons";
 
 const VALID_ID = /^[\w-]{6,20}$/;
 
+const youtubeSearch = (query: string) => `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+
 /**
- * Figma 2.3 tutorial card: white, radius 16, a 96x64 dark thumbnail with the play button,
- * "TUTORIAL" (10 Bold flame), the title and a meta line.
+ * Figma 2.3 tutorial card: white, 1px line, radius 16, a 96x64 dark thumbnail (radius 10) with
+ * the 28px play button, "TUTORIAL" (10 Bold tomato, 0.8px tracking), the title (14 SemiBold)
+ * and a meta line (12, ink-soft).
  *
- * YouTube policy: the thumbnail is our own card, never a fake player. With a known video,
- * tapping it opens the real (privacy-enhanced) embed below the card: 16:9, at least 200px
- * tall, nothing layered on top. Without one it opens YouTube's search for the recipe.
+ * - `tutorial` (a technique found in the step, "How to dice an onion"): opens YouTube's search
+ *   for it in a new tab.
+ * - Otherwise the recipe's own tutorial. YouTube policy: the thumbnail is our own card, never a
+ *   fake player. With a known video, tapping it opens the real (privacy-enhanced) embed below
+ *   the card: 16:9, at least 200px tall, nothing layered on top. Without one it opens
+ *   YouTube's search for the recipe.
  */
-export function TutorialCard({ recipe, className }: { recipe: Pick<Recipe, "title" | "youtubeId">; className?: string }) {
+export function TutorialCard({
+  recipe,
+  tutorial,
+  className,
+}: {
+  recipe: Pick<Recipe, "title" | "youtubeId">;
+  /** The current step's technique, when it has one */
+  tutorial?: StepTutorial | null;
+  className?: string;
+}) {
   const [open, setOpen] = useState(false);
   const id = useId();
-  const videoId = recipe.youtubeId && VALID_ID.test(recipe.youtubeId) ? recipe.youtubeId : null;
-  const title = `How to make ${recipe.title}`;
+  const videoId = !tutorial && recipe.youtubeId && VALID_ID.test(recipe.youtubeId) ? recipe.youtubeId : null;
+  const title = tutorial?.title ?? `How to make ${recipe.title}`;
 
   const body = (
     <>
@@ -31,7 +47,7 @@ export function TutorialCard({ recipe, className }: { recipe: Pick<Recipe, "titl
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5 leading-[normal]">
         <span className="text-micro font-bold tracking-[0.8px] text-flame">TUTORIAL</span>
-        <span className="truncate text-sm font-semibold text-ink">{title}</span>
+        <span className="line-clamp-2 text-sm font-semibold text-ink">{title}</span>
         <span className="truncate text-xs text-ink-soft">
           {videoId ? (open ? "Playing below · tap to hide" : "Video · plays right here") : "YouTube · opens in a new tab"}
         </span>
@@ -45,10 +61,9 @@ export function TutorialCard({ recipe, className }: { recipe: Pick<Recipe, "titl
   );
 
   if (!videoId) {
-    const search = `https://www.youtube.com/results?search_query=${encodeURIComponent(`${recipe.title} recipe`)}`;
     return (
       <a
-        href={search}
+        href={youtubeSearch(tutorial?.query ?? `${recipe.title} recipe`)}
         target="_blank"
         rel="noopener noreferrer"
         aria-label={`${title}: search YouTube (opens in a new tab)`}

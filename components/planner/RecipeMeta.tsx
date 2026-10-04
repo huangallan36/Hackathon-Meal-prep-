@@ -34,6 +34,16 @@ export function RecipeEyebrow({
   );
 }
 
+/**
+ * Figma v2 source line under a recipe title ("HelloFresh", "Spend With Pennies"): DM Sans
+ * SemiBold 11 in avocado. It credits the recipe (and its photo); nothing renders without one.
+ */
+export function RecipeSource({ recipe, className }: { recipe: Pick<Recipe, "sourceName">; className?: string }) {
+  const name = recipe.sourceName?.trim();
+  if (!name) return null;
+  return <span className={cn("block w-full truncate text-caption font-semibold leading-[normal] text-accent", className)}>{name}</span>;
+}
+
 /** Stagger helper for CSS fade-up lists */
 export function stagger(index: number, step = 55): CSSProperties {
   return { animationDelay: `${Math.min(index, 8) * step}ms` };

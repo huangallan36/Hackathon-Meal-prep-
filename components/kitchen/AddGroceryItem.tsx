@@ -10,17 +10,18 @@ import { useVoice } from "@/lib/stores/voice";
 import { cn } from "@/lib/utils";
 import { isSttSupported } from "@/lib/voice/engine";
 
-const ICON_PLUS = "/figma/screens/2-152/icon-plus.svg";
-/** The design's search-bar mic (2.3 idle on green tint, 2.5 white on green while listening) */
-const ICON_MIC = "/figma/screens/2-146/icon-mic.svg";
-const ICON_MIC_ON = "/figma/screens/2-148/icon-mic.svg";
+/** Figma 2.4 avocado plus (16px) */
+const ICON_PLUS = "/figma/v2/2014-1255/icon-plus.svg";
+/** The design's search-bar mic (2.1 planner: avocado on its soft tint; 2.2 search: white on avocado while listening) */
+const ICON_MIC = "/figma/v2/2014-993/icon-mic.svg";
+const ICON_MIC_ON = "/figma/v2/2014-1069/icon-mic.svg";
 
-/** Hit band so the 18px text links get a 44px tap target without changing the layout */
+/** Hit band so the 18px text link gets a 44px tap target without changing the layout */
 const HIT = "relative after:absolute after:-inset-x-1 after:-inset-y-3 after:content-['']";
 
 /**
- * Figma 2.4 "+ Add item — or just say it". "Add item" opens a field; "just say it" opens it
- * and dictates straight into the list ("milk and paper towels" adds two rows).
+ * Figma 2.4 "+ Add item" (16px plus, 14 SemiBold avocado). It opens a field; its mic dictates
+ * straight into the list ("milk and paper towels" adds two rows).
  */
 export function AddGroceryItem({ onAdd }: { onAdd: (names: string[]) => void }) {
   const [open, setOpen] = useState(false);
@@ -78,26 +79,17 @@ export function AddGroceryItem({ onAdd }: { onAdd: (names: string[]) => void }) 
   return (
     <div className="w-full pt-3">
       {!open ? (
-        <p className="flex items-center text-sm font-semibold leading-[normal] text-accent">
-          <button
-            type="button"
-            onClick={openField}
-            className={cn(HIT, "inline-flex items-center gap-2 rounded-pill focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent")}
-          >
-            <img src={ICON_PLUS} alt="" width={16} height={16} className="size-4 shrink-0" />
-            Add item
-          </button>
-          <span aria-hidden className="whitespace-pre">
-            {" — "}
-          </span>
-          <button
-            type="button"
-            onClick={() => void sayIt()}
-            className={cn(HIT, "rounded-pill focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent")}
-          >
-            <span className="sr-only">Add an item by voice: </span>or just say it
-          </button>
-        </p>
+        <button
+          type="button"
+          onClick={openField}
+          className={cn(
+            HIT,
+            "inline-flex items-center gap-2 rounded-pill text-sm font-semibold leading-[normal] text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+          )}
+        >
+          <img src={ICON_PLUS} alt="" width={16} height={16} className="size-4 shrink-0" />
+          Add item
+        </button>
       ) : (
         <motion.form
           ref={formRef}

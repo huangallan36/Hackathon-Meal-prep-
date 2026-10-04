@@ -6,10 +6,10 @@ import { MAX_QUERY_LENGTH } from "@/lib/planner/search";
 import { cn } from "@/lib/utils";
 
 /**
- * Figma search pill (2.1 / 2.2): 50px white pill, search icon, field, a clear button once
- * there is text, and the mic. Browse state: 1px line + green-tint mic. Search state (or
- * focused): 1.5px green outline + solid green mic. Enter searches at once and dismisses
- * the phone keyboard; Escape or the X clears.
+ * Figma search pill (2.1 / 2.2): white pill, search icon, field, a clear button once there
+ * is text, and the 36px mic. Browse state: 50px, 1px line + avocado-soft mic. Search state:
+ * 51px, 1.5px avocado outline + solid avocado mic (focus shows the outline too). Enter
+ * searches at once and dismisses the phone keyboard; Escape or the X clears.
  */
 export function SearchBar({
   value,
@@ -46,10 +46,10 @@ export function SearchBar({
         inputRef?.current?.blur();
       }}
       className={cn(
-        "flex h-[50px] min-w-0 flex-1 items-center gap-2.5 rounded-pill bg-surface pl-4 pr-1.5 transition-shadow duration-200",
+        "flex min-w-0 flex-1 items-center gap-2.5 rounded-pill bg-surface pl-4 pr-1.5 transition-shadow duration-200",
         active
-          ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]"
-          : "shadow-[inset_0_0_0_1px_var(--color-line)] focus-within:shadow-[inset_0_0_0_1.5px_var(--color-accent)]",
+          ? "h-[51px] shadow-[inset_0_0_0_1.5px_var(--color-accent)]"
+          : "h-[50px] shadow-[inset_0_0_0_1px_var(--color-line)] focus-within:shadow-[inset_0_0_0_1.5px_var(--color-accent)]",
         className,
       )}
     >
@@ -57,7 +57,7 @@ export function SearchBar({
         {busy ? (
           <Spinner className="size-4 text-accent" />
         ) : (
-          <img src="/figma/screens/2-146/icon-search.svg" alt="" width={18} height={18} className="block size-[18px]" />
+          <img src="/figma/v2/2014-993/icon-search.svg" alt="" width={18} height={18} className="block size-[18px]" />
         )}
       </span>
       <input
@@ -78,7 +78,7 @@ export function SearchBar({
             onClear();
           }
         }}
-        placeholder="Search recipes or ask Sous…"
+        placeholder="Search recipes"
         aria-label="Search recipes, ingredients or cuisines"
         className={cn(
           "h-full min-w-0 flex-1 bg-transparent text-body font-medium text-ink outline-none placeholder:font-normal placeholder:text-ink-faint",
@@ -95,7 +95,7 @@ export function SearchBar({
           aria-label="Clear search"
           className="relative inline-flex size-[26px] shrink-0 items-center justify-center rounded-full bg-cream-deep transition after:absolute after:-inset-2 after:content-[''] active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent animate-pop"
         >
-          <img src="/figma/screens/2-148/icon-x.svg" alt="" width={14} height={14} className="block size-3.5" />
+          <img src="/figma/v2/2014-1069/icon-x.svg" alt="" width={14} height={14} className="block size-3.5" />
         </button>
       )}
       <button
@@ -105,12 +105,12 @@ export function SearchBar({
         aria-pressed={listening}
         className={cn(
           "relative inline-flex size-9 shrink-0 items-center justify-center rounded-full transition-colors duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
-          solidMic ? "bg-accent hover:bg-accent-strong" : "bg-accent-soft hover:bg-[#d5e6da]",
+          solidMic ? "bg-accent hover:bg-accent-strong" : "bg-accent-soft hover:bg-[#dbe7cc]",
         )}
       >
         {listening && <span aria-hidden className="absolute inset-0 animate-ping rounded-full bg-accent/35" />}
         <img
-          src={solidMic ? "/figma/screens/2-148/icon-mic.svg" : "/figma/screens/2-146/icon-mic.svg"}
+          src={solidMic ? "/figma/v2/2014-1069/icon-mic.svg" : "/figma/v2/2014-993/icon-mic.svg"}
           alt=""
           width={18}
           height={18}

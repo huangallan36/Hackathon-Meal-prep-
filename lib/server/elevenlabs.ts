@@ -3,7 +3,7 @@
  * never logged; errors are reduced to status + error code.
  */
 import type { VoiceOption, VoicesResponse } from "@/lib/types";
-import { PERSONAS } from "@/lib/voice/personas";
+import { DEFAULT_PERSONA, PERSONAS } from "@/lib/voice/personas";
 
 const API = "https://api.elevenlabs.io";
 const VOICE_ID = /^[A-Za-z0-9]{10,40}$/;
@@ -11,8 +11,8 @@ const VOICE_CACHE_MS = 10 * 60 * 1000;
 const VOICE_FAILURE_CACHE_MS = 60 * 1000;
 
 /**
- * Preferred premade voices, in order, after the sous-chef personas' own voices (Maya, Leo,
- * Nova always come first so the home picker finds their preview clips). Six are offered.
+ * Preferred premade voices, in order, after the personas' own voices (Maya, Leo, Nova and
+ * Brock always come first so the pickers find their preview clips). Six are offered.
  */
 const PREFERRED = ["Jessica", "George", "Bella", "Chris", "Charlie", "Lily", "Sarah", "Matilda", "Will", "Brian"];
 const PERSONA_VOICE_IDS = PERSONAS.map((p) => p.voiceId);
@@ -20,7 +20,11 @@ const VOICE_COUNT = 6;
 
 const PREVIEW = "https://storage.googleapis.com/eleven-public-prod/premade/voices";
 
-/** Verified premade voices on this account (labels from the live API), used when the voices API is unreachable. */
+/**
+ * Verified premade voices on this account (labels from the live API), used when the voices API
+ * is unreachable. The personas' voices first: Maya (Jessica), Leo (Brian), Nova (Laura),
+ * Brock (Charlie).
+ */
 export const FALLBACK_VOICES: VoiceOption[] = [
   {
     id: "cgSgspJ2msm6clMCkdW9",
@@ -32,6 +36,7 @@ export const FALLBACK_VOICES: VoiceOption[] = [
   },
   { id: "nPczCjzI2devNBz1zQrb", name: "Brian", description: "Deep, Resonant and Comforting", gender: "male", accent: "american" },
   { id: "FGY2WhTYpPnrIDTdsKH5", name: "Laura", description: "Enthusiast, Quirky Attitude", gender: "female", accent: "american" },
+  { id: "IKne3meq5aSn9XLyUdCD", name: "Charlie", description: "Deep, Confident, Energetic", gender: "male", accent: "australian" },
   { id: "JBFqnCBsd6RMkjVDRZzb", name: "George", description: "Warm, Captivating Storyteller", gender: "male", accent: "british" },
   {
     id: "hpp4J3VqNfWAUOO0d1Us",
@@ -49,7 +54,6 @@ export const FALLBACK_VOICES: VoiceOption[] = [
     accent: "american",
     previewUrl: `${PREVIEW}/iP95p4xoKVk53GoZ742B/3f4bde72-cc48-40dd-829f-57fbf906f4d7.mp3`,
   },
-  { id: "IKne3meq5aSn9XLyUdCD", name: "Charlie", description: "Deep, Confident, Energetic", gender: "male", accent: "australian" },
   {
     id: "pFZP5JQG7iQjIQuC4Bku",
     name: "Lily",
@@ -74,10 +78,10 @@ export function isVoiceId(id: unknown): id is string {
   return typeof id === "string" && VOICE_ID.test(id);
 }
 
-/** ELEVENLABS_DEFAULT_VOICE_ID when valid, else Jessica. */
+/** ELEVENLABS_DEFAULT_VOICE_ID when valid, else the default persona's voice (Leo). */
 export function defaultVoiceId(): string {
   const env = process.env.ELEVENLABS_DEFAULT_VOICE_ID?.trim();
-  return isVoiceId(env) ? env : FALLBACK_VOICES[0].id;
+  return isVoiceId(env) ? env : DEFAULT_PERSONA.voiceId;
 }
 
 export function ttsModelId(): string {

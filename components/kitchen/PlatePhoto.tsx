@@ -1,13 +1,12 @@
-import type { ReactNode } from "react";
-import { SmartImage } from "@/components/ui/Misc";
+"use client";
+
+import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-/** Figma 2.3 plate + food illustration assets (planner "Most popular" cards) */
+/** The earlier design's plate + food illustration (planner "Most popular" cards) */
 const ASSET = "/figma/screens/2-146";
 /** The white plate disc with its soft shadow */
 const PLATE = `${ASSET}/ellipse.svg`;
-/** Recipes without a real photo (the bundled demo catalog) carry this app placeholder */
-const APP_PLACEHOLDER = "/placeholder-dish.svg";
 
 /** The design's three dishes: food disc + topping dots (curry, salmon, salad) */
 const DISHES = [
@@ -24,21 +23,27 @@ const DOT_POS = [
   [18.5, 55.5],
 ];
 
-/** Figma photo-frame tints (peach, blush, sage, sky), picked per recipe so a card keeps its color */
-const TINTS = ["bg-butter-soft", "bg-flame-soft", "bg-accent-soft", "bg-sky-soft"];
+/** Soft frame tints (lemon, avocado, info, cream), picked per recipe so a card keeps its colour; tomato stays for warnings */
+const TINTS = ["bg-butter-soft", "bg-accent-soft", "bg-sky-soft", "bg-cream-deep"];
 export const plateTint = (seed: number) => TINTS[Math.abs(Math.trunc(seed)) % TINTS.length];
 
+/** False for a missing image and the catalog's generic placeholder (no real photo yet) */
+export function hasRecipePhoto(src?: string | null): src is string {
+  return Boolean(src) && !/placeholder-dish/.test(src as string);
+}
+
 /**
- * Figma 2.3 recipe image treatment: a tinted rounded frame with a white plate disc and the
- * dish in the middle. The plate is 80% of the frame height (10% from the top) and the
- * photo 72% of the plate, as in the design's 158x128 cards. Recipes with no real photo
- * show the design's own food illustration instead of a picture of a placeholder.
- * Size the frame with className.
+ * A recipe's photo in the design's photo frame (design rules v1: real dishes, photos radius
+ * 18, object-cover). Recipe imagery is data: `src` is the recipe's own photo. Recipes without
+ * one, or whose photo can't load, show the plate illustration instead (a tinted frame with a
+ * white plate and a food disc: plate at 80% of the frame height, food at 72% of the plate).
+ * Size the frame with className; overlays (badges, pills) go in children.
  */
 export function PlatePhoto({
   src,
   alt,
   seed,
+  shape = "tile",
   className,
   children,
 }: {
@@ -46,39 +51,69 @@ export function PlatePhoto({
   alt: string;
   /** Picks the tint and the fallback dish (e.g. the recipe id) */
   seed: number;
+  /** tile: photos and cards (radius 18); thumb: 60px list thumbs (radius 14, Figma "Similar" rows) */
+  shape?: "tile" | "thumb";
   className?: string;
   /** Overlays (badges, pills) positioned against the frame */
   children?: ReactNode;
 }) {
-  const n = Math.abs(Math.trunc(seed));
-  const dish = DISHES[n % DISHES.length];
-  const photo = src && src !== APP_PLACEHOLDER ? src : null;
+  const [failed, setFailed] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState<string | null>(null);
+  const photo = hasRecipePhoto(src) && failed !== src ? src : null;
+  const ready = photo != null && loaded === photo;
 
   return (
-    <span className={cn("relative block overflow-hidden rounded-tile", plateTint(seed), className)}>
-      <span className="absolute left-1/2 top-[10%] block aspect-square h-[80%] -translate-x-1/2">
-        {/* The SVG's box adds room for the shadow around the 102.4px disc (Figma insets) */}
-        <img src={PLATE} alt="" className="absolute left-[-7.81%] top-[-4.88%] block h-[115.62%] w-[115.62%] max-w-none" />
-        <span className="absolute inset-[14%] block overflow-hidden rounded-full">
-          {photo ? (
-            <SmartImage src={photo} alt={alt} className="size-full" fallback={`${ASSET}/${dish.disc}.svg`} />
-          ) : (
-            <span role="img" aria-label={alt} className="relative block size-full">
-              <img src={`${ASSET}/${dish.disc}.svg`} alt="" className="absolute inset-0 block size-full max-w-none" />
-              {dish.dots.map((dot, i) => (
-                <img
-                  key={i}
-                  src={`${ASSET}/${dot}.svg`}
-                  alt=""
-                  className="absolute block size-[13%] max-w-none"
-                  style={{ left: `${DOT_POS[i][0]}%`, top: `${DOT_POS[i][1]}%` }}
-                />
-              ))}
-            </span>
-          )}
-        </span>
-      </span>
+    <span
+      className={cn(
+        "relative block overflow-hidden",
+        shape === "thumb" ? "rounded-thumb" : "rounded-tile",
+        photo ? "bg-cream-deep" : plateTint(seed),
+        photo && !ready && "skeleton",
+        className,
+      )}
+    >
+      {photo ? (
+        <img
+          src={photo}
+          alt={alt}
+          loading="lazy"
+          decoding="async"
+          onLoad={() => setLoaded(photo)}
+          onError={() => setFailed(photo)}
+          className={cn("absolute inset-0 block size-full object-cover transition-opacity duration-300", ready ? "opacity-100" : "opacity-0")}
+        />
+      ) : (
+        <PlateArt alt={alt} seed={seed} />
+      )}
       {children}
+    </span>
+  );
+}
+
+/** The plate illustration, centred in its frame */
+function PlateArt({ alt, seed }: { alt: string; seed: number }) {
+  const dish = DISHES[Math.abs(Math.trunc(seed)) % DISHES.length];
+  return (
+    <span
+      role={alt ? "img" : undefined}
+      aria-label={alt || undefined}
+      aria-hidden={alt ? undefined : true}
+      className="absolute left-1/2 top-[10%] block aspect-square h-[80%] -translate-x-1/2"
+    >
+      {/* The SVG's box adds room for the shadow around the 102.4px disc (Figma insets) */}
+      <img src={PLATE} alt="" className="absolute left-[-7.81%] top-[-4.88%] block h-[115.62%] w-[115.62%] max-w-none" />
+      <span className="absolute inset-[14%] block overflow-hidden rounded-full">
+        <img src={`${ASSET}/${dish.disc}.svg`} alt="" className="absolute inset-0 block size-full max-w-none" />
+        {dish.dots.map((dot, i) => (
+          <img
+            key={i}
+            src={`${ASSET}/${dot}.svg`}
+            alt=""
+            className="absolute block size-[13%] max-w-none"
+            style={{ left: `${DOT_POS[i][0]}%`, top: `${DOT_POS[i][1]}%` }}
+          />
+        ))}
+      </span>
     </span>
   );
 }

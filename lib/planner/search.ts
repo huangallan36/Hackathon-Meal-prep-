@@ -11,6 +11,7 @@
 import { getCatalog, ingredientMatches, isPantry } from "@/lib/recipes/catalog";
 import { parseIngredientsParam } from "@/lib/kitchen/sanitize";
 import type { Recipe, RecipeSearchResponse } from "@/lib/types";
+import { ingredientPhoto } from "./ingredient-photos";
 
 export const MAX_QUERY_LENGTH = 60;
 const MAX_MATCHES = 24;
@@ -151,10 +152,18 @@ function joinList(items: string[], last: "or" | "and"): string {
   return `${items.slice(0, -1).join(", ")} ${last} ${items[items.length - 1]}`;
 }
 
-/** "Boneless skinless chicken breasts" -> "chicken breasts" (keeps the recipe's own wording) */
+/** Meats sold minced, where "ground" names the cut ("ground beef"), unlike "ground cumin" */
+const MINCED = new Set(["beef", "pork", "turkey", "chicken", "lamb", "veal", "bison", "meat", "sausage"]);
+
+/**
+ * "Boneless skinless chicken breasts" -> "chicken breasts", "lean ground beef" -> "ground beef"
+ * (keeps the recipe's own wording)
+ */
 export function shortIngredientName(name: string): string {
   const parts = name.toLowerCase().trim().split(/\s+/);
-  while (parts.length > 1 && DESCRIPTORS.has(parts[0])) parts.shift();
+  while (parts.length > 1 && DESCRIPTORS.has(parts[0]) && !(parts[0] === "ground" && MINCED.has(singular(parts[1])))) {
+    parts.shift();
+  }
   return parts.join(" ");
 }
 
@@ -163,9 +172,49 @@ function isSupporting(name: string): boolean {
   return w.length === 0 || w.every((x) => SUPPORTING.has(x));
 }
 
+/** Proteins in MAINS, which recipes name by their cut ("chicken breasts", "salmon fillets") */
+const PROTEIN_MAINS = new Set(["chicken", "beef", "pork", "salmon", "shrimp", "tofu"]);
+
+/**
+ * The MAINS entry an ingredient is a kind of, by its head noun: "jasmine rice" -> rice,
+ * "red bell peppers" -> bell pepper, "sweet potato" -> sweet potato, "chicken breasts" ->
+ * chicken; but "rice vinegar" or "chicken broth" -> none.
+ */
+function mainOf(name: string): string | undefined {
+  const w = words(name);
+  const head = w[w.length - 1];
+  let best: string | undefined;
+  for (const m of MAINS) {
+    const mw = m.split(" ");
+    if (mw[mw.length - 1] === head && mw.every((x) => w.includes(x)) && (!best || m.length > best.length)) best = m;
+  }
+  if (best) return best;
+  return w.length > 1 && PROTEIN_MAINS.has(w[0]) && ingredientMatches(w[0], name) ? w[0] : undefined;
+}
+
 function mainRank(name: string): number {
-  const i = MAINS.findIndex((m) => ingredientMatches(m, name));
-  return i === -1 ? MAINS.length : i;
+  const main = mainOf(name);
+  return main ? MAINS.indexOf(main) : MAINS.length;
+}
+
+/** What a combination pairs the query with: the main it is ("rice" for "jasmine rice"), else its short name */
+function pairName(name: string): string {
+  return mainOf(name) ?? shortIngredientName(name);
+}
+
+/** Heads that make an ingredient a different food from the one it starts with */
+const BY_PRODUCT = new Set(["vinegar", "wine", "flour", "starch"]);
+
+/** ingredientMatches, minus by-products: "rice" covers "jasmine rice" but not "rice vinegar" */
+function isKindOf(alt: string, name: string): boolean {
+  if (!ingredientMatches(alt, name)) return false;
+  const head = words(name).pop();
+  return !(head && BY_PRODUCT.has(head) && !alt.split(" ").includes(head));
+}
+
+/** True when the ingredient's head noun is the term itself ("lean ground beef" for beef, not "beef broth") */
+function headIs(alt: string, name: string): boolean {
+  return words(name).pop() === singular(alt.split(" ").pop() ?? "");
 }
 
 /** Trim, strip odd characters, collapse whitespace, cap at 60 chars. Lowercase. */
@@ -336,7 +385,7 @@ function hasWord(list: string[], alt: string, prefix: boolean): "exact" | "prefi
 
 /** True when the recipe actually contains this ingredient (not just a title mention) */
 function usesIngredient(term: Term, ix: Indexed): boolean {
-  return term.alts.some((alt) => ix.ingredientNames.some((n) => ingredientMatches(alt, n)));
+  return term.alts.some((alt) => ix.ingredientNames.some((n) => isKindOf(alt, n)));
 }
 
 function termScore(term: Term, ix: Indexed): number {
@@ -423,7 +472,7 @@ function buildCombinations(
     const notable = recipe.ingredients.filter((ing) => {
       const name = shortIngredientName(ing.name);
       if (seen.has(name) || isPantry(ing.name) || isSupporting(ing.name)) return false;
-      if (anchor.some((t) => t.alts.some((alt) => ingredientMatches(alt, ing.name)))) return false;
+      if (anchor.some((t) => t.alts.some((alt) => isKindOf(alt, ing.name)))) return false;
       seen.add(name);
       return true;
     });
@@ -432,7 +481,7 @@ function buildCombinations(
     if (!ranked.length) continue;
     list.push({
       recipe,
-      pairs: ranked.slice(0, 2).map((i) => shortIngredientName(i.name)),
+      pairs: [...new Set(ranked.map((i) => pairName(i.name)))].slice(0, 2),
       haveCount: fromFridge.length,
       rank: mainRank(ranked[0].name),
     });
@@ -579,7 +628,7 @@ export function searchSuggestions(pool: Recipe[] = getCatalog(), n = 5): string[
     const seen = new Set<string>();
     for (const ing of r.ingredients) {
       if (isPantry(ing.name) || isSupporting(ing.name)) continue;
-      const main = MAINS[mainRank(ing.name)];
+      const main = mainOf(ing.name);
       const word = main ? (PLURAL[main] ?? main) : shortIngredientName(ing.name);
       if (!word || word.split(" ").length > 2 || seen.has(word)) continue;
       seen.add(word);
@@ -600,21 +649,23 @@ export function hasResults(query: string, options: SearchOptions = {}, pool: Rec
 /* Result presentation (search state)                                  */
 /* ------------------------------------------------------------------ */
 
-/** A "Cuts & ingredients" chip: an ingredient as the recipes name it, with its photo */
+/** A "Cuts" chip: an ingredient as the recipes name it, with its photo */
 export interface IngredientChip {
   /** Short lowercase name, also the refinement key ("ground beef") */
   key: string;
   label: string;
-  /** Spoonacular ingredient photo, when a recipe has one */
+  /** Our photo of it (public/ingredients), else the recipe's ingredient image (Spoonacular) */
   image?: string;
   /** Recipes in the result that use it */
   count: number;
+  /** A form of the query ingredient itself ("ground beef" for "beef"), not a top-up */
+  direct: boolean;
 }
 
 /** Last words that make an ingredient a by-product of the query, not a cut of it ("beef broth") */
 const NOT_A_CUT = new Set([
   "broth", "stock", "bouillon", "sauce", "gravy", "fat", "drippings", "seasoning", "powder", "extract", "juice",
-  "paste", "base", "flavoring",
+  "paste", "base", "flavoring", ...BY_PRODUCT,
 ]);
 
 function chipKey(name: string): string {
@@ -627,15 +678,18 @@ export function hasIngredient(recipe: Recipe, key: string): boolean {
 }
 
 /**
- * "Cuts & ingredients" for a query: the query ingredient as these recipes actually name it
- * ("ground beef", "flank steak", "beef short ribs"), most used first. When the query names
- * no ingredient ("thai", "soup") or only one form of it, it is topped up with what those
- * recipes are mostly made of.
+ * "Cuts" for a query: the query ingredient as these recipes actually name it ("ground beef",
+ * "flank steak", "beef short ribs"), most used first (ties in result order). When the query
+ * names no ingredient ("thai", "soup") or only one form of it, it is topped up with what those
+ * recipes are mostly made of (`direct: false`). Pass the recipes that answer the query, not
+ * the "similar" ones, or a beef search grows salmon chips.
  */
 export function relatedIngredients(query: string, recipes: Recipe[], max = 8): IngredientChip[] {
   const parsed = parseQuery(query);
-  const direct = new Map<string, IngredientChip>();
-  const other = new Map<string, IngredientChip>();
+  /** `photo`: our own photo for it, used once per row (two steaks don't share a picture) */
+  type Chip = IngredientChip & { photo?: string };
+  const direct = new Map<string, Chip>();
+  const other = new Map<string, Chip>();
 
   for (const recipe of dedupeById(recipes)) {
     const seen = new Set<string>();
@@ -658,16 +712,22 @@ export function relatedIngredients(query: string, recipes: Recipe[], max = 8): I
       if (prev) {
         prev.count += 1;
         prev.image ??= ing.image;
+        prev.photo ??= ingredientPhoto(ing.name);
       } else {
-        target.set(key, { key, label: capitalize(key), image: ing.image, count: 1 });
+        target.set(key, { key, label: capitalize(key), image: ing.image, photo: ingredientPhoto(ing.name), count: 1, direct: hit });
       }
     }
   }
 
-  const byCount = (a: IngredientChip, b: IngredientChip) => b.count - a.count || a.label.localeCompare(b.label);
-  const first = [...direct.values()].sort(byCount);
-  const rest = first.length >= 4 ? [] : [...other.values()].sort((a, b) => b.count - a.count || mainRank(a.key) - mainRank(b.key));
-  return [...first, ...rest].slice(0, max);
+  // Stable sorts: equal counts keep the result order (best match first).
+  const first = [...direct.values()].sort((a, b) => b.count - a.count);
+  const rest = first.length >= 2 ? [] : [...other.values()].sort((a, b) => b.count - a.count || mainRank(a.key) - mainRank(b.key));
+  const used = new Set<string>();
+  return [...first, ...rest].slice(0, max).map(({ photo, ...chip }) => {
+    if (!photo || used.has(photo)) return chip;
+    used.add(photo);
+    return { ...chip, image: photo };
+  });
 }
 
 /** A "Combinations" card: the query ingredient + one partner, with every recipe that pairs them */
@@ -685,7 +745,11 @@ export interface ComboGroup {
 
 /**
  * Groups Combinations by partner ingredient ("Beef + Broccoli · 14 recipes"), keeping the
- * server's order (fridge pairings first). `keep` narrows the recipes (a selected cut chip).
+ * server's order (fridge pairings first). Every recipe counts under its main partner, and
+ * under its second one when that is a main too, so a beef & broccoli stir-fry with bell
+ * peppers is in "Beef + Broccoli" and in "Beef + Bell pepper". Every card shows the same
+ * photo for the query ingredient (like the design's ground beef). `keep` narrows the recipes
+ * (a selected cut chip).
  */
 export function combinationGroups(
   data: Pick<PlannerSearchResponse, "combinations" | "pairs" | "anchor">,
@@ -694,24 +758,42 @@ export function combinationGroups(
   const anchor = data.anchor;
   if (!anchor) return [];
   const anchorWords = anchor.split(" & ").filter(Boolean);
+  // "beef" also shows up as steak or brisket in the recipes
+  const anchorAlts = anchorWords.flatMap((a) => [a, ...(SYNONYMS[singular(a)] ?? [])]);
+  const recipes = keep ? data.combinations.filter(keep) : data.combinations;
+  // The query ingredient itself first ("lean ground beef" for beef, "flank steak" for steak),
+  // then its synonyms, then any form of it; our photo before the recipe's thumbnail.
+  const formRank = (name: string) =>
+    anchorWords.some((a) => headIs(a, name)) ? 0 : anchorAlts.some((a) => headIs(a, name)) ? 1 : 2;
+  const anchorImage = recipes
+    .flatMap((r) => r.ingredients)
+    .filter((i) => anchorAlts.some((a) => isKindOf(a, i.name)))
+    .sort((a, b) => formRank(a.name) - formRank(b.name))
+    .map((i) => ingredientPhoto(i.name) ?? i.image)
+    .find(Boolean);
   const groups = new Map<string, ComboGroup>();
-  for (const recipe of data.combinations) {
-    if (keep && !keep(recipe)) continue;
-    const pair = data.pairs[String(recipe.id)]?.[0];
-    if (!pair) continue;
-    let group = groups.get(pair);
-    if (!group) {
-      group = {
-        key: pair,
-        title: `${capitalize(anchorWords.join(" & "))} + ${capitalize(pair)}`,
-        query: `${anchorWords.join(" ")} ${pair}`,
-        recipes: [],
-      };
-      groups.set(pair, group);
+  for (const slot of [0, 1]) {
+    for (const recipe of recipes) {
+      const pair = data.pairs[String(recipe.id)]?.[slot];
+      if (!pair || (slot > 0 && !MAINS.includes(pair))) continue;
+      let group = groups.get(pair);
+      if (!group) {
+        group = {
+          key: pair,
+          title: `${capitalize(anchorWords.join(" & "))} + ${capitalize(pair)}`,
+          query: `${anchorWords.join(" ")} ${pair}`,
+          recipes: [],
+          anchorImage,
+        };
+        groups.set(pair, group);
+      }
+      if (group.recipes.some((r) => r.id === recipe.id)) continue;
+      group.recipes.push(recipe);
+      if (!group.pairImage) {
+        const partner = recipe.ingredients.find((i) => pairName(i.name) === pair);
+        group.pairImage = ingredientPhoto(pair) ?? (partner && (ingredientPhoto(partner.name) ?? partner.image));
+      }
     }
-    group.recipes.push(recipe);
-    group.anchorImage ??= recipe.ingredients.find((i) => i.image && anchorWords.some((a) => ingredientMatches(a, i.name)))?.image;
-    group.pairImage ??= recipe.ingredients.find((i) => i.image && shortIngredientName(i.name) === pair)?.image;
   }
   return [...groups.values()];
 }

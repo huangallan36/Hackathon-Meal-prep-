@@ -12,7 +12,7 @@ import { TimerPill } from "./TimerPill";
 const focusRing =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface";
 
-/** Figma 2.3 primary: 54px green pill, 16px SemiBold white label. For a <button> or <Link>. */
+/** Figma 2.3 primary: 54px avocado pill, 16px SemiBold white label. For a <button> or <Link>. */
 export const sheetPrimaryClass = cn(
   "inline-flex h-[54px] min-w-0 flex-1 items-center justify-center gap-2 rounded-pill bg-accent px-5 text-base font-semibold leading-[normal] text-white transition active:scale-[0.97] hover:bg-accent-strong",
   focusRing,
@@ -20,7 +20,8 @@ export const sheetPrimaryClass = cn(
 
 /**
  * Figma 2.3 "cook controls": the white bottom sheet (radius 28 on top, the design's only
- * shadow) with the running timer, the hands-free row, then back / primary / mic.
+ * shadow) with the running timer, the hands-free row (the voice's mascot + "Say “next” or
+ * “repeat” to keep going"), then back (cream) / primary (avocado) / mic (tomato: voice).
  *
  * It is `sticky` at the end of the page's full-height column: it stays on screen while the
  * steps scroll, and once you reach the end it sits below the last step instead of covering
@@ -72,7 +73,7 @@ export function CookSheet({
   );
 }
 
-/** 54px flame-soft mic circle: the orb's tap (talk, or stop listening), with a ring while listening */
+/** 54px tomato-soft mic circle: the orb's tap (talk, or stop listening), with a ring while listening */
 function MicButton() {
   const reduce = useReducedMotion() ?? false;
   const status = useVoice((s) => (s.sessionActive && !s.paused ? s.status : "idle"));

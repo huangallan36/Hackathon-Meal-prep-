@@ -1,6 +1,7 @@
 /**
- * GET /api/voices -> VoicesResponse. Six premade ElevenLabs voices for the voice
- * picker, cached in memory for 10 minutes. Falls back to a verified static list.
+ * GET /api/voices -> VoicesResponse. Six premade ElevenLabs voices, the four personas'
+ * (Maya, Leo, Nova, Brock) first, cached in memory for 10 minutes. Falls back to a verified
+ * static list.
  */
 import { FALLBACK_VOICES, getVoices } from "@/lib/server/elevenlabs";
 import type { VoicesResponse } from "@/lib/types";

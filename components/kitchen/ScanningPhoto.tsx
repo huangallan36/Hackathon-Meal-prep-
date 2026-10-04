@@ -17,7 +17,7 @@ const PINGS = [
   { x: 30, y: 78, delay: 2.9 },
 ];
 
-/** The fridge photo with a sweeping scan line, shimmer and detection pings while Gemini works. */
+/** The fridge photo (photo frame, radius 18) with a sweeping scan line, shimmer and detection pings while Gemini works. */
 export function ScanningPhoto({ src, label = "Gemini is looking..." }: { src: string; label?: string }) {
   const [hint, setHint] = useState(0);
   useEffect(() => {
@@ -26,7 +26,7 @@ export function ScanningPhoto({ src, label = "Gemini is looking..." }: { src: st
   }, []);
 
   return (
-    <div className="relative overflow-hidden rounded-card bg-ink" role="status" aria-live="polite">
+    <div className="relative overflow-hidden rounded-tile bg-ink" role="status" aria-live="polite">
       <FridgePhoto
         src={src}
         alt="Your fridge photo"

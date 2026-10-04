@@ -36,6 +36,7 @@ export function ResultsSkeleton() {
           <div className="flex-1 space-y-2">
             <Line className="h-4 w-3/5" />
             <Line className="h-3 w-2/5" />
+            <Line className="h-2.5 w-1/4" />
           </div>
         </div>
       ))}

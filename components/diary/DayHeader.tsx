@@ -7,7 +7,7 @@ import type { ISODate } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /**
- * Figma 3.3 date nav: 40px ‹ › circles around "Today" (Fraunces 20) and "Saturday, October 3".
+ * Figma 3.3 date nav: 40px ‹ › circles around "Today" (Bricolage 20) and "Saturday, October 3".
  * The date opens the month calendar (3.4), marked by its small calendar icon.
  */
 export function DayHeader({
@@ -25,7 +25,7 @@ export function DayHeader({
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between gap-2 bg-cream/90 px-5 pb-2 pt-[calc(var(--safe-top)+6px)] backdrop-blur-md">
       <IconButton label="Previous day" onClick={onPrev}>
-        <img src="/figma/screens/2-159/icon-chev-l.svg" alt="" width={20} height={20} className="block size-5" />
+        <img src="/figma/v2/2014-1536/icon-chev-l.svg" alt="" width={20} height={20} className="block size-5" />
       </IconButton>
       <Link
         href={`/diary/calendar?d=${date}`}
@@ -35,7 +35,7 @@ export function DayHeader({
         <h1 className="truncate font-display text-xl font-semibold text-ink">{dayHeading(date, today)}</h1>
         <span className="flex max-w-full items-center gap-1">
           <span className="truncate text-xs text-ink-soft">{daySubheading(date, today)}</span>
-          <img src="/figma/screens/2-161/icon-cal.svg" alt="" width={12} height={12} className="block size-3 shrink-0" />
+          <img src="/figma/v2/2014-1669/icon-cal.svg" alt="" width={12} height={12} className="block size-3 shrink-0" />
         </span>
       </Link>
       <IconButton
@@ -44,7 +44,7 @@ export function DayHeader({
         onClick={onNext}
         className={cn("disabled:pointer-events-none disabled:opacity-35")}
       >
-        <img src="/figma/screens/2-159/icon-chev-r.svg" alt="" width={20} height={20} className="block size-5" />
+        <img src="/figma/v2/2014-1536/icon-chev-r.svg" alt="" width={20} height={20} className="block size-5" />
       </IconButton>
     </header>
   );

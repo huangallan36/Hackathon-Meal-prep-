@@ -10,6 +10,7 @@ import { AddFoodSheet } from "./AddFoodSheet";
 import { DayHeader } from "./DayHeader";
 import { DaySummary } from "./DaySummary";
 import { EntrySheet } from "./EntrySheet";
+import { MascotNote } from "./MascotNote";
 import { MealSection } from "./MealSection";
 import { NutrientsSection } from "./NutrientsSection";
 import { stagger } from "./stagger";
@@ -45,8 +46,8 @@ const wantsNutrients = () => typeof window !== "undefined" && window.location.ha
 
 /**
  * Figma 3.3 daily diary for one (valid, not future) day: date nav, week strip, Eaten /
- * Burned / Left rings, the four meal cards (an empty dinner offers "Log dinner by voice"),
- * then the day's nutrients. Entry rows open the details sheet (edit / delete).
+ * Burned / Left rings, the four meal cards (an empty dinner has the sous-chef's note and
+ * "Log dinner" by voice), then the day's nutrients. Entry rows open the details sheet.
  */
 export function DayDiary({ date, today }: { date: ISODate; today: ISODate }) {
   const router = useRouter();
@@ -124,7 +125,10 @@ export function DayDiary({ date, today }: { date: ISODate; today: ISODate }) {
               style={stagger(i + 2)}
               empty={
                 meal === "dinner" ? (
-                  <VoiceLogButton meal="dinner" date={date} onFallback={() => openAdd("dinner")} className="pt-2.5" />
+                  <>
+                    <MascotNote className="pt-2.5">Nothing yet. Tap below and tell me what you ate.</MascotNote>
+                    <VoiceLogButton meal="dinner" date={date} onFallback={() => openAdd("dinner")} className="pt-2.5" />
+                  </>
                 ) : undefined
               }
             />

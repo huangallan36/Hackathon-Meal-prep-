@@ -2,12 +2,13 @@
 
 /**
  * A "Live Activity" for the call, on the simulated phone home screen while Sous is docked
- * (inspired by Figma 1.4, the lock screen during a live call): persona orb + "Sous · Maya",
+ * (inspired by the lock screen during a live call): the persona's mascot avatar + "Sous · Leo",
  * a LIVE badge, the current recipe step with progress while cooking (else what's being said),
  * and pause / keyboard / end controls.
  */
 import { Play } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
+import { MascotAvatar } from "@/components/mascot/Mascot";
 import { statusLabel } from "@/components/voice/status";
 import { HangUpIcon } from "@/components/voice/HangUpIcon";
 import { useCallTimer } from "@/components/voice/useCall";
@@ -74,7 +75,7 @@ export function LiveActivity({ onOpen, onEnd, className }: { onOpen: () => void;
         aria-label={`Open the call with ${persona.name}`}
         className="flex w-full items-center gap-2.5 rounded-[14px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
       >
-        <img src={persona.orb} alt="" width={40} height={40} className="block size-10 shrink-0" />
+        <MascotAvatar persona={persona} size={40} />
         <span className="flex min-w-px flex-1 flex-col gap-px whitespace-nowrap">
           <span className="truncate text-body font-semibold text-white">Sous · {persona.name}</span>
           <span className="truncate text-xs text-white/60">{subtitle}</span>

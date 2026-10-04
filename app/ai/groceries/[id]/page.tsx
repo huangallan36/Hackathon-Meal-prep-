@@ -1,12 +1,13 @@
 "use client";
 
-import { ChefHat, ChevronRight, PartyPopper, Refrigerator, SearchX } from "lucide-react";
+import { ChefHat, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AddGroceryItem } from "@/components/kitchen/AddGroceryItem";
 import { CheckCircle, GroceryList, Segmented, type GroceryLine } from "@/components/kitchen/GroceryChecklist";
 import { NearbyStores } from "@/components/kitchen/NearbyStores";
+import { SousAvatar, SousLine } from "@/components/kitchen/SousLine";
 import { Button, ButtonLink, IconButton } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/Misc";
 import { PageTitle } from "@/components/ui/ScreenHeader";
@@ -21,9 +22,9 @@ import { useKitchen } from "@/lib/stores/kitchen";
 import { toast } from "@/lib/stores/toast";
 import type { Recipe } from "@/lib/types";
 
-/** Figma 2.4 header assets */
-const ICON_BACK = "/figma/screens/2-152/icon-chev-l.svg";
-const ICON_SHARE = "/figma/screens/2-152/icon-share.svg";
+/** Figma 2.4 header assets (updated file, node 2014-1255) */
+const ICON_BACK = "/figma/v2/2014-1255/icon-chev-l.svg";
+const ICON_SHARE = "/figma/v2/2014-1255/icon-share.svg";
 
 type Tab = "need" | "have";
 
@@ -180,7 +181,7 @@ function GroceryView({ recipe }: { recipe: Recipe }) {
           title="Groceries"
           subtitle={
             <span className="text-sm leading-[normal]">
-              For {recipe.title} · {plural(recipe.servings, "serving")}
+              {recipe.title}, serves {recipe.servings}
             </span>
           }
           className="pt-0.5"
@@ -220,23 +221,25 @@ function GroceryView({ recipe }: { recipe: Recipe }) {
           <AddGroceryItem onAdd={addItems} />
 
           {allNeed > 0 && remaining.length === 0 && (
-            <p className="mt-4 flex items-center gap-2 rounded-thumb bg-accent-soft px-3.5 py-3 text-meta font-semibold text-accent animate-pop">
-              <PartyPopper className="size-4 shrink-0" />
+            <SousLine live className="mt-4">
               All in the cart. Time to cook!
-            </p>
+            </SousLine>
           )}
 
           {plan.noScan && plan.need.length > 0 && (
             <Link
               href={FRIDGE_SCAN_HREF}
-              className="mt-4 flex items-center gap-3 rounded-thumb bg-butter-soft px-3.5 py-3 text-meta leading-snug text-ink-soft transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="mt-4 block rounded-[16px] transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
-              <Refrigerator className="size-[18px] shrink-0 text-butter-ink" />
-              <span className="flex-1">
-                No fridge scan yet, so this is everything. <span className="font-semibold text-accent">Scan your fridge</span> to
-                trim it down.
-              </span>
-              <ChevronRight className="size-4 shrink-0 text-ink-mute" />
+              <SousLine>
+                <span className="flex items-center gap-2">
+                  <span className="min-w-0 flex-1">
+                    No fridge scan yet, so this is everything. <span className="font-semibold underline underline-offset-2">Scan your fridge</span>{" "}
+                    and I&apos;ll trim it down.
+                  </span>
+                  <ChevronRight className="size-4 shrink-0 opacity-70" aria-hidden />
+                </span>
+              </SousLine>
             </Link>
           )}
         </section>
@@ -287,7 +290,7 @@ function NotFoundView() {
         <div className="px-5 pt-4">
           <div className="rounded-card bg-surface shadow-card">
             <EmptyState
-              icon={<SearchX className="size-6" />}
+              icon={<SousAvatar size={56} />}
               title="Recipe not found"
               body="It may not be saved on this device, or you're offline right now."
               action={

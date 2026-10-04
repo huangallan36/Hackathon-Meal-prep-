@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, ExternalLink, ListChecks, LogOut, RotateCcw, SearchX, ShoppingBasket, Volume2 } from "lucide-react";
+import { Camera, ExternalLink, ListChecks, LogOut, RotateCcw, ShoppingBasket, Volume2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -13,6 +13,7 @@ import { COOK_ICON } from "@/components/cooking/icons";
 import { IngredientsPanel } from "@/components/cooking/IngredientsPanel";
 import { RecipeCredits, RecipeOverview } from "@/components/cooking/RecipeOverview";
 import { StepTimeline } from "@/components/cooking/StepTimeline";
+import { SousAvatar } from "@/components/kitchen/SousLine";
 import { ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/Misc";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
@@ -72,7 +73,7 @@ export default function CookPage() {
       <div className="pb-10">
         <ScreenHeader back={BACK_HREF} eyebrow="Cooking mode" />
         <EmptyState
-          icon={<SearchX className="size-6" />}
+          icon={<SousAvatar size={56} />}
           title="Recipe not found"
           body="We couldn't load this recipe. Pick another one from your suggestions."
           action={<ButtonLink href={BACK_HREF}>See recipes</ButtonLink>}

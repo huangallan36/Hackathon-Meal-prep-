@@ -1,8 +1,10 @@
 "use client";
 
-import { PartyPopper, RotateCcw, Undo2 } from "lucide-react";
+import { RotateCcw, Undo2 } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
+import { MascotFigure } from "@/components/mascot/Mascot";
 import { ButtonLink } from "@/components/ui/Button";
+import { usePersona } from "@/lib/voice/persona";
 
 const COLORS = ["var(--color-accent)", "var(--color-butter)", "var(--color-flame)", "var(--color-accent-soft)", "var(--color-sky)"];
 
@@ -31,7 +33,7 @@ function ConfettiBurst() {
   const reduce = useReducedMotion();
   if (reduce) return null;
   return (
-    <div className="pointer-events-none absolute left-1/2 top-[60px] size-0" aria-hidden>
+    <div className="pointer-events-none absolute left-1/2 top-[90px] size-0" aria-hidden>
       {PIECES.map((p, i) => (
         <motion.span
           key={i}
@@ -63,8 +65,9 @@ const textButton =
   "inline-flex h-11 items-center gap-1.5 whitespace-nowrap rounded-pill px-3 text-meta font-semibold text-ink-soft transition hover:bg-cream active:scale-95";
 
 /**
- * "Nice work!" card after the last step, flat like the rest of the design. The main
- * action ("Snap your finished meal") is the sheet's green button right below.
+ * "Nice work!" card after the last step, flat like the rest of the design. Celebrations get
+ * the chosen voice's full-body mascot (design rules v1: >= 120px, in its "speaking" pose where
+ * the art has one). The main action ("Snap your meal") is the sheet's avocado button below.
  */
 export function FinishCelebration({
   title,
@@ -75,30 +78,31 @@ export function FinishCelebration({
   onBackToSteps: () => void;
   onStartOver: () => void;
 }) {
+  const persona = usePersona();
   return (
     <motion.section
       initial={{ opacity: 0, y: 16, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 26 }}
-      className="relative mx-5 overflow-hidden rounded-card bg-surface px-6 pb-4 pt-7 text-center shadow-card"
+      className="relative mx-5 overflow-hidden rounded-card bg-surface px-6 pb-4 pt-4 text-center shadow-card"
       aria-labelledby="cook-finished-title"
     >
       <ConfettiBurst />
       <motion.div
-        initial={{ scale: 0.3, rotate: -20 }}
-        animate={{ scale: 1, rotate: 0 }}
+        initial={{ scale: 0.6, y: 14, rotate: -6 }}
+        animate={{ scale: 1, y: 0, rotate: 0 }}
         transition={{ type: "spring", stiffness: 260, damping: 14, delay: 0.05 }}
-        className="relative mx-auto flex size-16 items-center justify-center rounded-full bg-accent"
+        className="relative mx-auto w-fit"
       >
-        <PartyPopper className="size-8 text-white" strokeWidth={1.8} />
+        <MascotFigure persona={persona} state="speaking" width={120} label={`${persona.name} cheering`} />
       </motion.div>
 
-      <h2 id="cook-finished-title" className="relative mt-4 font-display text-title font-semibold leading-tight text-ink">
+      <h2 id="cook-finished-title" className="relative mt-1 font-display text-title font-semibold leading-tight text-ink">
         Nice work!
       </h2>
       <p className="relative mx-auto mt-1.5 max-w-[280px] text-sm leading-[1.4] text-ink-soft">
-        <span className="font-semibold text-ink">{title}</span> is ready. Snap your finished meal and Sous will estimate the nutrition
-        for your diary.
+        <span className="font-semibold text-ink">{title}</span> is ready. Snap your finished meal and I&apos;ll estimate the
+        nutrition for your diary.
       </p>
 
       <ButtonLink href="/ai" variant="secondary" full className="relative mt-5">

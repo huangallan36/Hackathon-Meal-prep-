@@ -42,7 +42,7 @@ export function ScreenHeader({
         {left}
         {!left && back && (
           <IconButton label="Back" onClick={() => (typeof back === "string" ? router.push(back) : router.back())}>
-            <img src="/figma/icons/chevron-left.svg" alt="" width={20} height={20} className="block size-5" />
+            <img src="/figma/v2/2014-1436/icon-chev-l.svg" alt="" width={20} height={20} className="block size-5" />
           </IconButton>
         )}
       </div>

@@ -24,7 +24,7 @@ function listNames(names: string[]): string {
 }
 
 /**
- * Figma 3.3 "Log dinner by voice": listen once, let Sous estimate what was said, log it to
+ * Figma 3.3 "Log dinner" (voice): listen once, let Sous estimate what was said, log it to
  * that meal and day, and say so. No speech recognition (or a blocked mic) opens the typed
  * "Add to <meal>" sheet instead (`onFallback`).
  */
@@ -134,11 +134,12 @@ export function VoiceLogButton({
         full
         loading={phase === "logging"}
         aria-pressed={listening}
+        aria-label={phase === "idle" ? `Log ${label} by voice` : undefined}
         onClick={() => void run()}
-        icon={<img src="/figma/screens/2-159/frame.svg" alt="" width={18} height={18} className={cn("block size-[18px]", listening && "animate-pulse")} />}
-        className={cn("h-10 text-sm", listening && "ring-4 ring-flame/25")}
+        icon={<img src="/figma/v2/2014-1536/icon-mic.svg" alt="" width={18} height={18} className={cn("block size-[18px]", listening && "animate-pulse")} />}
+        className={cn("h-10! text-sm", listening && "ring-4 ring-flame/25")}
       >
-        {phase === "logging" ? `Logging ${label}...` : listening ? "Listening... tap when done" : `Log ${label} by voice`}
+        {phase === "logging" ? `Logging ${label}...` : listening ? "Listening... tap when done" : `Log ${label}`}
       </Button>
       {listening && (
         <p className="truncate px-2 text-center text-meta text-ink-soft" aria-live="polite">

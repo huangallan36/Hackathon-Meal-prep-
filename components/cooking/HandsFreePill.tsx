@@ -1,22 +1,26 @@
 "use client";
 
 /**
- * Cooking mode's hands-free row (Figma 2.3 sheet): the small orange voice orb plus
- * "Hands-free on · say “next” or “repeat that”". Tapping it toggles conversation mode;
- * turning it on also starts a voice session if needed and opens the mic right away
- * (inside the tap), so the cook never has to touch the screen again. When it's on but no
- * session is running (e.g. after a reload), the tap starts listening instead of turning it off.
- * While Sous is listening it shows what it hears (the floating orb's caption is hidden here).
+ * Cooking mode's hands-free row (Figma 2.3 "cook controls"): the chosen voice's 28px
+ * MascotAvatar plus "Say “next” or “repeat” to keep going" (13 Medium, ink-soft). Tapping it
+ * toggles conversation mode; turning it on also starts a voice session if needed and opens
+ * the mic right away (inside the tap), so the cook never has to touch the screen again. When
+ * it's on but no session is running (e.g. after a reload), the tap starts listening instead
+ * of turning it off. While Sous is listening it shows what it hears (the floating orb's
+ * caption is hidden here) and the mascot breathes (its "listening" cue at this size); otherwise
+ * it sits idle, and the text says whether hands-free is on.
  */
 import { motion, useReducedMotion } from "motion/react";
+import { MascotAvatar } from "@/components/mascot/Mascot";
 import { usePrefs } from "@/lib/stores/prefs";
 import { useVoice } from "@/lib/stores/voice";
 import { cn } from "@/lib/utils";
 import { setHandsFreeMode, toggleHandsFree } from "@/lib/voice/engine";
-import { COOK_ICON } from "./icons";
+import { usePersona } from "@/lib/voice/persona";
 
 export function HandsFreePill({ className }: { className?: string }) {
   const reduce = useReducedMotion() ?? false;
+  const persona = usePersona();
   const on = usePrefs((s) => s.handsFree);
   const sessionActive = useVoice((s) => s.sessionActive);
   const listening = useVoice((s) => s.sessionActive && !s.paused && s.status === "listening");
@@ -32,8 +36,8 @@ export function HandsFreePill({ className }: { className?: string }) {
   else if (idleOn) text = "Hands-free on · tap to start listening";
   else if (rest === "blocked") text = "Hands-free needs a tap · use the mic";
   else if (rest) text = "Hands-free resting · tap the mic to talk";
-  else if (listening) text = "Listening · say “next” or “repeat that”";
-  else text = "Hands-free on · say “next” or “repeat that”";
+  else if (listening) text = `${persona.name}’s listening · say “next” or “repeat”`;
+  else text = "Say “next” or “repeat” to keep going";
 
   return (
     <button
@@ -44,7 +48,7 @@ export function HandsFreePill({ className }: { className?: string }) {
         idleOn
           ? "Start hands-free listening"
           : on
-            ? "Hands-free on. Say next or repeat that. Tap to turn off"
+            ? "Hands-free on. Say next or repeat to keep going. Tap to turn off"
             : "Hands-free off. Tap to turn on"
       }
       onClick={() => (idleOn ? setHandsFreeMode(true, { startSession: true }) : toggleHandsFree({ startSession: true }))}
@@ -56,15 +60,13 @@ export function HandsFreePill({ className }: { className?: string }) {
         className,
       )}
     >
-      <motion.img
-        src={COOK_ICON.voiceOrb}
-        alt=""
-        width={28}
-        height={28}
-        className={cn("block size-7 shrink-0 rounded-full transition-[filter,opacity]", !on && "opacity-55 grayscale")}
+      <motion.span
+        className="flex shrink-0 rounded-full"
         animate={pulse ? { scale: [1, 1.12, 1] } : { scale: 1 }}
         transition={pulse ? { duration: 1.1, repeat: Infinity, ease: "easeInOut" } : { duration: 0.2 }}
-      />
+      >
+        <MascotAvatar persona={persona} size={28} />
+      </motion.span>
       <span
         className={cn(
           "min-w-0 flex-1 truncate text-meta font-medium leading-[normal]",

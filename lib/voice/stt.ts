@@ -7,6 +7,7 @@
  */
 import { toast } from "@/lib/stores/toast";
 import { useVoice } from "@/lib/stores/voice";
+import { currentPersona } from "./persona";
 
 /** Stop after this much quiet following the last result */
 const SILENCE_MS = 1300;
@@ -27,7 +28,7 @@ const AUTO_START_MS = 5000;
  * How a listen ended, so hands-free mode knows whether to listen again:
  *   heard    got a transcript
  *   silence  the mic was open but nobody spoke
- *   stopped  the user closed the mic (orb tap) before saying anything
+ *   stopped  the user closed the mic (a tap on the mascot) before saying anything
  *   aborted  cancelled by the engine (hang up, Sous talking, typing)
  *   blocked  the mic would not open (permission, or no gesture in this browser)
  *   error    the mic or speech service failed (network, no microphone)
@@ -56,7 +57,7 @@ interface ActiveRecognition {
   rec: SousRecognition;
   settle: (text: string, outcome?: ListenOutcome) => void;
   stop: () => void;
-  /** The user ended it (orb tap): an empty result is "stopped", not "silence" */
+  /** The user ended it (a tap on the mascot): an empty result is "stopped", not "silence" */
   markUserStop: () => void;
 }
 
@@ -238,13 +239,13 @@ export function listenOnceDetailed(options?: ListenOptions): Promise<ListenResul
         case "network":
           failed = true;
           errorOutcome = "error";
-          if (auto) toast("Voice input needs a connection. Tap the orb to try again.", "warning", 3600);
+          if (auto) toast(`Voice input needs a connection. Tap ${currentPersona().name} to try again.`, "warning", 3600);
           else openTyping("Voice input needs a connection. You can type instead.");
           break;
         case "audio-capture":
           failed = true;
           errorOutcome = "error";
-          if (auto) toast("No microphone found. Tap the orb to try again.", "warning", 3600);
+          if (auto) toast(`No microphone found. Tap ${currentPersona().name} to try again.`, "warning", 3600);
           else openTyping("No microphone found. You can type instead.");
           break;
         default:

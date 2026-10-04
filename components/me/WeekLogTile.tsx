@@ -5,12 +5,12 @@ import { DAY_STATUS_LABEL, longDayLabel, weekdayInitial, type DayInfo, type DayS
 import type { ISODate } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-/** Figma 3.1 calendar dots (12px): on target green, over amber, nothing logged line; partial = 3.4's dashed dot */
+/** Figma 3.1 calendar dots (12px): on target avocado, over lemon, nothing logged line; partial = 3.4's dashed dot */
 const DOT: Record<DayStatus, string> = {
-  "on-target": "/figma/screens/2-155/ellipse-2.svg",
-  over: "/figma/screens/2-155/ellipse-3.svg",
-  none: "/figma/screens/2-155/ellipse-4.svg",
-  partial: "/figma/screens/2-161/ellipse-2.png",
+  "on-target": "/figma/v2/2014-1326/ellipse-2.svg",
+  over: "/figma/v2/2014-1326/ellipse-3.svg",
+  none: "/figma/v2/2014-1326/ellipse-4.svg",
+  partial: "/figma/v2/2014-1669/ellipse-2.png",
 };
 
 /** Figma 3.1 "Calendar" tile: one dot per day of the week, "6 of 7 days logged"; opens the month view */
@@ -34,7 +34,7 @@ export function WeekLogTile({
       )}
     >
       <span className="flex items-center gap-1.5">
-        <img src="/figma/screens/2-155/icon-cal.svg" alt="" width={16} height={16} className="block size-4 shrink-0" />
+        <img src="/figma/v2/2014-1326/icon-cal.svg" alt="" width={16} height={16} className="block size-4 shrink-0" />
         <span className="text-sm font-semibold leading-[normal] text-ink">Calendar</span>
       </span>
       <span className="flex items-start gap-[5px]" aria-hidden>

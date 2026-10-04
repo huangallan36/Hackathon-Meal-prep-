@@ -5,17 +5,20 @@ import { useMemo } from "react";
 import { PlatePhoto } from "@/components/kitchen/PlatePhoto";
 import { Card, SectionHeader } from "@/components/ui/Card";
 import { PageTitle } from "@/components/ui/ScreenHeader";
-import { SPOONACULAR_BACKLINK } from "@/lib/config";
+import { fromSpoonacular, SPOONACULAR_BACKLINK } from "@/lib/config";
+import { getCachedRecipe } from "@/lib/recipes/catalog";
 import { useKitchen } from "@/lib/stores/kitchen";
 import type { Recipe } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { ROW_CHEVRON } from "./icons";
 import { availabilityOf, IngredientList } from "./IngredientList";
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /**
- * Cooking mode before step 1, in the Figma language: a Fraunces page title, the recipe on
- * its plate, what you have vs. need, the ingredient list and per-serving numbers.
+ * Cooking mode before step 1, in the Figma language: a Bricolage page title, the recipe's
+ * photo (radius 18; the plate illustration when it has none), what you have vs. need, the
+ * ingredient list and per-serving numbers.
  * "Start cooking" lives in the bottom sheet, so it is always in reach.
  */
 export function RecipeOverview({ recipe }: { recipe: Recipe }) {
@@ -34,9 +37,7 @@ export function RecipeOverview({ recipe }: { recipe: Recipe }) {
       <PageTitle title={recipe.title} subtitle={meta} className="text-balance pt-2 animate-fade-up" />
 
       <div className="px-5 animate-fade-up [animation-delay:60ms]">
-        <div className="overflow-hidden rounded-card">
-          <PlatePhoto src={recipe.image} alt={recipe.title} seed={recipe.id} className="h-[200px] w-full" />
-        </div>
+        <PlatePhoto src={recipe.image} alt={recipe.title} seed={recipe.id} className="h-[200px] w-full" />
         {recipe.summary && <p className="mt-3 text-sm leading-[1.4] text-ink-soft">{recipe.summary}</p>}
       </div>
 
@@ -67,7 +68,7 @@ export function RecipeOverview({ recipe }: { recipe: Recipe }) {
           className="-mx-4 flex min-h-12 items-center gap-2 border-t border-line px-4 py-3 text-body font-semibold text-accent transition hover:bg-cream active:bg-cream-deep"
         >
           <span className="flex-1">Missing something? Groceries</span>
-          <img src="/figma/icons/chevron-right.svg" alt="" width={18} height={18} className="block size-[18px]" />
+          <img src={ROW_CHEVRON} alt="" width={18} height={18} className="block size-[18px]" />
         </Link>
       </Card>
 
@@ -108,8 +109,49 @@ function PerServing({ nutrition }: { nutrition: NonNullable<Recipe["nutrition"]>
   );
 }
 
-/** Spoonacular's terms require a visible credit + backlink */
-export function RecipeCredits({ recipe, className }: { recipe: Pick<Recipe, "sourceName" | "sourceUrl">; className?: string }) {
+/** Credits under a recipe: its source, its photo, and the backlink Spoonacular's terms require for its recipes */
+export function RecipeCredits({
+  recipe,
+  className,
+}: {
+  recipe: Pick<Recipe, "id" | "sourceName" | "sourceUrl" | "image" | "imageCredit">;
+  className?: string;
+}) {
+  // Recipes saved before photo credits existed (persisted stores) still get theirs from the catalog
+  const credit = recipe.imageCredit ?? getCachedRecipe(recipe.id)?.imageCredit;
+  const parts = [
+    recipe.sourceName && (
+      <span key="source">
+        Recipe by{" "}
+        {recipe.sourceUrl ? (
+          <a href={recipe.sourceUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-ink-soft underline-offset-2 hover:underline">
+            {recipe.sourceName}
+          </a>
+        ) : (
+          <span className="font-semibold text-ink-soft">{recipe.sourceName}</span>
+        )}
+      </span>
+    ),
+    credit && (
+      <span key="photo">
+        Photo:{" "}
+        {credit.url ? (
+          <a href={credit.url} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline">
+            {credit.text}
+          </a>
+        ) : (
+          credit.text
+        )}
+      </span>
+    ),
+    // Only recipes that came from Spoonacular carry its credit (the bundled catalog doesn't)
+    fromSpoonacular(recipe) && (
+      <a key="spoonacular" href={SPOONACULAR_BACKLINK} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline">
+        Powered by spoonacular
+      </a>
+    ),
+  ].filter(Boolean);
+  if (!parts.length) return null;
   return (
     <p
       className={cn(
@@ -117,22 +159,7 @@ export function RecipeCredits({ recipe, className }: { recipe: Pick<Recipe, "sou
         className,
       )}
     >
-      {recipe.sourceName && (
-        <span>
-          Recipe by{" "}
-          {recipe.sourceUrl ? (
-            <a href={recipe.sourceUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-ink-soft underline-offset-2 hover:underline">
-              {recipe.sourceName}
-            </a>
-          ) : (
-            <span className="font-semibold text-ink-soft">{recipe.sourceName}</span>
-          )}
-        </span>
-      )}
-      {recipe.sourceName && <span aria-hidden>&middot;</span>}
-      <a href={SPOONACULAR_BACKLINK} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline">
-        Powered by spoonacular
-      </a>
+      {parts.flatMap((part, i) => (i ? [<span key={`dot-${i}`} aria-hidden>&middot;</span>, part] : [part]))}
     </p>
   );
 }

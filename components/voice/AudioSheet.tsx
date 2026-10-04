@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * The call screen's audio button (Figma 1.2, top right): who's talking (switch sous-chef
- * mid-call), hands-free, and which engine is voicing the replies.
+ * The call screen's audio button (Figma 5.x, top right): who's talking (switch persona
+ * mid-call: Maya, Leo, Nova or Brock), hands-free, and which engine is voicing the replies.
  */
 import { AudioLines } from "lucide-react";
 import { SectionLabel } from "@/components/ui/Card";
@@ -21,7 +21,7 @@ export function AudioSheet({ open, onClose }: { open: boolean; onClose: () => vo
     <Sheet open={open} onClose={onClose} title="Audio & voice">
       <div className="flex flex-col gap-6">
         <section>
-          <SectionLabel>Sous-chef</SectionLabel>
+          <SectionLabel>Who&apos;s cooking with you</SectionLabel>
           <PersonaPicker className="mt-3" />
         </section>
         <section>

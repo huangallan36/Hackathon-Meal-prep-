@@ -1,25 +1,31 @@
 "use client";
 
-import { Camera, Refrigerator, SearchX } from "lucide-react";
+import { Camera } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { RecipeCard, RecipeCardSkeleton } from "@/components/kitchen/RecipeCard";
+import { SousAvatar, SousLine } from "@/components/kitchen/SousLine";
 import { ButtonLink, IconButton } from "@/components/ui/Button";
 import { SectionHeader } from "@/components/ui/Card";
 import { EmptyState, FallbackNote } from "@/components/ui/Misc";
 import { PageTitle, ScreenHeader } from "@/components/ui/ScreenHeader";
-import { SPOONACULAR_BACKLINK } from "@/lib/config";
+import { fromSpoonacular, SPOONACULAR_BACKLINK } from "@/lib/config";
 import { announceMatches, fetchMatches } from "@/lib/kitchen/client";
-import { ingredientSummary } from "@/lib/kitchen/format";
+import { bestMatchLine, ingredientSummary } from "@/lib/kitchen/format";
 import { cookHref, FRIDGE_EDIT_HREF, FRIDGE_SCAN_HREF } from "@/lib/kitchen/routes";
 import { getCatalog, matchRecipe } from "@/lib/recipes/catalog";
 import { ingredientsKey, useKitchen } from "@/lib/stores/kitchen";
 import { recipePopularity, useSocial } from "@/lib/stores/social";
 import type { Recipe } from "@/lib/types";
 
-/** The planner's header filter icon (Figma 2.3), used here for "Edit ingredients" */
-const ICON_FILTER = "/figma/screens/2-146/icon-filter.svg";
+/** The planner's header filter icon (Figma 2.1, 18px), used here for "Edit ingredients" */
+const ICON_FILTER = "/figma/v2/2014-993/icon-filter.svg";
 
+/**
+ * Recipe suggestions for what's in the fridge (no Figma frame: built in the 2.x language).
+ * Real recipe photos in 18px frames, Bricolage titles, avocado actions, and the chosen voice's
+ * mascot wherever Sous speaks (the best-match line, the empty states).
+ */
 export default function RecipesPage() {
   const router = useRouter();
   const ingredients = useKitchen((s) => s.ingredients);
@@ -30,6 +36,7 @@ export default function RecipesPage() {
   const key = ingredientsKey(ingredients);
   const hasIngredients = key !== "";
   const ready = hasIngredients && matchesFor === key;
+  const line = ready ? bestMatchLine(matches) : null;
 
   // Fetch when the stored suggestions are for a different fridge. fetchMatches never
   // rejects (it falls back to the bundled catalog) and writes the result to the store.
@@ -76,6 +83,7 @@ export default function RecipesPage() {
             <NoIngredients onCook={cook} />
           ) : !ready ? (
             <div className="flex flex-col gap-4" aria-busy="true" aria-label="Finding recipes">
+              <div className="skeleton h-[46px] w-full rounded-[16px]" />
               <div className="skeleton h-[22px] w-40 rounded-pill" />
               <RecipeCardSkeleton />
               <RecipeCardSkeleton />
@@ -83,7 +91,7 @@ export default function RecipesPage() {
           ) : matches.length === 0 ? (
             <div className="rounded-card bg-surface shadow-card">
               <EmptyState
-                icon={<SearchX className="size-6" />}
+                icon={<SousAvatar size={56} />}
                 title="No recipes for that combo"
                 body="Try adding a couple more ingredients, like rice, pasta or eggs."
                 action={
@@ -95,6 +103,7 @@ export default function RecipesPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-4">
+              {line && <SousLine live>{line}</SousLine>}
               <div className="flex flex-col gap-2">
                 <SectionHeader
                   title="Best matches"
@@ -119,7 +128,7 @@ export default function RecipesPage() {
                   onCook={cook}
                 />
               ))}
-              <Attribution />
+              <Attribution recipes={matches.map((m) => m.recipe)} />
             </div>
           )}
         </div>
@@ -145,7 +154,7 @@ function NoIngredients({ onCook }: { onCook: (recipe: Recipe) => void }) {
     <div className="flex flex-col gap-4">
       <div className="rounded-card bg-surface shadow-card animate-fade-up">
         <EmptyState
-          icon={<Refrigerator className="size-6" />}
+          icon={<SousAvatar size={56} />}
           title="Let's see what you've got"
           body="Scan your fridge and I'll match recipes to what's already inside."
           action={
@@ -162,14 +171,18 @@ function NoIngredients({ onCook }: { onCook: (recipe: Recipe) => void }) {
           {popular.map((m, i) => (
             <RecipeCard key={m.recipe.id} match={m} index={i} showMatch={false} badge={i === 0 ? "Most popular" : undefined} onCook={onCook} />
           ))}
-          <Attribution />
+          <Attribution recipes={popular.map((m) => m.recipe)} />
         </>
       )}
     </div>
   );
 }
 
-function Attribution() {
+/** Spoonacular's required credit when a listed recipe came from it; catalog photos are credited on each recipe */
+function Attribution({ recipes }: { recipes: Recipe[] }) {
+  if (!recipes.some(fromSpoonacular)) {
+    return <p className="pt-1 text-center text-xs text-ink-faint">Dish photos from Wikimedia Commons, credited on each recipe</p>;
+  }
   return (
     <p className="pt-1 text-center text-xs text-ink-faint">
       Recipes from{" "}

@@ -2,10 +2,11 @@
 
 /**
  * Figma 1.3 "ai chat — typing": the call switched to a light text chat. Header (back to the
- * call, persona orb + name, "Voice paused · typing", Resume voice), the thread, the composer.
- * The iOS keyboard in the design is the system keyboard; it isn't drawn here.
+ * call, the persona's avatar + name + what it's doing, "Back to voice"), the thread, the
+ * composer. The iOS keyboard in the design is the system keyboard; it isn't drawn here.
  */
 import { useState } from "react";
+import { MascotAvatar } from "@/components/mascot/Mascot";
 import { useVoice } from "@/lib/stores/voice";
 import { closeTyping, isSttSupported, orbTap, unlockAudio } from "@/lib/voice/engine";
 import { usePersona } from "@/lib/voice/persona";
@@ -18,10 +19,12 @@ export function TypingView() {
   const paused = useVoice((s) => s.paused);
   const [sttOk] = useState(isSttSupported);
 
-  const subtitle = status === "speaking" && !paused ? "Speaking..." : status === "thinking" ? "Thinking..." : "Voice paused · typing";
+  // Like a messaging app: what the persona is doing ("Typing..." while it composes a reply).
+  const subtitle =
+    status === "thinking" ? "Typing..." : status === "speaking" && !paused ? "Speaking..." : "Voice paused · typing";
 
   /** Back to the live call, listening right away (this tap opens the mic). */
-  function resumeVoice() {
+  function backToVoice() {
     unlockAudio();
     useVoice.getState().setTyping(false);
     if (sttOk) orbTap();
@@ -35,11 +38,11 @@ export function TypingView() {
           onClick={closeTyping}
           aria-label="Back to the call"
           title="Back to the call"
-          className="relative -ml-1 flex size-[30px] shrink-0 items-center justify-center rounded-full transition after:absolute after:-inset-2 after:content-[''] hover:bg-cream-deep active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="relative flex size-[22px] shrink-0 items-center justify-center rounded-full transition after:absolute after:-inset-3 after:content-[''] active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
-          <img src="/figma/screens/2-141/icon-chev-l.svg" alt="" width={22} height={22} className="block size-[22px]" />
+          <img src="/figma/v2/2014-814/icon-chev-l.svg" alt="" width={22} height={22} className="block size-[22px]" />
         </button>
-        <img src={persona.orb} alt="" width={34} height={34} className="block size-[34px] shrink-0" />
+        <MascotAvatar persona={persona} size={34} />
         <div className="flex min-w-px flex-1 flex-col gap-px whitespace-nowrap">
           <p className="truncate text-body font-semibold text-ink">{persona.name}</p>
           <p className="truncate text-caption text-ink-soft" aria-live="polite">
@@ -49,11 +52,11 @@ export function TypingView() {
         {sttOk && (
           <button
             type="button"
-            onClick={resumeVoice}
-            className="flex shrink-0 items-center gap-1.5 rounded-pill bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent transition hover:bg-[#d5e6da] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            onClick={backToVoice}
+            className="flex shrink-0 items-center gap-1.5 rounded-pill bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent transition hover:bg-[#dbe7cc] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            <img src="/figma/screens/2-141/icon-mic.svg" alt="" width={14} height={14} className="block size-[14px]" />
-            Resume voice
+            <img src="/figma/v2/2014-814/icon-mic.svg" alt="" width={14} height={14} className="block size-[14px]" />
+            Back to voice
           </button>
         )}
       </header>

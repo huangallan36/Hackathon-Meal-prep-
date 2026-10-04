@@ -174,7 +174,36 @@ function SheetBody({
         <h2 id="planner-sheet-title" className="mt-1 text-balance font-display text-[26px] font-semibold leading-tight text-ink">
           {recipe.title}
         </h2>
-        {recipe.sourceName && <p className="mt-1 truncate text-sm text-ink-faint">by {recipe.sourceName}</p>}
+        {recipe.sourceName && (
+          <p className="mt-1 truncate text-sm text-ink-faint">
+            Recipe by{" "}
+            {recipe.sourceUrl ? (
+              <a
+                href={recipe.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-accent underline-offset-2 hover:underline"
+              >
+                {recipe.sourceName}
+              </a>
+            ) : (
+              <span className="font-semibold text-accent">{recipe.sourceName}</span>
+            )}
+          </p>
+        )}
+        {/* Design rules: credit every photo (catalog photos carry theirs) */}
+        {recipe.imageCredit && (
+          <p className="mt-0.5 line-clamp-2 text-xs text-ink-faint">
+            Photo:{" "}
+            {recipe.imageCredit.url ? (
+              <a href={recipe.imageCredit.url} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline">
+                {recipe.imageCredit.text}
+              </a>
+            ) : (
+              recipe.imageCredit.text
+            )}
+          </p>
+        )}
 
         <div className="mt-4 grid grid-cols-4 rounded-tile bg-cream py-3">
           <Stat icon={<Clock className="size-4" />} value={minutesLabel(recipe.readyInMinutes)} label="Time" />

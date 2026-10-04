@@ -15,9 +15,9 @@ const STATUS_CELL: Record<DayStatus, string> = {
 };
 
 const LEGEND: { label: string; dot: string }[] = [
-  { label: "On target", dot: "/figma/screens/2-161/ellipse.svg" },
-  { label: "Over", dot: "/figma/screens/2-161/ellipse-1.svg" },
-  { label: "Partial", dot: "/figma/screens/2-161/ellipse-2.png" },
+  { label: "On target", dot: "/figma/v2/2014-1669/ellipse.svg" },
+  { label: "Over", dot: "/figma/v2/2014-1669/ellipse-1.svg" },
+  { label: "Partial", dot: "/figma/v2/2014-1669/ellipse-2.png" },
 ];
 
 /**
@@ -54,7 +54,7 @@ export function MonthCalendar({
         ))}
       </div>
 
-      <div key={`${month.year}-${month.month}`} role="grid" aria-label="Days" className="flex animate-fade-up flex-col">
+      <div key={`${month.year}-${month.month}`} role="grid" aria-label="Days" className="flex animate-fade-up flex-col gap-1.5">
         {weeks.map((week, w) => (
           <div key={w} role="row" className="flex">
             {week.map(({ iso, inMonth }) => {

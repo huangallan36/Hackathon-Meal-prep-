@@ -2,7 +2,7 @@
 
 /**
  * Voice search for the planner's mic button: one listenOnce() turn whose transcript lands in
- * the search box. While it listens, `listening` is true (the "Maya is listening" banner) and
+ * the search box. While it listens, `listening` is true (the "Leo’s listening" banner) and
  * `interim` carries the live words. Tapping the mic again finishes early. When voice can't
  * work here (no Web Speech, mic blocked, nothing heard) a toast says so and `onFallback`
  * runs (the screen focuses the search input).

@@ -2,18 +2,23 @@
 
 import { NotebookPen, Share2 } from "lucide-react";
 import { motion } from "motion/react";
+import { SousAvatar } from "@/components/kitchen/SousLine";
 import { Button } from "@/components/ui/Button";
 import { SmartImage } from "@/components/ui/Misc";
 import type { MealType, Nutrition } from "@/lib/types";
 
-/** Macro chips like the diary's "P 146g · C 228g · F 68g" */
+/** Macro chips like the diary's "P 146g · C 228g · F 68g" (protein avocado, carbs lemon, fat tomato) */
 const CHIPS = [
   { key: "protein", letter: "P", tint: "bg-accent-soft text-accent" },
   { key: "carbs", letter: "C", tint: "bg-butter-soft text-butter-ink" },
   { key: "fat", letter: "F", tint: "bg-flame-soft text-flame" },
 ] as const;
 
-/** Success state after logging: animated check, what was logged (a "Similar"-style row), and the next hops. */
+/**
+ * Success state after logging: the chosen voice's mascot with an animated avocado check
+ * (a small celebration, design rules v1), what was logged (a "Similar"-style row with the
+ * photo at radius 14), and the next hops.
+ */
 export function LoggedCard({
   name,
   image,
@@ -41,16 +46,24 @@ export function LoggedCard({
         initial={{ scale: 0.4 }}
         animate={{ scale: 1 }}
         transition={{ type: "spring", stiffness: 320, damping: 14 }}
-        className="mx-auto flex size-16 items-center justify-center rounded-full bg-accent text-white"
+        className="relative mx-auto flex w-fit"
       >
-        <svg viewBox="0 0 24 24" className="size-8" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <motion.path
-            d="M5 12.5l4.5 4.5L19 7.5"
-            initial={{ pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ duration: 0.45, delay: 0.2, ease: "easeOut" }}
-          />
-        </svg>
+        <SousAvatar size={64} />
+        <motion.span
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", stiffness: 420, damping: 16, delay: 0.15 }}
+          className="absolute -bottom-0.5 -right-1 flex size-6 items-center justify-center rounded-full bg-accent text-white ring-2 ring-surface"
+        >
+          <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <motion.path
+              d="M5 12.5l4.5 4.5L19 7.5"
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ duration: 0.45, delay: 0.3, ease: "easeOut" }}
+            />
+          </svg>
+        </motion.span>
       </motion.div>
 
       <h2 id="snap-logged-title" className="mt-4 font-display text-heading font-semibold leading-tight text-ink">

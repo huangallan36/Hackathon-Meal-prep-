@@ -1,11 +1,12 @@
 "use client";
 
 /**
- * The Planner tab (Figma 2.1 planner / 2.2 search): browse, search and plan the week without
- * talking, or search by voice from the mic in the search pill.
- *   Browse (empty query): title, "Tuned to you", chips, Most popular, Recently made, This week.
- *   Search (a query):     back + search pill, listening banner, Cuts & ingredients,
- *                         Combinations, Similar (server search, on-device fallback).
+ * The Planner tab (Figma 2.1 planner / 2.2 search · "beef"): browse, search and plan the week
+ * without talking, or search by voice from the mic in the search pill.
+ *   Browse (empty query): title + filter, search pill, chips, Most popular, Recently made,
+ *                         then This week (the plan, below the design's fold).
+ *   Search (a query):     back + search pill, the sous-chef's listening banner while the mic
+ *                         is open, Cuts, Combinations, Similar (server search, on-device fallback).
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { knownRecipe, resolveRecipe } from "@/lib/planner/client";
@@ -171,13 +172,14 @@ export function MealPlanner({ initialQuery }: { initialQuery?: string }) {
 
       <div className={searchMode ? "flex items-center gap-2 px-5 pt-[calc(var(--safe-top)+6px)]" : "flex items-center px-5 pt-4"}>
         {searchMode && (
+          // Figma: a bare 22px chevron, 8px from the pill; the ::after keeps a 46px tap target.
           <button
             type="button"
             onClick={leaveSearch}
             aria-label="Back to the planner"
-            className="relative -ml-1 inline-flex size-[30px] shrink-0 items-center justify-center rounded-full transition after:absolute after:-inset-2 after:content-[''] hover:bg-cream-deep active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent animate-pop"
+            className="relative inline-flex size-[22px] shrink-0 items-center justify-center rounded-full transition after:absolute after:-inset-3 after:content-[''] hover:opacity-70 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent animate-pop"
           >
-            <img src="/figma/screens/2-148/icon-chev-l.svg" alt="" width={22} height={22} className="block size-[22px]" />
+            <img src="/figma/v2/2014-1069/icon-chev-l.svg" alt="" width={22} height={22} className="block size-[22px]" />
           </button>
         )}
         <SearchBar

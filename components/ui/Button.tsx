@@ -11,11 +11,11 @@ type Size = "sm" | "md" | "lg";
 const base =
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-pill font-semibold [&_svg]:shrink-0 [&_img]:shrink-0 transition-[transform,background-color,box-shadow,opacity] duration-200 active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-cream";
 
-/** Figma: flat pills, no shadows. Primary is forest green; voice actions are orange. */
+/** Figma: flat pills, no shadows. Primary is avocado; voice actions are tomato. */
 const variants: Record<Variant, string> = {
   primary: "bg-accent text-white hover:bg-accent-strong",
   secondary: "bg-surface text-ink shadow-card hover:bg-cream-deep",
-  soft: "bg-accent-soft text-accent hover:bg-[#d5e6da]",
+  soft: "bg-accent-soft text-accent hover:bg-[#dce7cd]",
   ghost: "bg-transparent text-ink-soft hover:bg-cream-deep",
   danger: "bg-flame text-white hover:opacity-90",
   voice: "bg-flame text-white hover:opacity-90",

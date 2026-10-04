@@ -4,11 +4,12 @@ import { ArrowRight, Camera, Keyboard, RefreshCw, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { FridgeHero } from "@/components/kitchen/FridgeHero";
 import { FridgePhoto } from "@/components/kitchen/FridgePhoto";
 import { IngredientEditor } from "@/components/kitchen/IngredientEditor";
 import { ScanningPhoto } from "@/components/kitchen/ScanningPhoto";
+import { SousLine } from "@/components/kitchen/SousLine";
 import { StickyAction } from "@/components/kitchen/StickyAction";
+import { MascotFigure } from "@/components/mascot/Mascot";
 import { Button } from "@/components/ui/Button";
 import { FallbackNote } from "@/components/ui/Misc";
 import { PhotoPicker } from "@/components/ui/PhotoPicker";
@@ -19,6 +20,13 @@ import { RECIPES_HREF } from "@/lib/kitchen/routes";
 import { SAMPLE_FRIDGE_PHOTO } from "@/lib/sample";
 import { useKitchen } from "@/lib/stores/kitchen";
 import { useVoice } from "@/lib/stores/voice";
+import { usePersona } from "@/lib/voice/persona";
+
+/*
+ * Fridge scan (no Figma frame: built in the 2.x language). The empty camera step gets the
+ * chosen voice's full-body mascot asking to see the fridge; once scanned, what Sous says sits
+ * in its listening-banner style line above the editable ingredient chips.
+ */
 
 type Phase = "pick" | "scanning" | "results";
 
@@ -140,6 +148,7 @@ function FridgeScreen() {
   const photo = scanSrc ?? storedPhoto;
 
   const manual = source === "manual";
+  const persona = usePersona();
 
   return (
     <>
@@ -149,7 +158,12 @@ function FridgeScreen() {
       <div className="pb-nav leading-[normal]">
         <PageTitle
           title={phase === "results" ? (manual ? "Your ingredients" : "Your fridge") : "Scan your fridge"}
-          subtitle={<span className="text-sm leading-[normal]">{subtitleFor(phase, ingredients.length, manual)}</span>}
+          // Once scanned, Sous says it in its own line below (with its mascot)
+          subtitle={
+            phase === "results" ? undefined : (
+              <span className="text-sm leading-[normal]">{subtitleFor(phase, ingredients.length, manual)}</span>
+            )
+          }
           className="pt-0.5"
         />
 
@@ -158,8 +172,12 @@ function FridgeScreen() {
             {phase === "pick" && (
               <motion.section key="pick" {...fade} className="flex flex-col gap-4">
                 <div className="rounded-card bg-surface p-2.5 shadow-card">
-                  <div className="flex h-[184px] items-center justify-center overflow-hidden rounded-tile bg-butter-soft">
-                    <FridgeHero className="h-[168px] w-auto" />
+                  {/* Empty state: the chosen voice's full-body mascot (>= 120px), never over a photo */}
+                  <div
+                    className="flex h-[184px] items-end justify-center overflow-hidden rounded-tile"
+                    style={{ backgroundColor: persona.soft }}
+                  >
+                    <MascotFigure persona={persona} state="speaking" width={136} label={persona.mascotLabel} />
                   </div>
                   <div className="px-1.5 pb-1.5 pt-3">
                     <h2 className="font-display text-section font-semibold text-ink">Show me your fridge</h2>
@@ -201,6 +219,7 @@ function FridgeScreen() {
 
             {phase === "results" && (
               <motion.section key="results" {...fade} className="flex flex-col gap-5">
+                <SousLine className="-mt-2">{subtitleFor(phase, ingredients.length, manual)}</SousLine>
                 <div className="flex flex-col gap-2">
                   <SourceRow
                     manual={manual}
@@ -246,7 +265,10 @@ function FridgeScreen() {
 function subtitleFor(phase: Phase, count: number, manual: boolean): string {
   if (phase === "pick") return "One photo and Gemini spots what you can cook.";
   if (phase === "scanning") return "Hang tight, this takes a few seconds.";
-  if (manual) return count === 0 ? "Add a few things and I'll match recipes." : `${count} so far. Add more or find recipes.`;
+  if (manual) {
+    if (count === 0) return "Add a few things and I'll match recipes.";
+    return `${count} ingredient${count === 1 ? "" : "s"} so far. Add more, or I'll find recipes now.`;
+  }
   return count === 0 ? "Nothing left on the list. Add a few things." : `I spotted ${count} ingredient${count === 1 ? "" : "s"}. Fix anything I got wrong.`;
 }
 

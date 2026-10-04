@@ -1,12 +1,13 @@
 "use client";
 
 /**
- * Sous as a chat-head bubble over the (simulated) phone home screen.
+ * Sous as a chat-head bubble over the (simulated) phone home screen: the chosen persona's
+ * mascot avatar (64px, the largest avatar size in the design rules).
  * - Drag anywhere; on release it springs to the nearest side edge and remembers its height.
  * - Tap opens the conversation (undocks). The small mic badge is tap-to-talk without leaving.
  * - While dragging, an "End" target appears at the bottom: dropping Sous there hangs up.
- * - Reflects the voice status (listening rings, speaking pulse, thinking swirl) and shows the
- *   live transcript / latest Sous line beside itself for a few seconds.
+ * - Reflects the voice status (listening rings, speaking pulse, thinking arc, in the persona's
+ *   tint) and shows the live transcript / latest line beside itself for a few seconds.
  */
 import { Mic, X } from "lucide-react";
 import {
@@ -21,8 +22,8 @@ import {
 } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type RefObject } from "react";
-import { Orb } from "@/components/orb/Orb";
 import { useOrbCaption } from "@/components/orb/useOrbCaption";
+import { VoiceAvatar } from "@/components/orb/VoiceAvatar";
 import { useDock, type DockSide } from "@/lib/stores/dock";
 import { cn } from "@/lib/utils";
 import { endSession, orbTap, unlockAudio } from "@/lib/voice/engine";
@@ -317,7 +318,7 @@ export function SousBubble({
             title={`Open ${persona.name} (drag to move, drop on End to hang up)`}
             className="relative block size-full rounded-full outline-none focus-visible:ring-4 focus-visible:ring-white/70"
           >
-            <Orb size={SIZE} status={caption.visual} activity={caption.interim.length} floating />
+            <VoiceAvatar size={SIZE} status={caption.visual} floating ringTone="soft" />
           </button>
 
           {/* Tap-to-talk without leaving the home screen */}
@@ -339,13 +340,14 @@ export function SousBubble({
               "after:absolute after:-inset-[9px] after:rounded-full after:content-['']",
               "focus-visible:outline-none focus-visible:ring-white",
               side === "right" ? "-left-1" : "-right-1",
-              listening ? "bg-flame text-white" : "bg-surface text-flame shadow-soft",
+              // Buttons stay avocado (design rules v1)
+              listening ? "bg-accent text-white" : "bg-surface text-accent shadow-soft",
             )}
           >
             {listening && !reduce && (
               <motion.span
                 aria-hidden
-                className="absolute inset-0 rounded-full bg-flame"
+                className="absolute inset-0 rounded-full bg-accent"
                 animate={{ scale: [1, 1.7], opacity: [0.55, 0] }}
                 transition={{ duration: 1.3, repeat: Infinity, ease: "easeOut" }}
               />
@@ -370,12 +372,15 @@ export function SousBubble({
                   side === "right" ? "right-[calc(100%+10px)] rounded-r-md" : "left-[calc(100%+10px)] rounded-l-md",
                 )}
               >
-                <span className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-accent">
+                <span
+                  className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.1em]"
+                  style={{ color: persona.tint }}
+                >
                   <span
                     className={cn(
-                      "size-1.5 rounded-full bg-accent",
+                      "size-1.5 rounded-full",
                       caption.live && "animate-pulse",
-                      caption.paused && "bg-ink-faint",
+                      caption.paused ? "bg-ink-faint" : "bg-current",
                     )}
                   />
                   {captionLabel}

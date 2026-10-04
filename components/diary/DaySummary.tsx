@@ -10,11 +10,11 @@ import { ProgressRing } from "./ProgressRing";
 /** Exercise calories that fill the "Burned" ring (Figma 3.3: 310 kcal draws ~62%) */
 export const BURN_GOAL = 500;
 
-const TRACK = "/figma/screens/2-159/ellipse.svg";
+const TRACK = "/figma/v2/2014-1536/ellipse.svg";
 
 /**
- * Figma 3.3 day rings: Eaten (green, vs. the calorie goal), Burned (orange, exercise) and
- * Left (amber: goal − eaten + burned). Past the goal "Left" becomes "Over" in orange.
+ * Figma 3.3 day rings: Eaten (avocado, vs. the calorie goal), Burned (tomato, exercise) and
+ * Left (lemon: goal − eaten + burned). Past the goal "Left" becomes "Over" in tomato.
  */
 export function DaySummary({
   eaten,

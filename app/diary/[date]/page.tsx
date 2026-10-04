@@ -2,6 +2,7 @@
 
 import { CalendarClock, CalendarX2 } from "lucide-react";
 import { useParams } from "next/navigation";
+import { BackLink } from "@/components/diary/BackLink";
 import { DayDiary } from "@/components/diary/DayDiary";
 import { ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/Misc";
@@ -20,7 +21,10 @@ export default function DailyDiaryPage() {
     const future = isValidISODate(date);
     return (
       <>
-        <ScreenHeader title={future ? fullDayLabel(date, today) : "Diary"} back="/diary" />
+        <ScreenHeader
+          title={future ? fullDayLabel(date, today) : "Diary"}
+          left={<BackLink href="/diary" icon="/figma/v2/2014-1536/icon-chev-l.svg" />}
+        />
         <EmptyState
           className="animate-fade-up pb-nav pt-16"
           icon={future ? <CalendarClock className="size-6" /> : <CalendarX2 className="size-6" />}

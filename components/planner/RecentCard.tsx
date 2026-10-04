@@ -1,14 +1,15 @@
 "use client";
 
-import { ChefHat } from "lucide-react";
 import Link from "next/link";
+import { MascotAvatar } from "@/components/mascot/Mascot";
 import { Spinner } from "@/components/ui/Spinner";
 import { madeLabel } from "@/lib/planner/format";
 import type { RecentItem } from "@/lib/planner/hooks";
+import { usePersona } from "@/lib/voice/persona";
 import { Plate } from "./Plate";
 import { stagger } from "./RecipeMeta";
 
-/** Figma "Recently made" plate: 100px disc, title (13), "Made Tue" (11) */
+/** Figma 2.1 "Recently made": 100px round photo, title (13), "Made Tue" (11), 6px apart */
 export function RecentCard({
   item,
   index = 0,
@@ -27,7 +28,7 @@ export function RecentCard({
       disabled={busy}
       aria-busy={busy}
       style={stagger(index)}
-      className="flex min-w-0 flex-col items-center gap-1.5 rounded-tile text-center animate-fade-up transition active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-cream"
+      className="flex min-w-0 flex-col items-center gap-1.5 rounded-tile text-center leading-[normal] animate-fade-up transition active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-cream"
     >
       <span className="relative block">
         <Plate slot="recent" index={index} size={100} src={item.image} />
@@ -37,22 +38,24 @@ export function RecentCard({
           </span>
         )}
       </span>
-      <span className="block w-full truncate text-meta font-semibold leading-[normal] text-ink">{item.title}</span>
-      <span className="block w-full truncate text-caption leading-[normal] text-ink-soft">{madeLabel(item.loggedAt)}</span>
+      <span className="block w-full truncate text-meta font-semibold text-ink">{item.title}</span>
+      <span className="block w-full truncate text-caption text-ink-soft">{madeLabel(item.loggedAt)}</span>
     </button>
   );
 }
 
-/** Nothing cooked yet: a quiet row pointing at Home, where cooking starts */
+/**
+ * Nothing cooked yet: a quiet row pointing at Home, where cooking starts. An empty state, so
+ * the chosen sous-chef shows up (design rules v1: mascots in empty states, as a 40px avatar).
+ */
 export function RecentEmpty() {
+  const persona = usePersona();
   return (
-    <div className="flex items-center gap-3 rounded-tile border border-line bg-surface p-3 pl-4">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
-        <ChefHat className="size-5" />
-      </span>
+    <div className="flex items-center gap-3 rounded-tile border border-line bg-surface p-3 pl-3.5">
+      <MascotAvatar persona={persona} size={40} />
       <span className="min-w-0 flex-1">
         <span className="block text-body font-semibold text-ink">Nothing yet</span>
-        <span className="block text-xs leading-snug text-ink-soft">Cook something with Sous and it shows up here.</span>
+        <span className="block text-xs leading-snug text-ink-soft">Cook something with {persona.name} and it shows up here.</span>
       </span>
       <Link
         href="/ai"

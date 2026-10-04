@@ -13,13 +13,19 @@ import { cn } from "@/lib/utils";
 import { setHandsFreeMode } from "@/lib/voice/engine";
 import { useAssistantName } from "@/lib/voice/persona";
 
-/** Why hands-free stopped listening by itself, phrased as what to do next */
-export const REST_HINTS: Record<HandsFreeRest, string> = {
-  silence: "Still there? Tap the orb to keep talking",
-  stopped: "Hands-free paused · tap the orb to talk",
-  blocked: "Hands-free needs a tap here · tap the orb to talk",
-  error: "Hands-free stopped · tap the orb to try again",
-};
+/** Why hands-free stopped listening by itself, phrased as what to do next ("tap Leo": the mascot is the button) */
+export function restHint(rest: HandsFreeRest, name: string): string {
+  switch (rest) {
+    case "silence":
+      return `Still there? Tap ${name} to keep talking`;
+    case "stopped":
+      return `Hands-free paused · tap ${name} to talk`;
+    case "blocked":
+      return `Hands-free needs a tap here · tap ${name} to talk`;
+    default:
+      return `Hands-free stopped · tap ${name} to try again`;
+  }
+}
 
 export const HANDS_FREE_LIVE_HINT = "Hands-free on · just keep talking";
 
@@ -52,12 +58,21 @@ export function SwitchTrack({ on, dark = false, className }: { on: boolean; dark
 }
 
 /**
- * Compact pill switch: [ear] Hands-free [switch]. `dark` is the call screen's translucent
- * white-on-green version (same chips as the design's quick actions).
+ * Compact pill switch: [ear] Hands-free [switch].
+ *  - tone "call-light" / "call-dark": the call screen's version, same fill as its quick-action
+ *    chips (ink 6% on white, white 12% on black)
+ *  - tone "default": a card-style pill for cream screens
  */
-export function HandsFreeSwitch({ dark = false, className }: { dark?: boolean; className?: string }) {
+export function HandsFreeSwitch({
+  tone = "default",
+  className,
+}: {
+  tone?: "default" | "call-light" | "call-dark";
+  className?: string;
+}) {
   const on = usePrefs((s) => s.handsFree);
   const name = useAssistantName();
+  const dark = tone === "call-dark";
   return (
     <button
       type="button"
@@ -70,16 +85,22 @@ export function HandsFreeSwitch({ dark = false, className }: { dark?: boolean; c
         // 34px pill; the ::after keeps a 44px tap target
         "relative inline-flex h-[34px] items-center gap-2 rounded-pill pl-3 pr-[6px] text-meta font-medium transition active:scale-[0.97]",
         "after:absolute after:-inset-y-[5px] after:inset-x-0 after:content-['']",
-        dark
-          ? "bg-white/12 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-          : "shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-cream",
-        !dark && (on ? "bg-accent-soft text-accent-strong" : "bg-surface/90 text-ink-soft"),
+        tone === "call-dark" &&
+          "bg-white/12 text-white hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60",
+        tone === "call-light" &&
+          "bg-ink/6 text-ink hover:bg-ink/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+        tone === "default" &&
+          "shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-cream",
+        tone === "default" && (on ? "bg-accent-soft text-accent-strong" : "bg-surface/90 text-ink-soft"),
         className,
       )}
     >
       <Ear
         aria-hidden
-        className={cn("size-[14px]", dark ? (on ? "text-live" : "text-white/70") : on ? "text-accent" : "text-ink-faint")}
+        className={cn(
+          "size-[14px]",
+          dark ? (on ? "text-live" : "text-white/70") : on ? "text-accent" : tone === "call-light" ? "text-ink/50" : "text-ink-faint",
+        )}
         strokeWidth={2.2}
       />
       Hands-free

@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Plate } from "./Plate";
 import { stagger } from "./RecipeMeta";
 
-/** Figma "Cuts & ingredients" chip: 32px ingredient disc + name; selected = ink */
+/** Figma 2.2 "Cuts" chip: 32px round ingredient photo + name (13); selected = ink */
 export function CutChip({
   chip,
   index,
@@ -34,7 +34,10 @@ export function CutChip({
   );
 }
 
-/** Figma "Combinations" card: two overlapping 52px plates, "Beef + Broccoli", "14 recipes" */
+/**
+ * Figma 2.2 "Combinations" card (140 wide, radius 18): the query ingredient's 52px photo with
+ * the partner's overlapping it (white 3px ring), "Beef + Broccoli" (14), "14 recipes" (12).
+ */
 export function ComboCard({ group, index, onClick }: { group: ComboGroup; index: number; onClick: () => void }) {
   const count = group.recipes.length;
   return (

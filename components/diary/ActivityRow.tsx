@@ -35,12 +35,12 @@ export function ActivityRow({
     >
       <h2 className="truncate text-sm font-semibold leading-[normal] text-ink">Activity &amp; sleep</h2>
       <Stat
-        icon="/figma/screens/2-155/icon-activity.svg"
+        icon="/figma/v2/2014-1326/icon-activity.svg"
         tint="bg-flame/12"
         value={avg ? `${fmt(avg.exercise)} min` : "–"}
         unit="exercise"
       />
-      <Stat icon="/figma/screens/2-155/icon-moon.svg" tint="bg-sky/12" value={avg ? formatHours(avg.sleep) : "–"} unit="sleep" />
+      <Stat icon="/figma/v2/2014-1326/icon-moon.svg" tint="bg-sky/12" value={avg ? formatHours(avg.sleep) : "–"} unit="sleep" />
     </section>
   );
 }

@@ -22,9 +22,10 @@ function metaLine(recipe: Recipe, extra?: string): string {
 }
 
 /**
- * Suggestion card in the Figma language: flat white card with a 1px line, the planner's
- * tinted plate frame for the photo, Fraunces title, 12px meta, then how well it fits the
- * fridge and the Groceries / Cook this actions.
+ * Suggestion card in the Figma language: flat white card with a 1px line, the recipe's photo
+ * in an 18px frame (the plate illustration when it has none), Bricolage title, 12px meta and
+ * the source in avocado (Figma 2.1 cards), then how well it fits the fridge and the
+ * Groceries / Cook this actions.
  * `showMatch={false}` swaps the fridge-fit row for an ingredient count (popular list).
  */
 export function RecipeCard({
@@ -79,6 +80,7 @@ export function RecipeCard({
           <span className="mt-1 block text-xs text-ink-soft">
             {metaLine(recipe, showMatch ? undefined : plural(recipe.ingredients.length, "ingredient"))}
           </span>
+          {recipe.sourceName && <span className="mt-1 block truncate text-caption font-semibold text-accent">{recipe.sourceName}</span>}
         </span>
       </button>
 
@@ -86,9 +88,7 @@ export function RecipeCard({
         {showMatch && (
           <>
             <p className={cn("text-meta font-semibold", used.length ? "text-accent" : "text-ink-soft")}>
-              {used.length
-                ? `Uses ${used.length} of your ingredient${used.length === 1 ? "" : "s"}`
-                : "Doesn't use your fridge much, but worth a look"}
+              {used.length ? `Uses ${used.length} of your ingredients` : "Doesn't use your fridge much, but worth a look"}
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {used.slice(0, MAX_USED_CHIPS).map((name) => (

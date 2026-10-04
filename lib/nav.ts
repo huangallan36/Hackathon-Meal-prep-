@@ -17,7 +17,7 @@ export function isFullscreen(pathname: string): boolean {
   return pathname === "/ai/talk" || pathname.startsWith("/ai/cook/");
 }
 
-/** Screens drawn on the dark green call background (light status bar text) */
+/** Screens that turn dark when the phone is in dark mode (the call screen); the shell then uses light status bar text */
 export function isDarkScreen(pathname: string): boolean {
   return pathname === "/ai/talk";
 }

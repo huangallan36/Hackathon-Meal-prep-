@@ -1,9 +1,10 @@
 "use client";
 
 /**
- * The live call with the sous-chef. Two faces of one session:
- *   talking (Figma 1.2) the dark call screen: orb, live transcript, call controls
- *   typing  (Figma 1.3) the light text chat, opened with Type, closed with Resume voice / back
+ * The live call with the chosen persona. Two faces of one session:
+ *   talking (Figma 5.1–5.4, 5.6 dark) the call screen: mascot on its rings, live transcript,
+ *           call controls; white or black with the phone's theme
+ *   typing  (Figma 1.3) the light text chat, opened with Type, closed with Back to voice / back
  * Typing is useVoice.typing, so the engine's own fallbacks (no speech recognition, mic
  * blocked) land in the chat view too.
  */

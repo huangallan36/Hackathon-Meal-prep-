@@ -1,12 +1,13 @@
 "use client";
 
 /**
- * What the small orbs (floating orb, docked bubble) say beside themselves: the live
- * transcript while listening, the user's line while thinking, Sous's latest line while
- * speaking and for a few seconds after, and hands-free hints ("Still there?").
+ * What the small voice surfaces (the floating mascot button, the docked bubble) say beside
+ * themselves: the live transcript while listening, the user's line while thinking, the
+ * persona's latest line while speaking and for a few seconds after, and hands-free hints
+ * ("Still there?").
  */
 import { useEffect, useState } from "react";
-import { REST_HINTS } from "@/components/voice/HandsFree";
+import { restHint } from "@/components/voice/HandsFree";
 import { statusLabel } from "@/components/voice/status";
 import { usePrefs } from "@/lib/stores/prefs";
 import { useVoice } from "@/lib/stores/voice";
@@ -23,9 +24,9 @@ export interface OrbCaption {
   visual: VoiceStatus;
   paused: boolean;
   sessionActive: boolean;
-  /** Interim transcript (bumps the orb while the user talks) */
+  /** Interim transcript (live words while the user talks) */
   interim: string;
-  /** Something worth showing beside the orb right now */
+  /** Something worth showing beside the avatar right now */
   show: boolean;
   label: string;
   text: string;
@@ -68,10 +69,10 @@ export function useOrbCaption(busyOnly = false): OrbCaption {
   const listening = visual === "listening";
   const thinking = visual === "thinking";
   const busy = listening || thinking;
-  const restHint =
-    handsFree && rest && restAt !== restExpiredAt && visual === "idle" && !paused ? REST_HINTS[rest] : null;
+  const restLine =
+    handsFree && rest && restAt !== restExpiredAt && visual === "idle" && !paused ? restHint(rest, name) : null;
   const captionFresh = !!caption && captionAt !== expiredAt;
-  const show = sessionActive && (busyOnly ? busy : visual !== "idle" || paused || !!restHint || captionFresh);
+  const show = sessionActive && (busyOnly ? busy : visual !== "idle" || paused || !!restLine || captionFresh);
 
   const text = listening
     ? interim || "Go ahead, I'm listening."
@@ -79,10 +80,10 @@ export function useOrbCaption(busyOnly = false): OrbCaption {
       ? lastUserLine
         ? `“${lastUserLine}”`
         : "One sec..."
-      : restHint || caption || "Tap the orb to talk.";
+      : restLine || caption || `Tap ${name} to talk.`;
   const label = paused
     ? "Paused"
-    : restHint
+    : restLine
       ? "Hands-free"
       : status === "idle" || status === "speaking"
         ? name

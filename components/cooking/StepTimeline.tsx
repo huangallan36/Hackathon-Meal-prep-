@@ -6,6 +6,7 @@ import { Chip } from "@/components/ui/Chip";
 import { stepTimers } from "@/lib/cooking/durations";
 import { ingredientsInStep } from "@/lib/cooking/stepIngredients";
 import { splitStep } from "@/lib/cooking/steps";
+import { stepTutorial } from "@/lib/cooking/tutorial";
 import type { Recipe } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { COOK_ICON } from "./icons";
@@ -19,8 +20,9 @@ export const STEP_SCROLL_MARGIN = "scroll-mt-[calc(var(--safe-top)+112px)]";
 
 /**
  * Figma 2.3 step list: a timeline of 30px badges joined by a 2px line.
- * Done steps are struck through, the current one is expanded (Fraunces headline, detail,
- * tutorial, timers) and upcoming ones offer their timer. Tapping any other step jumps to it.
+ * Done steps are struck through (avocado check badge), the current one is expanded (lemon
+ * badge, Bricolage 19 headline, 14px detail, tutorial, timers) and upcoming ones get a white
+ * badge; the next one offers its timer. Tapping any other step jumps to it.
  * Renders purely from `current`, so voice commands that move the step animate like taps.
  */
 export function StepTimeline({
@@ -47,7 +49,7 @@ export function StepTimeline({
         return state === "current" ? (
           <CurrentStep key={i} recipe={recipe} index={i} last={last} pulse={pulse} />
         ) : (
-          <OtherStep key={i} recipe={recipe} index={i} state={state} last={last} onJump={onJump} />
+          <OtherStep key={i} recipe={recipe} index={i} state={state} next={i === current + 1} last={last} onJump={onJump} />
         );
       })}
     </ol>
@@ -80,6 +82,7 @@ function CurrentStep({ recipe, index, last, pulse }: { recipe: Recipe; index: nu
   const { title, detail } = splitStep(step.text);
   const timers = useMemo(() => stepTimers(step), [step]);
   const used = useMemo(() => ingredientsInStep(step.text, recipe.ingredients), [step.text, recipe.ingredients]);
+  const tutorial = useMemo(() => stepTutorial(title), [title]);
 
   return (
     <li id={`cook-step-${index}`} aria-current="step" className={cn("flex gap-3.5", STEP_SCROLL_MARGIN)}>
@@ -95,7 +98,7 @@ function CurrentStep({ recipe, index, last, pulse }: { recipe: Recipe; index: nu
           initial={pulse ? { opacity: 0.35 } : false}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5 }}
-          className="w-full text-pretty font-display text-[19px] font-semibold leading-[normal] text-ink"
+          className="w-full font-display text-[19px] font-semibold leading-[normal] text-ink"
         >
           <span className="sr-only">{`Step ${index + 1}: `}</span>
           {title}
@@ -110,7 +113,7 @@ function CurrentStep({ recipe, index, last, pulse }: { recipe: Recipe; index: nu
             ))}
           </ul>
         )}
-        <TutorialCard recipe={recipe} />
+        <TutorialCard recipe={recipe} tutorial={tutorial} />
         <TimerChips timers={timers} />
       </motion.div>
     </li>
@@ -121,18 +124,21 @@ function OtherStep({
   recipe,
   index,
   state,
+  next,
   last,
   onJump,
 }: {
   recipe: Recipe;
   index: number;
   state: Exclude<State, "current">;
+  /** The step right after the current one: it offers its timer (Figma 2.3 "Start 5:00 timer") */
+  next: boolean;
   last: boolean;
   onJump: (index: number) => void;
 }) {
   const step = recipe.steps[index];
   const { title } = splitStep(step.text);
-  const timer = state === "upcoming" ? stepTimers(step)[0] : undefined;
+  const timer = state === "upcoming" && next ? stepTimers(step)[0] : undefined;
 
   return (
     <li id={`cook-step-${index}`} className={cn("relative flex gap-3.5", STEP_SCROLL_MARGIN)}>

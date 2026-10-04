@@ -1,9 +1,10 @@
 /**
  * Figma "icon/hangup": the phone handset glyph rotated 135deg, centred in its box.
- * Two exports of it exist: 26px (call controls, 1.2) and 20px (live activity, 1.4).
+ * Two exports of it exist: 26px (call controls, 5.x call screens) and 20px (live activity).
+ * The glyph is white: it always sits on the tomato End button.
  */
 const GLYPHS = {
-  26: { src: "/figma/screens/2-139/group.svg", glyph: 23.3693 },
+  26: { src: "/figma/v2/2014-2091/group-1.svg", glyph: 23.3693 },
   20: { src: "/figma/screens/2-143/group.svg", glyph: 18.3918 },
 } as const;
 

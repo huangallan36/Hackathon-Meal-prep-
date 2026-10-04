@@ -22,7 +22,7 @@ export function CommunityCard({ className }: { className?: string }) {
           subtitle="See what friends are cooking"
           icon={
             <span className="flex size-9 items-center justify-center rounded-full bg-accent-soft text-accent">
-              <Users className="size-[18px]" strokeWidth={1.8} />
+              <Users className="size-[18px]" strokeWidth={2} />
             </span>
           }
         />

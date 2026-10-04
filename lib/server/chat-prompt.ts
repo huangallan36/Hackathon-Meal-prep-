@@ -12,7 +12,7 @@ import {
 } from "@google/genai";
 import { fallbackReply, pickRecipe, quickCookingIntent, speakable, stepReply, type StepActionName } from "@/lib/intents";
 import type { ChatContext, ChatRequest, ChatTurn, MealType, SousAction, SousActionName } from "@/lib/types";
-import { DEFAULT_PERSONA, PERSONAS } from "@/lib/voice/personas";
+import { DEFAULT_PERSONA, personaNamed } from "@/lib/voice/personas";
 
 export const CHAT_LIMITS = {
   message: 500,
@@ -151,8 +151,8 @@ function strList(v: unknown, maxItems: number, maxLen: number): string[] {
 }
 
 /**
- * The persona name the assistant speaks as ("Maya"). It goes into the system prompt, so only
- * a short plain name passes; anything else falls back to the default persona.
+ * The persona name the assistant speaks as ("Leo"). It goes into the system prompt, so only
+ * a short plain name passes; anything else falls back to the default persona (Leo).
  */
 export function cleanAssistantName(v: unknown): string {
   const name = str(v, 24);
@@ -308,8 +308,11 @@ export function buildSystemInstruction(ctx: ChatContext, opts: PromptOptions = {
     ? `reply(say: "Totally, olive oil works. It won't brown quite the same, so keep the heat at medium.")`
     : `no tool, just answer: "Totally, olive oil works. It won't brown quite the same, so keep the heat at medium."`;
   const assistant = ctx.assistantName || DEFAULT_PERSONA.name;
-  const vibe = PERSONAS.find((p) => p.name.toLowerCase() === assistant.toLowerCase())?.vibe.toLowerCase();
-  return `You are ${assistant}, the Sous sous-chef: the voice of the Sous cooking app, a ${vibe ? `${vibe}, ` : ""}casual, encouraging friend who happens to be a great home cook. ${name} usually just got home after a long day, tired and hungry, so make cooking feel easy and low pressure. Be kind and a little playful. Never preachy, never lecture about nutrition. Your name is ${assistant}; if ${name} asks who you are, you're ${assistant}, their sous-chef in Sous.
+  // Each persona talks like its mascot: Maya warm, Leo calm, Nova upbeat, Brock the coach.
+  const persona = personaNamed(assistant);
+  const role = persona?.role ?? "sous-chef";
+  const style = persona?.style ? ` ${persona.style}` : "";
+  return `You are ${assistant}, the Sous ${role}: the voice of the Sous cooking app and a casual, encouraging friend who happens to be a great home cook.${style} ${name} usually just got home after a long day, tired and hungry, so make cooking feel easy and low pressure. Be kind and a little playful. Never preachy, never lecture about nutrition. Your name is ${assistant}; if ${name} asks who you are, you're ${assistant}, their ${role} in Sous.
 
 HOW YOU TALK
 Everything you write is spoken aloud by a text-to-speech voice, so write exactly what should be heard.

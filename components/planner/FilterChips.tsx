@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
+import { FOR_YOU } from "@/lib/planner/profile";
 import { capitalize, DIETS, type SearchFilters } from "@/lib/planner/search";
 import { cn } from "@/lib/utils";
 
@@ -36,7 +37,8 @@ export function chipFiltersOn(filters: SearchFilters): boolean {
 
 /**
  * Figma 2.1 chip row: "For you" (selected = ink) clears the toggles; the others narrow every
- * list. The row scrolls sideways under the screen edge, like the design.
+ * list. The row scrolls sideways under the screen edge, like the design. "For you" is the
+ * taste profile (FOR_YOU), named in its tooltip.
  */
 export function FilterChips({
   filters,
@@ -52,6 +54,7 @@ export function FilterChips({
     <div role="group" aria-label="Filters" className={cn("no-scrollbar flex gap-2 overflow-x-auto px-5", className)}>
       <ToggleChip
         pressed={forYou}
+        title={`Tuned to you: ${FOR_YOU.summary}`}
         onClick={() => onFilters({ ...filters, maxMinutes: undefined, highProtein: undefined, leftovers: undefined })}
       >
         For you
@@ -123,15 +126,17 @@ export function ActiveFilters({
   );
 }
 
-/** Figma chip (13px, 7/12 padding): white with a 1px line, or ink when selected */
+/** Figma chip (13px Medium, 7/12 padding, 33px): white with a 1px line, or ink when selected */
 function ToggleChip({
   pressed,
   removable,
+  title,
   onClick,
   children,
 }: {
   pressed: boolean;
   removable?: boolean;
+  title?: string;
   onClick: () => void;
   children: ReactNode;
 }) {
@@ -140,9 +145,10 @@ function ToggleChip({
       type="button"
       aria-pressed={removable ? undefined : pressed}
       aria-label={removable && typeof children === "string" ? `Remove filter: ${children}` : undefined}
+      title={title}
       onClick={onClick}
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-pill border px-3 py-1.5 text-meta font-medium leading-[normal] transition-[background-color,border-color,color,transform] duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+        "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-pill border px-3 py-[7px] text-meta font-medium leading-[normal] transition-[background-color,border-color,color,transform] duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
         pressed ? "border-ink bg-ink text-white" : "border-line bg-surface text-ink hover:bg-cream-deep",
       )}
     >

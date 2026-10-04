@@ -6,7 +6,7 @@ export function CookSkeleton() {
         <div className="skeleton h-9 w-4/5 rounded-thumb" />
         <div className="skeleton h-4 w-1/2 rounded-pill" />
       </div>
-      <div className="skeleton h-[200px] w-full rounded-card" />
+      <div className="skeleton h-[200px] w-full rounded-tile" />
       <div className="space-y-3 rounded-card bg-surface p-4 shadow-card">
         <div className="skeleton h-5 w-28 rounded-pill" />
         {Array.from({ length: 5 }, (_, i) => (

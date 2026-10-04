@@ -37,6 +37,17 @@ export function recipesLine(matches: RecipeMatch[]): string {
   return `I found ${ideas}. The ${spokenTitle(best.recipe.title)} uses the most of what you have${tail}.`;
 }
 
+/** What Sous says on the recipes screen about the best match (on-screen wording, digits and the real title) */
+export function bestMatchLine(matches: RecipeMatch[]): string | null {
+  const best = matches[0];
+  if (!best) return null;
+  if (best.used.length === 0) return "These don't use much from your fridge, but they're worth a look.";
+  const missing = best.missing.length;
+  if (missing === 0) return `${best.recipe.title} uses the most of what you have, and you have everything for it.`;
+  const grab = missing <= 3 ? `Just ${plural(missing, "thing")} to grab.` : `You'd need ${missing} more things for it.`;
+  return `${best.recipe.title} uses the most of what you have. ${grab}`;
+}
+
 export function minutesLabel(minutes: number): string {
   if (!Number.isFinite(minutes) || minutes <= 0) return "Quick";
   const min = Math.round(minutes);

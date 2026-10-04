@@ -76,7 +76,6 @@ export function BrowseView({
       <PlannerSection
         id="week"
         title="This week"
-        className="pt-7"
         action={
           plannedCount > 0 ? (
             <span className="shrink-0 rounded-pill bg-accent-soft px-2.5 py-1 text-caption font-semibold text-accent">

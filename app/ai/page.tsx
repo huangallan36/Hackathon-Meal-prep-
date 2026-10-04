@@ -1,17 +1,19 @@
 "use client";
 
 /**
- * Figma 1.1 "home": greeting, "Pick your sous-chef" (Maya / Leo / Nova), Start talking,
- * and "Try asking" rows that start a call with that line. "Continue cooking" joins the rows
- * while a recipe is in progress; the settings sheet (hands-free, floating bubble, reset demo)
- * sits behind a small link at the bottom.
+ * Figma 1.1 "home": the Sous logo (Leo listening), greeting, "Who's cooking with you?"
+ * (Maya / Leo / Nova / Brock, each with its recorded greeting), Start talking, and "Try saying"
+ * rows that start a call with that line. "Continue cooking" joins the rows while a recipe is
+ * in progress; the settings sheet (hands-free, floating bubble, reset demo) sits behind a
+ * small link at the bottom.
  */
 import { Settings2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { SousLogo } from "@/components/mascot/Mascot";
 import { SmartImage } from "@/components/ui/Misc";
-import { REST_HINTS, useHandsFree } from "@/components/voice/HandsFree";
+import { restHint, useHandsFree } from "@/components/voice/HandsFree";
 import { PersonaPicker, stopPersonaSample } from "@/components/voice/PersonaPicker";
 import { SettingsSheet } from "@/components/voice/SettingsSheet";
 import { DEMO_USER } from "@/lib/config";
@@ -23,9 +25,9 @@ import { cn } from "@/lib/utils";
 import { handleUserText, listen, startSession, unlockAudio } from "@/lib/voice/engine";
 import { useAssistantName } from "@/lib/voice/persona";
 
-const TRY_ASKING = [
-  { text: "What can I make with what’s in my fridge?", icon: "/figma/icons/utensils.svg", tile: "bg-butter-soft" },
-  { text: "Log my lunch — chicken wrap and a latte", icon: "/figma/icons/flame.svg", tile: "bg-flame-soft" },
+const TRY_SAYING = [
+  { text: "What can I make with what’s in my fridge?", icon: "/figma/v2/2014-698/icon-utensils.svg", tile: "bg-butter-soft" },
+  { text: "I had a chicken wrap and a latte for lunch", icon: "/figma/v2/2014-698/icon-flame.svg", tile: "bg-flame-soft" },
 ] as const;
 
 function greetingFor(date: Date): { greeting: string; question: string } {
@@ -73,12 +75,10 @@ export default function AiHomePage() {
 
   return (
     <div className="pb-nav pt-[var(--safe-top)]">
-      {/* Top bar */}
+      {/* Top bar: logo tile (Leo listening) + "Sous", profile initial */}
       <header className="flex items-center justify-between px-5 py-1.5">
         <div className="flex items-center gap-2">
-          <span className="flex size-[30px] items-center justify-center rounded-[15px] bg-accent">
-            <img src="/figma/icons/sparkle.svg" alt="" width={16} height={16} className="block size-4" />
-          </span>
+          <SousLogo size={36} />
           <span className="font-display text-[21px] font-semibold text-ink">Sous</span>
         </div>
         <Link
@@ -102,9 +102,9 @@ export default function AiHomePage() {
       {/* Voice picker + Start */}
       <section className="flex flex-col gap-3 px-5 pt-[22px] animate-fade-up [animation-delay:60ms]">
         <div className="flex w-full flex-col gap-[14px] rounded-[24px] border border-line bg-surface p-4">
-          <div className="flex items-center justify-between whitespace-nowrap">
-            <h2 className="text-body font-semibold text-ink">Pick your sous-chef</h2>
-            <p className="text-caption text-ink-soft">Voices by ElevenLabs</p>
+          <div className="flex items-center justify-between gap-2 whitespace-nowrap">
+            <h2 className="shrink-0 text-body font-semibold text-ink">Who’s cooking with you?</h2>
+            <p className="min-w-0 truncate text-caption text-ink-soft">Voices by ElevenLabs</p>
           </div>
           <PersonaPicker />
         </div>
@@ -113,7 +113,7 @@ export default function AiHomePage() {
           onClick={start}
           className="flex h-14 w-full items-center justify-center gap-2.5 rounded-pill bg-accent text-base font-semibold text-white transition hover:bg-accent-strong active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
         >
-          <img src="/figma/icons/mic-white.svg" alt="" width={20} height={20} className="block size-5" />
+          <img src="/figma/v2/2014-698/icon-mic.svg" alt="" width={20} height={20} className="block size-5" />
           {sessionActive ? "Back to conversation" : "Start talking"}
         </button>
         {sessionActive && <LiveLine />}
@@ -121,10 +121,10 @@ export default function AiHomePage() {
 
       <ContinueCooking />
 
-      {/* Try asking */}
+      {/* Try saying */}
       <section className="flex flex-col gap-2.5 px-5 pt-[22px] animate-fade-up [animation-delay:120ms]">
-        <h2 className="text-xs font-semibold tracking-[0.08em] text-ink-soft">TRY ASKING</h2>
-        {TRY_ASKING.map((row) => (
+        <h2 className="text-xs font-semibold tracking-[0.08em] text-ink-soft">TRY SAYING</h2>
+        {TRY_SAYING.map((row) => (
           <Row
             key={row.text}
             onClick={() => ask(row.text)}
@@ -155,7 +155,7 @@ export default function AiHomePage() {
   );
 }
 
-/** Figma "Try asking" row: 36px tinted icon tile, 14px label, chevron. Also used for Continue cooking. */
+/** Figma "Try saying" row: 36px tinted icon tile, 14px label, chevron. Also used for Continue cooking. */
 function Row({
   lead,
   children,
@@ -173,7 +173,7 @@ function Row({
     <>
       <span className="shrink-0">{lead}</span>
       <span className="min-w-px flex-1">{children}</span>
-      <img src="/figma/icons/chevron-right.svg" alt="" width={18} height={18} className="block size-[18px] shrink-0" />
+      <img src="/figma/v2/2014-698/icon-chev-r.svg" alt="" width={18} height={18} className="block size-[18px] shrink-0" />
     </>
   );
   if (href) {
@@ -211,7 +211,7 @@ function ContinueCooking() {
   );
 }
 
-/** Mid-session (back on home with a call running): what the assistant is hearing or just said. */
+/** Mid-session (back on home with a call running): what the persona is hearing or just said. */
 function LiveLine() {
   const name = useAssistantName();
   const status = useVoice((s) => s.status);
@@ -231,7 +231,7 @@ function LiveLine() {
     text = "Thinking...";
     live = true;
   } else if (status === "idle" && handsFree.rest) {
-    text = REST_HINTS[handsFree.rest];
+    text = restHint(handsFree.rest, name);
   } else if (caption) {
     text = <>&ldquo;{caption}&rdquo;</>;
     live = status === "speaking";

@@ -142,7 +142,7 @@ export function itemPrice(item: Pick<Ingredient, "name" | "aisle">): number {
   return NAME_PRICES.find(([re]) => re.test(item.name))?.[1] ?? DEFAULT_PRICE;
 }
 
-/** "Est. $18.40" for one store */
+/** "About $18.40" for one store */
 export function storeEstimate(store: NearbyStore, items: Pick<Ingredient, "name" | "aisle">[]): number {
   const base = items.reduce((sum, i) => sum + itemPrice(i), 0);
   return Math.round(base * store.priceFactor * 100) / 100;
@@ -156,22 +156,59 @@ export const formatDollars = (n: number) => `$${n.toFixed(2)}`;
 
 export interface NearbyStore {
   name: string;
-  /** What locals call it; fits the 162px card next to the "Cheapest" badge */
+  /** What locals call it; fits the card next to the "Cheapest" badge */
   short: string;
+  /** Where Maps looks for it */
   area: string;
   km: number;
   /** Lowercase so it reads after the distance: "1.2 km · open till 11 PM" */
   hours: string;
-  /** Relative basket price (1 = typical); drives the estimate and the "Cheapest" badge */
+  /**
+   * Basket multiplier on the one-pack prices above (recipe amounts often take more than one
+   * pack); drives the estimate and the "Cheapest" badge
+   */
   priceFactor: number;
+  /** Storefront photo (Figma 2.4 "photo/store") */
+  photo: string;
+  /** Who took the photo and its licence (also listed in public/CREDITS.md) */
+  credit: { title: string; author: string; license: string; licenseUrl: string };
 }
 
-/** Static, demo-day list around SFU Burnaby, nearest first */
+/**
+ * The design's two stores (Figma 2.4), as static demo-day data: nearest first. For the design's
+ * list (ground beef, soy sauce, green onions) the estimates come out at about $18.40 and $16.95.
+ */
 export const NEARBY_STORES: NearbyStore[] = [
-  { name: "Nesters Market", short: "Nesters", area: "SFU UniverCity", km: 0.4, hours: "open till 10 PM", priceFactor: 1.08 },
-  { name: "Save-On-Foods", short: "Save-On", area: "Burnaby Mountain area", km: 2.1, hours: "open till 11 PM", priceFactor: 0.94 },
-  { name: "Safeway", short: "Safeway", area: "Lougheed", km: 4.3, hours: "open 24 hours", priceFactor: 1.03 },
-  { name: "T&T Supermarket", short: "T&T", area: "Metropolis at Metrotown", km: 6.8, hours: "open till 10 PM", priceFactor: 0.97 },
+  {
+    name: "Walmart Supercentre",
+    short: "Walmart",
+    area: "Burnaby, BC",
+    km: 1.2,
+    hours: "open till 11 PM",
+    priceFactor: 1.205,
+    photo: "/figma/v2/2014-1255/photo-store.png",
+    credit: {
+      title: "Walmart Supercentre South Park Centre Edmonton 2014",
+      author: "Rowanswiki",
+      license: "CC0",
+      licenseUrl: "https://creativecommons.org/publicdomain/zero/1.0/",
+    },
+  },
+  {
+    name: "Real Canadian Superstore",
+    short: "Superstore",
+    area: "Burnaby, BC",
+    km: 2.0,
+    hours: "open till 10 PM",
+    priceFactor: 1.11,
+    photo: "/figma/v2/2014-1255/photo-store-1.png",
+    credit: {
+      title: "Real Canadian Superstore (Regina, SK)",
+      author: "Quintin Soloviev",
+      license: "CC BY 4.0",
+      licenseUrl: "https://creativecommons.org/licenses/by/4.0/",
+    },
+  },
 ];
 
 /** Index of the store with the lowest basket price */
@@ -181,6 +218,5 @@ export const CHEAPEST_STORE = NEARBY_STORES.reduce(
 );
 
 export function directionsUrl(store: NearbyStore): string {
-  const query = `${store.name} ${store.area.replace(/\s+area$/i, "")} Burnaby BC`;
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${store.name}, ${store.area}`)}`;
 }

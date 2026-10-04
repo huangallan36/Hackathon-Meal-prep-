@@ -5,7 +5,7 @@ import { SectionHeader } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 
 /**
- * Figma planner section: Fraunces 18 title with a green "See all" on the right, 12px above
+ * Figma planner section: Bricolage 18 title with a green "See all" on the right, 12px above
  * its content, 22px below the previous section. "See all" toggles the section open in place
  * ("Show less"); it only shows when there is more to see.
  */
@@ -15,6 +15,7 @@ export function PlannerSection({
   expanded,
   onToggle,
   action,
+  top = "pt-[22px]",
   gap = "mt-3",
   children,
   className,
@@ -26,6 +27,8 @@ export function PlannerSection({
   onToggle?: () => void;
   /** Custom right-side content (instead of See all) */
   action?: ReactNode;
+  /** Space above the section (Figma: 22, "Cuts" under the search 20). cn() doesn't merge, so it's a prop. */
+  top?: string;
   /** Space between the header and the content (Figma: 12, the Similar list 10) */
   gap?: string;
   children: ReactNode;
@@ -33,7 +36,7 @@ export function PlannerSection({
 }) {
   const headingId = id ? `${id}-title` : undefined;
   return (
-    <section id={id} aria-labelledby={headingId} className={cn("px-5 pt-[22px] animate-fade-up", className)}>
+    <section id={id} aria-labelledby={headingId} className={cn("px-5 animate-fade-up", top, className)}>
       <SectionHeader
         title={title}
         className="leading-[normal] [&>h2]:min-w-0 [&>h2]:truncate"

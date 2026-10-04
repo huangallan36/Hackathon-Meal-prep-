@@ -1,10 +1,12 @@
 "use client";
 
-import { NotebookPen, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useMemo } from "react";
+import { BackLink } from "@/components/diary/BackLink";
 import { HighlightedNutrients } from "@/components/diary/HighlightedNutrients";
 import { estimateNote } from "@/components/diary/NutrientsSection";
 import { stagger } from "@/components/diary/stagger";
+import { MascotAvatar } from "@/components/mascot/Mascot";
 import { NutrientInsightCard } from "@/components/me/NutrientInsightCard";
 import { useWeekWindow, WeekRangePill } from "@/components/me/WeekRange";
 import { ButtonLink } from "@/components/ui/Button";
@@ -14,13 +16,15 @@ import { nutrientInsight } from "@/lib/diary/insight";
 import { weeklyNutrientRows, weekSummary } from "@/lib/diary/stats";
 import { useDiaryView } from "@/lib/diary/view";
 import { useDiary } from "@/lib/stores/diary";
+import { usePersona } from "@/lib/voice/persona";
 
-/** Figma 3.2 "Highlighted nutrients": the week's averages vs. daily targets, with a Sous tip */
+/** Figma 3.2 "Highlighted nutrients": the week's averages vs. daily targets, with the sous-chef's tip */
 export default function NutrientsPage() {
   const entries = useDiary((s) => s.entries);
   const goals = useDiary((s) => s.goals);
   const dismissed = useDiaryView((s) => s.insightDismissed);
   const dismiss = useDiaryView((s) => s.dismissInsight);
+  const persona = usePersona();
   const week = useWeekWindow();
 
   const summary = useMemo(() => weekSummary(entries, week.end), [entries, week.end]);
@@ -33,7 +37,7 @@ export default function NutrientsPage() {
   return (
     <>
       <ScreenHeader
-        back="/me"
+        left={<BackLink href="/me" icon="/figma/v2/2014-1436/icon-chev-l.svg" />}
         right={
           <WeekRangePill
             start={week.start}
@@ -42,8 +46,8 @@ export default function NutrientsPage() {
             canNext={week.canNext}
             onPrev={week.prev}
             onNext={week.next}
-            chevLeft="/figma/screens/2-157/icon-chev-l-1.svg"
-            chevRight="/figma/screens/2-157/icon-chev-r.svg"
+            chevLeft="/figma/v2/2014-1436/icon-chev-l-1.svg"
+            chevRight="/figma/v2/2014-1436/icon-chev-r.svg"
           />
         }
       />
@@ -51,13 +55,13 @@ export default function NutrientsPage() {
       <div className="flex flex-col pb-nav">
         <div className="flex flex-col gap-1 px-5 pt-1 leading-[normal]">
           <h1 className="font-display text-[28px] font-semibold text-ink">Highlighted nutrients</h1>
-          <p className="text-sm text-ink-soft">Weekly average vs. your daily targets</p>
+          <p className="text-sm text-ink-soft">Your average {period}</p>
         </div>
 
         {empty ? (
           <EmptyState
             className="animate-fade-up pt-12"
-            icon={<NotebookPen className="size-6" />}
+            icon={<MascotAvatar persona={persona} size={56} />}
             title="Nothing logged that week"
             body="Log meals in your diary and Sous will show how your nutrients add up."
             action={<ButtonLink href="/diary">Open diary</ButtonLink>}

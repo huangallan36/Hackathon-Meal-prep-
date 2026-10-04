@@ -6,11 +6,12 @@ import { toast } from "@/lib/stores/toast";
 import type { Recipe } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Plate } from "./Plate";
-import { stagger } from "./RecipeMeta";
+import { RecipeSource, stagger } from "./RecipeMeta";
 
 /**
- * Figma "Similar" row: 60px plate thumb, title (15), "20 min · 580 kcal · 38g protein" (12)
- * and a bookmark that saves the recipe (green when saved, grey when not).
+ * Figma 2.2 "Similar" row: 60px photo (radius 14), title (15), "20 min · 580 kcal · 38g
+ * protein" (12) and the source ("Spend With Pennies", 11 green), 3px apart; a bookmark that
+ * saves the recipe (green when saved, grey when not).
  */
 export function RecipeRow({
   recipe,
@@ -42,6 +43,7 @@ export function RecipeRow({
         <span className="flex min-w-0 flex-1 flex-col gap-[3px] leading-[normal]">
           <span className="truncate text-body font-semibold text-ink">{recipe.title}</span>
           <span className="truncate text-xs text-ink-soft">{recipeStats(recipe, true)}</span>
+          <RecipeSource recipe={recipe} />
         </span>
       </button>
       <button
@@ -49,10 +51,10 @@ export function RecipeRow({
         aria-pressed={saved}
         aria-label={saved ? `Unsave ${recipe.title}` : `Save ${recipe.title}`}
         onClick={() => toast(toggleSaved(recipe) ? "Saved" : "Removed from saved", "default", 1600)}
-        className="ml-1 mr-0.5 inline-flex size-10 shrink-0 items-center justify-center rounded-full transition active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="ml-0.5 mr-0.5 inline-flex size-10 shrink-0 items-center justify-center rounded-full transition active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         <img
-          src={saved ? "/figma/screens/2-148/icon-bookmark.svg" : "/figma/screens/2-148/icon-bookmark-1.svg"}
+          src={saved ? "/figma/v2/2014-1069/icon-bookmark.svg" : "/figma/v2/2014-1069/icon-bookmark-1.svg"}
           alt=""
           width={20}
           height={20}

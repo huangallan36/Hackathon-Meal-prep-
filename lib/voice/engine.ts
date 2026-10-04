@@ -25,7 +25,7 @@ import type { ChatContext, ChatRequest, ChatResponse, ChatTurn, SousAction } fro
 import { applyActions } from "./actions";
 import { isPlaying, pausePlayback, playTts, resumePlayback, stopPlayback, unlockAudio as unlockAudioElement } from "./audio";
 import { buildChatContext, getCurrentPath, setRouterPush } from "./context";
-import { ttsVoiceId } from "./persona";
+import { currentPersona, ttsVoiceId } from "./persona";
 import { toDisplay, toSpeech } from "./speech-text";
 import { abortListening, isListening, isSttSupported, listenOnceDetailed, stopListening, type ListenOutcome } from "./stt";
 
@@ -282,7 +282,7 @@ async function voiceLine(display: string): Promise<void> {
     }
     heldLine = null;
     voice().setStatus("speaking");
-    // The chosen persona's ElevenLabs voice (Maya's when none was picked).
+    // The chosen persona's ElevenLabs voice (Leo's when none was picked).
     await playTts(toSpeech(display), ttsVoiceId(), (engine) => {
       if (id === speechSeq) voice().setTtsEngine(engine);
     });
@@ -469,7 +469,7 @@ export async function handleUserText(text: string): Promise<void> {
     if (!clean) return;
     const v = voice();
     if (v.status === "thinking") {
-      toast("One sec, Sous is still thinking.");
+      toast(`One sec, ${currentPersona().name} is still thinking.`);
       return;
     }
     if (!v.sessionActive) v.startSession();

@@ -3,7 +3,7 @@
 /**
  * What the call screen can offer next, derived from the kitchen state and the conversation:
  * the recipe the conversation is about (with what's missing for it) and the quick actions
- * under Sous's reply (Show recipe / Add missing to groceries / Scan my fridge / Show recipes).
+ * under the reply (Show recipe / Add 2 to groceries / Scan my fridge / Show recipes).
  */
 import { useMemo } from "react";
 import { groceryPlan } from "@/lib/kitchen/groceries";
@@ -68,7 +68,8 @@ export function useQuickActions(): QuickAction[] {
     if (ref) {
       out.push({ kind: "recipe", label: "Show recipe", href: cookHref(ref.recipe.id) });
       if (ref.missing && ref.missing.length > 0) {
-        out.push({ kind: "groceries", label: "Add missing to groceries", href: groceriesHref(ref.recipe.id) });
+        // Figma: "Add 2 to groceries"
+        out.push({ kind: "groceries", label: `Add ${ref.missing.length} to groceries`, href: groceriesHref(ref.recipe.id) });
       }
     }
     if (!hasIngredients) out.push({ kind: "fridge", label: "Scan my fridge", href: FRIDGE_SCAN_HREF });

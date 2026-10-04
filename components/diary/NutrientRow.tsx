@@ -7,9 +7,9 @@ import { cn } from "@/lib/utils";
 import { ProgressRing } from "./ProgressRing";
 
 /** Figma 3.2 ring track (42px, 5px #ece6dc) */
-const RING_TRACK = "/figma/screens/2-157/ellipse.svg";
+const RING_TRACK = "/figma/v2/2014-1436/ellipse.svg";
 
-/** Figma "Highlighted nutrients": arc color by status (on track green, a bit low amber, low / over orange) */
+/** Figma "Highlighted nutrients": arc color by status (on track avocado, a bit low lemon, low / over tomato) */
 export const STATUS_RING: Record<NutrientStatus, string> = {
   "on-track": "stroke-accent",
   "a-bit-low": "stroke-butter",
