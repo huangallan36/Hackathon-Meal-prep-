@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import { GlobalTimer } from "@/components/cooking/GlobalTimer";
 import { FloatingOrb } from "@/components/orb/FloatingOrb";
 import { Toaster } from "@/components/ui/Misc";
 import { BottomNav } from "./BottomNav";
@@ -39,6 +40,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main id="sous-scroll" className="no-scrollbar absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-contain">
           {mounted ? children : <Splash />}
         </main>
+        {mounted && <GlobalTimer />}
         {mounted && <FloatingOrb />}
         {mounted && !fullscreen && <BottomNav />}
         <Toaster />
