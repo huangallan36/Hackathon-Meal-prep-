@@ -27,9 +27,9 @@ import { usePersona } from "@/lib/voice/persona";
 import { useOrbCaption, type OrbCaption } from "./useOrbCaption";
 import { VoiceAvatar } from "./VoiceAvatar";
 
-/** The AI home has its own Start button; the call screen is the call; cooking mode has its own mic bar. */
+/** The call screen is the call; cooking mode has its own mic bar. Home shows it too, so a minimized call sits at the side. */
 function hiddenOn(pathname: string): boolean {
-  return pathname === "/ai" || pathname === "/ai/talk" || pathname.startsWith("/ai/cook/");
+  return pathname === "/ai/talk" || pathname.startsWith("/ai/cook/");
 }
 /** Hold this long (without moving) to dock Sous */
 const LONG_PRESS_MS = 550;

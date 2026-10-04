@@ -3,7 +3,6 @@
 /** Small hooks shared by the call screen (talking + typing views) and the docked live activity. */
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useDock } from "@/lib/stores/dock";
 import { useVoice } from "@/lib/stores/voice";
 import { getPreviousPath } from "@/lib/voice/context";
 import { endSession } from "@/lib/voice/engine";
@@ -34,10 +33,12 @@ export function useCallTimer(): string {
 export function useCallNav() {
   const router = useRouter();
 
-  /** The session keeps running: Sous docks as a bubble over the (demo) home screen. */
+  /**
+   * Back to the app where you were; the session keeps running and Sous waits in the floating
+   * bubble at the side (tap it to come back). Long-press the bubble for the phone home screen demo.
+   */
   function minimize() {
-    useDock.getState().dock();
-    // Underneath, the app goes back to where you were, so leaving the bubble lands there.
+    useVoice.getState().setTyping(false);
     const prev = getPreviousPath();
     if (prev && prev !== "/ai/talk") router.back();
     else router.push("/ai");

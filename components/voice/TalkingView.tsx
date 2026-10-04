@@ -103,7 +103,7 @@ export function TalkingView() {
     >
       {/* Call header: 40px soft circles, name + live dot + timer */}
       <header className="flex shrink-0 items-center justify-between px-5 pt-[calc(var(--safe-top)+6px)]">
-        <HeaderButton dark={dark} label="Minimize to a floating bubble" onClick={minimize}>
+        <HeaderButton dark={dark} label="Back to the app (Sous stays in a bubble)" onClick={minimize}>
           <img src={`${icons}/icon-chev-d.svg`} alt="" width={20} height={20} className="block size-5" />
         </HeaderButton>
         <div className="flex min-w-0 flex-col items-center gap-0.5">

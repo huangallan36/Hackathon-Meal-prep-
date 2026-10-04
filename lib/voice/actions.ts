@@ -9,7 +9,7 @@
 import { estimateFoods, logFoods } from "@/lib/diary/estimate";
 import { dayTotals, MEAL_LABEL } from "@/lib/diary/stats";
 import { loadRecipe } from "@/lib/recipes/client";
-import { CHEAPEST_STORE, NEARBY_STORES } from "@/lib/kitchen/groceries";
+import { CHEAPEST_STORE, formatDollars, groceryKey, groceryPlan, NEARBY_STORES, storeEstimate } from "@/lib/kitchen/groceries";
 import { FRIDGE_SCAN_HREF } from "@/lib/kitchen/routes";
 import { useDiary } from "@/lib/stores/diary";
 import { useKitchen } from "@/lib/stores/kitchen";
@@ -195,12 +195,12 @@ function scrollToStores() {
   setTimeout(tick, 250);
 }
 
-async function startCooking(recipeId: number | null): Promise<void> {
+async function startCooking(recipeId: number | null): Promise<string | null> {
   const k = useKitchen.getState();
   const id = recipeId ?? (k.matches.length === 1 ? k.matches[0].recipe.id : null);
   if (id == null) {
     navigateTo("/ai/recipes");
-    return;
+    return null;
   }
   let recipe: Recipe | null = null;
   try {
@@ -211,10 +211,44 @@ async function startCooking(recipeId: number | null): Promise<void> {
   if (!recipe || !recipe.steps.length) {
     toast("Couldn't open that recipe. Pick one here?", "warning");
     navigateTo("/ai/recipes");
-    return;
+    return null;
   }
   useKitchen.getState().startCooking(recipe);
+  // Missing ingredients (per the fridge scan): first show where to get them. Saying "let's
+  // cook" again for the same recipe goes to the stove.
+  const missing = missingFor(recipe);
+  if (missing.length > 0 && !groceriesOffered.has(recipe.id) && getCurrentPath() !== `/ai/groceries/${recipe.id}`) {
+    groceriesOffered.add(recipe.id);
+    navigateTo(`/ai/groceries/${recipe.id}`);
+    scrollToStores();
+    return groceriesLine(recipe, missing);
+  }
   navigateTo(`/ai/cook/${recipe.id}`);
+  return null;
+}
+
+/** Recipes whose missing ingredients Sous already pointed out this session */
+const groceriesOffered = new Set<number>();
+
+/** What's still to buy for a recipe; empty without a fridge scan (we don't know what they have) */
+function missingFor(recipe: Recipe) {
+  const k = useKitchen.getState();
+  if (k.ingredients.length === 0) return [];
+  return groceryPlan(recipe, k.ingredients).need.filter((i) => !k.groceryChecked[groceryKey(recipe.id, i.name)]);
+}
+
+/** "You're missing soy sauce and green onions. Superstore has them for about $16.95, ..." */
+function groceriesLine(recipe: Recipe, missing: ReturnType<typeof missingFor>): string {
+  const names = missing.slice(0, 3).map((i) => i.name);
+  const more = missing.length > 3 ? ` and ${missing.length - 3} more` : "";
+  const list = names.length > 1 && !more ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : `${names.join(", ")}${more}`;
+  const cheap = NEARBY_STORES[CHEAPEST_STORE];
+  const near = NEARBY_STORES[0];
+  const where =
+    cheap === near
+      ? `${cheap.short} has it all for about ${formatDollars(storeEstimate(cheap, missing))}.`
+      : `${cheap.short} has it all for about ${formatDollars(storeEstimate(cheap, missing))}, or ${near.short} is closest.`;
+  return `${recipe.title} sounds great, but you're missing ${list}. ${where} Say let's cook when you're ready.`;
 }
 
 function showGroceries(recipeId: number | null, section?: unknown) {
@@ -280,8 +314,7 @@ async function applyOne(action: SousAction): Promise<string | null> {
       navigateTo("/ai/recipes");
       return null;
     case "start_cooking":
-      await startCooking(id);
-      return null;
+      return startCooking(id);
     case "show_groceries":
       showGroceries(id, action.args?.section);
       return null;
