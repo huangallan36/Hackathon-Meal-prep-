@@ -4,13 +4,18 @@
  * Sous's ears: one-shot Web Speech recognition. Exactly one recognizer exists at a time.
  * Interim text streams into useVoice.interim; the promise resolves with the final
  * transcript ("" for silence, cancel or errors). It never rejects.
+ *
+ * The recognizer runs in continuous mode so the browser doesn't end the turn at the first
+ * short pause; Sous decides the turn is over after SILENCE_MS of quiet (or a tap).
  */
 import { toast } from "@/lib/stores/toast";
 import { useVoice } from "@/lib/stores/voice";
 import { currentPersona } from "./persona";
 
-/** Stop after this much quiet following the last result */
-const SILENCE_MS = 1300;
+/** The turn ends after this much quiet following the last thing heard */
+const SILENCE_MS = 2500;
+/** A browser that ends the session on its own mid-sentence is restarted at most this often per turn */
+const MAX_RESTARTS = 3;
 /** Give up if nothing at all is heard after the mic opens */
 const NO_SPEECH_MS = 9000;
 /** Absolute cap per utterance (includes the permission prompt) */
@@ -62,6 +67,23 @@ interface ActiveRecognition {
 }
 
 let active: ActiveRecognition | null = null;
+
+/**
+ * One session's results as text. Android Chrome repeats earlier words in each new result
+ * in continuous mode ("make" / "make dinner"), so a result that extends the previous one
+ * replaces it instead of being appended.
+ */
+function sessionText(results: SousRecognitionEvent["results"]): string {
+  const parts: string[] = [];
+  for (let i = 0; i < results.length; i++) {
+    const t = results[i]?.[0]?.transcript?.replace(/\s+/g, " ").trim();
+    if (!t) continue;
+    const prev = parts[parts.length - 1];
+    if (prev && t.toLowerCase().startsWith(prev.toLowerCase())) parts[parts.length - 1] = t;
+    else parts.push(t);
+  }
+  return parts.join(" ");
+}
 
 function recognizerCtor(): SousRecognitionConstructor | null {
   if (typeof window === "undefined") return null;
@@ -132,6 +154,12 @@ export function listenOnceDetailed(options?: ListenOptions): Promise<ListenResul
     }
 
     let heard = "";
+    /** Text from earlier sessions of this turn, when the browser ended one early and we restarted */
+    let committed = "";
+    let lastHeardAt = 0;
+    /** We asked the recognizer to stop (silence, a tap, the caps): its onend ends the turn */
+    let stopRequested = false;
+    let restarts = 0;
     let failed = false;
     /** The mic actually opened (onstart or any result) */
     let started = false;
@@ -183,6 +211,7 @@ export function listenOnceDetailed(options?: ListenOptions): Promise<ListenResul
 
     function stop() {
       if (settled) return;
+      stopRequested = true;
       try {
         rec.stop();
       } catch {
@@ -194,24 +223,21 @@ export function listenOnceDetailed(options?: ListenOptions): Promise<ListenResul
     }
 
     rec.lang = "en-US";
-    rec.continuous = false;
+    // Continuous: a short pause mid-sentence doesn't end the turn; SILENCE_MS of quiet does.
+    rec.continuous = true;
     rec.interimResults = true;
     rec.maxAlternatives = 1;
 
     rec.onstart = () => {
       started = true;
-      noSpeechTimer = setTimeout(stop, NO_SPEECH_MS);
+      if (!heard && !noSpeechTimer) noSpeechTimer = setTimeout(stop, NO_SPEECH_MS);
     };
 
     rec.onresult = (e) => {
       started = true;
       // Rebuild from every result: event order and isFinal flags vary across browsers.
-      let text = "";
-      for (let i = 0; i < e.results.length; i++) {
-        const alt = e.results[i]?.[0];
-        if (alt?.transcript) text += `${alt.transcript} `;
-      }
-      heard = text.replace(/\s+/g, " ").trim();
+      heard = [committed, sessionText(e.results)].filter(Boolean).join(" ");
+      lastHeardAt = Date.now();
       if (noSpeechTimer) {
         clearTimeout(noSpeechTimer);
         noSpeechTimer = null;
@@ -256,7 +282,26 @@ export function listenOnceDetailed(options?: ListenOptions): Promise<ListenResul
       if (!graceTimer) graceTimer = setTimeout(() => settle(failed ? "" : heard), END_GRACE_MS);
     };
 
-    rec.onend = () => settle(failed ? "" : heard);
+    rec.onend = () => {
+      // Some browsers end a continuous session on their own (Safari, a network blip) while the
+      // user is still mid-thought: keep listening until the full pause has passed.
+      const midThought = heard && Date.now() - lastHeardAt < SILENCE_MS;
+      if (!settled && !stopRequested && !failed && !errorOutcome && midThought && restarts < MAX_RESTARTS) {
+        restarts++;
+        committed = heard;
+        if (graceTimer) {
+          clearTimeout(graceTimer);
+          graceTimer = null;
+        }
+        try {
+          rec.start();
+          return;
+        } catch {
+          /* fall through: settle with what we have */
+        }
+      }
+      settle(failed ? "" : heard);
+    };
 
     active = {
       rec,
