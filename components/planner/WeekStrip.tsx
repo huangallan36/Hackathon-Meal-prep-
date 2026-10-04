@@ -2,6 +2,7 @@
 
 import { Plus } from "lucide-react";
 import { SmartImage } from "@/components/ui/Misc";
+import { Spinner } from "@/components/ui/Spinner";
 import type { PlanDay } from "@/lib/planner/hooks";
 import type { ISODate } from "@/lib/types";
 import { cn, formatDay } from "@/lib/utils";
@@ -15,17 +16,28 @@ import { stagger } from "./RecipeMeta";
 export function WeekStrip({
   days,
   target,
+  busyId,
   onDay,
 }: {
   days: PlanDay[];
   /** Day currently being planned (highlighted) */
   target: ISODate | null;
+  /** Recipe id being fetched after a tap (planned live recipes not held locally) */
+  busyId?: number | null;
   onDay: (day: PlanDay) => void;
 }) {
   return (
     <Scroller label="This week">
       {days.map((day, i) => (
-        <DayTile key={day.date} day={day} index={i} today={i === 0} selected={target === day.date} onClick={() => onDay(day)} />
+        <DayTile
+          key={day.date}
+          day={day}
+          index={i}
+          today={i === 0}
+          selected={target === day.date}
+          busy={busyId != null && day.meals[0]?.recipeId === busyId}
+          onClick={() => onDay(day)}
+        />
       ))}
     </Scroller>
   );
@@ -36,12 +48,14 @@ function DayTile({
   index,
   today,
   selected,
+  busy,
   onClick,
 }: {
   day: PlanDay;
   index: number;
   today: boolean;
   selected: boolean;
+  busy?: boolean;
   onClick: () => void;
 }) {
   const planned = day.meals.length > 0;
@@ -56,6 +70,8 @@ function DayTile({
       onClick={onClick}
       aria-label={label}
       aria-pressed={selected}
+      aria-busy={busy || undefined}
+      disabled={busy}
       style={stagger(index, 40)}
       className={cn(
         "flex h-[128px] w-[84px] shrink-0 snap-start flex-col justify-between rounded-tile p-2.5 text-left animate-fade-up transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
@@ -75,7 +91,11 @@ function DayTile({
         <span className="block font-display text-[26px] font-semibold leading-none text-ink">{day.dayOfMonth}</span>
       </span>
 
-      {planned ? (
+      {busy ? (
+        <span className="flex size-10 items-center justify-center">
+          <Spinner className="size-5 text-accent" />
+        </span>
+      ) : planned ? (
         <span className="flex items-center">
           {day.meals.slice(0, 2).map((m, i) => (
             <SmartImage

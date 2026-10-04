@@ -78,7 +78,7 @@ export function BrowseView({
           ) : undefined
         }
       >
-        <WeekStrip days={days} target={planTarget} onDay={onDay} />
+        <WeekStrip days={days} target={planTarget} busyId={busyId} onDay={onDay} />
         {target && <PlanTargetBanner date={target.date} onCancel={onCancelTarget} className="mt-3" />}
       </PlannerSection>
 

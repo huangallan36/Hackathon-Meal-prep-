@@ -18,15 +18,27 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { ImageInput } from "@/lib/types";
 
-/** Fast text + tool calling for voice turns and moderation */
-export const CHAT_MODELS = uniq([process.env.GEMINI_CHAT_MODEL, "gemini-3.5-flash-lite", "gemini-3.7-flash"]);
+/**
+ * Fast text + tool calling for voice turns and moderation. Each model has its own
+ * free-tier quota, so the second Flash-Lite keeps voice working when the first is capped.
+ */
+export const CHAT_MODELS = uniq([
+  process.env.GEMINI_CHAT_MODEL,
+  "gemini-3.5-flash-lite",
+  "gemini-3.1-flash-lite",
+  "gemini-3.6-flash",
+]);
 
-/** Vision (fridge ingredients, meal nutrition) */
+/**
+ * Vision (fridge ingredients, meal nutrition). Best model first: a 429 (daily quota used)
+ * comes back in ~0.3s, so a capped model costs almost nothing before the next one answers.
+ */
 export const VISION_MODELS = uniq([
   process.env.GEMINI_VISION_MODEL,
-  "gemini-3.7-flash",
   "gemini-3.8-flash",
+  "gemini-3.6-flash",
   "gemini-3.5-flash-lite",
+  "gemini-3.7-flash",
 ]);
 
 let client: GoogleGenAI | null = null;

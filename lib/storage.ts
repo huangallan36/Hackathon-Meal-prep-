@@ -40,5 +40,7 @@ export function resetDemoData() {
   } catch {
     /* ignore */
   }
+  // A full reload (not router.push) is the point: every store re-initializes from seed data.
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
   window.location.assign("/ai");
 }

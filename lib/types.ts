@@ -288,6 +288,7 @@ export interface MealEstimateResponse {
 export interface ModerationRequest {
   image: ImageInput;
   caption: string;
+  dishName?: string;
 }
 
 export interface ModerationResponse {

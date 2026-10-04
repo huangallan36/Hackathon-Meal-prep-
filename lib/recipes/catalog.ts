@@ -46,7 +46,7 @@ const DESCRIPTORS = new Set([
 ]);
 
 /** Tokens too generic to match on their own ("soy sauce" vs "hot sauce") */
-const WEAK = new Set(["sauce", "powder", "paste", "oil", "juice", "stock", "broth", "seasoning", "mix", "leaves", "seeds"]);
+const WEAK = new Set(["sauce", "powder", "paste", "oil", "juice", "stock", "broth", "seasoning", "mix", "leave", "seed"]);
 
 function singular(word: string): string {
   if (word.length <= 3) return word;
@@ -77,6 +77,12 @@ export function ingredientMatches(fridgeItem: string, ingredientName: string): b
   const b = tokens(ingredientName);
   if (!a.length || !b.length) return false;
   if (a.join(" ") === b.join(" ")) return true;
+  // "chicken broth" is broth, not chicken: when either side ends in a generic noun,
+  // the other side must name the same thing.
+  const headA = a[a.length - 1];
+  const headB = b[b.length - 1];
+  const strict = (head: string) => WEAK.has(head) && head !== "juice"; // lemons do cover lemon juice
+  if ((strict(headA) || strict(headB)) && headA !== headB) return false;
   const shared = a.filter((t) => b.includes(t));
   return shared.some((t) => !WEAK.has(t));
 }

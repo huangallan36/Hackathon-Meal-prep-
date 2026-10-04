@@ -7,6 +7,7 @@
  * answer (e.g. the step it just moved to).
  */
 import { loadRecipe } from "@/lib/recipes/client";
+import { FRIDGE_SCAN_HREF } from "@/lib/kitchen/routes";
 import { useKitchen } from "@/lib/stores/kitchen";
 import { toast } from "@/lib/stores/toast";
 import type { Recipe, SousAction, SousActionName } from "@/lib/types";
@@ -137,7 +138,7 @@ async function applyOne(action: SousAction): Promise<string | null> {
   const id = validId(action.args?.recipeId);
   switch (action.name) {
     case "open_fridge_camera":
-      navigateTo("/ai/fridge");
+      navigateTo(FRIDGE_SCAN_HREF);
       return null;
     case "show_recipes":
       navigateTo("/ai/recipes");

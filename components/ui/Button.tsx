@@ -9,7 +9,7 @@ type Variant = "primary" | "secondary" | "soft" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg";
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-pill font-semibold transition-[transform,background-color,box-shadow,opacity] duration-200 active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-cream";
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-pill font-semibold transition-[transform,background-color,box-shadow,opacity] duration-200 active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-cream";
 
 const variants: Record<Variant, string> = {
   primary: "bg-accent text-white shadow-accent hover:bg-accent-strong",
@@ -87,7 +87,7 @@ export function IconButton({
       aria-label={label}
       title={label}
       className={cn(
-        "inline-flex size-10 items-center justify-center rounded-full bg-surface text-ink shadow-soft transition active:scale-95 hover:bg-cream-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+        "inline-flex size-11 items-center justify-center rounded-full bg-surface text-ink shadow-soft transition active:scale-95 hover:bg-cream-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
         className,
       )}
       {...rest}

@@ -24,7 +24,7 @@ import {
   unlockAudio,
 } from "@/lib/voice/engine";
 
-const STARTERS = ["I'm wiped, no idea what to cook", "What can I make with eggs and spinach?", "Scan my fridge"];
+const STARTERS = ["I'm wiped, no idea what to cook", "What can I make with eggs and mushrooms?", "Scan my fridge"];
 
 /** Below this phone height (laptop-sized desktop frame, most phones) the orb shrinks so the transcript keeps room. */
 const COMPACT_BELOW_PX = 760;

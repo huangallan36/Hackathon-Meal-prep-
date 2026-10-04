@@ -1,5 +1,6 @@
 "use client";
 
+import { FRIDGE_SCAN_HREF } from "@/lib/kitchen/routes";
 import { CalendarDays, ChevronRight, Flame, Mic, Refrigerator, Settings2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -98,7 +99,7 @@ export default function AiHomePage() {
         <section className="mt-8 grid grid-cols-2 gap-3 animate-fade-up [animation-delay:160ms]">
           <ContinueCooking />
           <Tile
-            href="/ai/fridge"
+            href={FRIDGE_SCAN_HREF}
             icon={<Refrigerator className="size-5" />}
             title="Scan my fridge"
             body="Snap a photo, get recipes"
