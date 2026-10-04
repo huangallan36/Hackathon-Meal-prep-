@@ -77,8 +77,8 @@ export const STATUS_LABEL: Record<NutrientStatus, string> = {
   over: "Over",
 };
 
-/** "1,050 mg", "22 g", "640 µg" (whole numbers, except grams under 10 keep one decimal) */
+/** "1,050 mg", "22 g", "640 µg" (whole numbers; anything but kcal under 10 keeps one decimal) */
 export function formatAmount(value: number, unit: NutrientUnit): string {
-  const v = unit === "g" && value > 0 && value < 10 ? Math.round(value * 10) / 10 : Math.round(value);
+  const v = unit !== "kcal" && value > 0 && value < 10 ? Math.round(value * 10) / 10 : Math.round(value);
   return `${v.toLocaleString("en-US")} ${unit}`;
 }

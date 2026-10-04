@@ -222,9 +222,12 @@ function screenLabel(path: string): string {
   if (path.startsWith("/ai/fridge")) return "fridge camera";
   if (path.startsWith("/ai/recipes")) return "recipe suggestions";
   if (path.startsWith("/ai/snap")) return "meal photo (logging what they ate)";
-  if (path.startsWith("/ai/plan")) return "meal planner";
+  if (path.startsWith("/planner") || path.startsWith("/ai/plan")) return "meal planner";
   if (path.startsWith("/ai/talk")) return "conversation";
-  if (path.startsWith("/diary")) return "food diary";
+  if (path.startsWith("/diary/calendar")) return "diary calendar";
+  if (path.startsWith("/diary")) return "food diary (meals and nutrients)";
+  if (path.startsWith("/me/nutrients")) return "weekly nutrients";
+  if (path.startsWith("/me")) return "personal stats";
   if (path.startsWith("/social")) return "social feed";
   return "home";
 }
