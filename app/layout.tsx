@@ -1,13 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, Fraunces } from "next/font/google";
+import { Bricolage_Grotesque, DM_Sans } from "next/font/google";
 import { AppShell } from "@/components/shell/AppShell";
 import "./globals.css";
 
-/** Headings: Fraunces with SOFT 0 / WONK 1 (set in globals.css on .font-display) */
-const fraunces = Fraunces({
+/** Headings: Bricolage Grotesque SemiBold, -1.5% tracking (design rules v1: no serif fonts) */
+const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
-  variable: "--font-fraunces",
-  axes: ["opsz", "SOFT", "WONK"],
+  variable: "--font-bricolage",
+  axes: ["opsz", "wdth"],
 });
 
 /** Body: DM Sans at optical size 14 (set in globals.css on body) */
@@ -32,7 +32,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${dmSans.variable} h-full antialiased`}>
+    <html lang="en" className={`${bricolage.variable} ${dmSans.variable} h-full antialiased`}>
       <body className="min-h-full font-sans">
         <AppShell>{children}</AppShell>
       </body>

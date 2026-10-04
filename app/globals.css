@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
 /*
- * Sous design tokens, taken from the Figma file "Sous — MVP concept screens".
+ * Sous design tokens, from the Figma file "Stormhacks-2026-Updated" (design rules v1:
+ * every hue comes from a mascot; primary = Leo avocado).
  * The file has no Figma variables, so these are its raw values, deduplicated.
  * Tailwind v4 turns each token into utilities:
  *   --color-accent  -> bg-accent / text-accent / border-accent / ring-accent
@@ -23,49 +24,51 @@
   --color-ink-faint: #a9a49b; /* placeholder, inactive tab */
   --color-ink-mute: #b3aea5; /* disabled, row chevrons */
 
-  /* Brand: forest green (primary buttons, links, active states) */
-  --color-accent: #2f5d46;
-  --color-accent-strong: #24493a;
-  --color-accent-soft: #e2ede5;
+  /* Primary: Leo avocado (buttons, links, active states, protein) */
+  --color-accent: #3d6b2e;
+  --color-accent-strong: #2e5223;
+  --color-accent-soft: #e7efdc;
 
-  /* Voice / warm accent: orange (orb, end call, voice CTAs, low + over) */
-  --color-flame: #e0603a;
-  --color-flame-soft: #fbe5dc;
+  /* Maya tomato: fat, warnings, end call, voice CTAs, low + over */
+  --color-flame: #d8604a;
+  --color-flame-strong: #b8452e;
+  --color-flame-soft: #f8e4dd;
 
-  /* Amber (current step, carbs, "a bit low") and butter tints */
-  --color-butter: #e9a93a;
+  /* Nova lemon: carbs, current step, "a bit low" (text on lemon tints uses butter-ink) */
+  --color-butter: #d9ac3e;
   --color-butter-soft: #fbf0d9;
   --color-butter-ink: #8a5a0b;
 
-  /* Blue (Nova voice, sleep) */
-  --color-sky: #4f7fb8;
-  --color-sky-soft: #e9eff6;
+  /* Info blue (sleep, fiber) */
+  --color-sky: #5f85b2;
+  --color-sky-soft: #e9eef4;
 
   /* Status aliases */
-  --color-herb: #2f5d46; /* on track */
-  --color-herb-soft: #e2ede5;
-  --color-danger: #e0603a;
+  --color-herb: #3d6b2e; /* on track */
+  --color-herb-soft: #e7efdc;
+  --color-danger: #d8604a;
   --color-live: #7bd88f; /* "Live" dot on the call screen */
 
-  /* Dark call screen (1.2) */
-  --color-call-top: #24493a;
-  --color-call-bottom: #11231b;
+  /* Call screen follows the phone: cream in light mode, near-black in dark mode */
+  --color-call-dark: #0b0b0b;
+  /* Mascot outlines (never pure black) */
+  --color-mascot-ink: #2a2622;
 
-  /* Nutrition */
-  --color-protein: #2f5d46;
-  --color-carbs: #e9a93a;
-  --color-fat: #e0603a;
-  --color-fiber: #4f7fb8;
+  /* Nutrition (fixed, not themed by the chosen voice) */
+  --color-protein: #3d6b2e;
+  --color-carbs: #d9ac3e;
+  --color-fat: #d8604a;
+  --color-fiber: #5f85b2;
 
-  /* Type scale (Fraunces for display sizes, DM Sans for the rest) */
+  /* Type scale (Bricolage Grotesque for headings, DM Sans for the rest) */
   --text-micro: 10px;
   --text-caption: 11px;
   --text-meta: 13px;
   --text-body: 15px;
   --text-lead: 17px;
-  --text-section: 18px; /* Fraunces section titles: "Most popular" */
-  --text-heading: 22px; /* Fraunces: "Alex Rivera" */
-  --text-title: 30px; /* Fraunces page titles: "Meal planner" */
+  --text-section: 18px; /* Bricolage section titles: "Most popular" */
+  --text-heading: 22px; /* Bricolage: "Alex Rivera" */
+  --text-title: 30px; /* Bricolage page titles: "Meal planner" */
 
   /* Figma line-height is "normal" for every style except paragraphs (set 1.4 explicitly there) */
   --text-xs--line-height: normal;
@@ -119,7 +122,7 @@
 /* next/font variables are set on <html>; map them into Tailwind's font tokens. */
 @theme inline {
   --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
@@ -143,9 +146,10 @@ body {
   font-variation-settings: "opsz" 14;
 }
 
-/* Figma sets every Fraunces style to SOFT 0, WONK 1 (optical size stays automatic) */
+/* Headings: Bricolage Grotesque with -1.5% tracking (optical size stays automatic) */
 .font-display {
-  font-variation-settings: "SOFT" 0, "WONK" 1;
+  font-variation-settings: normal;
+  letter-spacing: -0.015em;
 }
 
 /* Utility classes shared by every screen */
