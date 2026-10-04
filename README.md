@@ -1,8 +1,9 @@
 # Sous
 
-**A voice-first AI sous chef.** You come home tired, tap the orb and talk. Sous looks in your
-fridge, suggests what you can cook with what you have, talks you through it step by step while
-your hands are busy, then logs what you ate (with macros, vitamins and minerals) to your diary.
+**A voice-first AI sous chef.** You come home tired, pick a sous-chef and talk. Sous looks in
+your fridge, suggests what you can cook with what you have, talks you through it step by step
+while your hands are busy, then logs what you ate (with macros, vitamins and minerals) to your
+diary.
 
 Built in 24 hours for **StormHacks 2026**. Entered for MLH **Best Use of Gemini API** and
 **Best Use of ElevenLabs**.
@@ -10,13 +11,16 @@ Built in 24 hours for **StormHacks 2026**. Entered for MLH **Best Use of Gemini 
 - **Gemini** is the brain: it decides what the app does next (function calling), reads your
   fridge and your plate (vision with structured JSON), estimates nutrition from a photo or a
   sentence ("chicken wrap and a latte"), and moderates Social posts.
-- **ElevenLabs** is the voice: three sous-chef personas (Maya, Leo, Nova), streamed with a
-  low-latency model, in tap-to-talk or hands-free conversation mode.
-- **Spoonacular** supplies real recipes, cached locally so the demo never depends on quota.
+- **ElevenLabs** is the voice: four sous-chef personas (Maya, Leo, Nova, Brock), each a mascot
+  with its own voice, streamed with a low-latency model, in tap-to-talk or hands-free
+  conversation mode.
+- **Recipes** come from a bundled catalog of the 10 dishes in the design, stored in
+  Spoonacular's recipe format with credited photos. Live Spoonacular search is wired in for when
+  a key is set.
 
 The app is a phone-shaped Next.js web app: a 390x844 phone frame on desktop, full screen on a
-phone. The UI follows the team's Figma file *Sous — MVP concept screens*. Four tabs:
-**Planner | Home | Diary | Me**, plus a floating voice orb.
+phone. The UI follows the team's Figma file *Stormhacks 2026 (Updated)*. Four tabs:
+**Planner | Home | Diary | Me**, plus a floating mascot bubble while a call is running.
 
 ---
 
@@ -24,8 +28,9 @@ phone. The UI follows the team's Figma file *Sous — MVP concept screens*. Four
 
 About 3 minutes. Use desktop Chrome (or a normal Safari tab on iPhone), sound on, allow the mic.
 
-1. **Home.** Open settings and tap **Reset demo data** if anyone has played with the app.
-   Under **Pick your sous-chef**, choose Maya, Leo or Nova (remembered across reloads).
+1. **Home.** Tap **Settings** (bottom of Home) and **Reset demo data** if anyone has played
+   with the app. Under **Who's cooking with you?**, choose Maya, Leo, Nova or Brock; each one
+   greets you in their own voice (remembered across reloads).
 2. Tap **Start talking** and say: *"I'm wiped, I have no idea what to cook."*
    Sous answers out loud and calls `open_fridge_camera`: the app jumps to the fridge scan.
 3. Tap **Use sample photo**. Gemini lists the ingredients it sees as **editable chips**: remove
@@ -70,22 +75,25 @@ If the wifi is bad, keep going: every step has an offline fallback (see below).
 
 | What | Where |
 | --- | --- |
-| **Three personas** from the design (Maya warm, Leo calm, Nova upbeat), each an ElevenLabs premade voice; the assistant is labelled with the persona's name everywhere. Picking one plays an in-character greeting recorded with `eleven_v4` (`npm run voices`), so it's instant and works offline. | `lib/voice/personas.ts`, `public/voices` |
+| **Four personas** from the design (Maya the tomato, warm; Leo the avocado, calm, the default; Nova the lemon, upbeat; Brock the broccoli, a protein-minded coach), each an ElevenLabs premade voice with its own mascot, colour and speaking style in the chat prompt. Picking one plays an in-character greeting recorded with `eleven_v4` (`npm run voices`), so it's instant and works offline. | `lib/voice/personas.ts`, `public/voices`, `components/mascot` |
 | **Streaming TTS proxy** with `eleven_flash_v2_5`, with first-byte and total timeouts so it can never hang. The key stays on the server. | `app/api/tts`, `lib/server/elevenlabs.ts` |
 | **Hands-free conversation mode**: after Sous speaks, the mic reopens on its own (never while audio plays, so Sous doesn't hear itself) and stops after a few silent rounds. | `lib/voice/engine.ts` |
 | **Browser-voice fallback**: if ElevenLabs fails or is rate limited, Sous keeps talking with `speechSynthesis`. | `lib/voice/audio.ts` |
 
 ### Everything else
 
-- **Voice engine**: tap-to-talk or hands-free, barge-in by tapping the orb, type instead of
+- **Voice engine**: tap-to-talk or hands-free, barge-in by tapping the mascot, type instead of
   talking, protection against stale responses. Speech-to-text is the browser's Web Speech API.
   Instant "next / back / repeat" in cooking mode without a network round trip. `lib/voice/*`
-- **Docked bubble**: minimize Sous into a draggable orb over a simulated phone home screen; it
-  keeps listening and shows captions, and a Live Activity card shows the call and the current
-  recipe step (inspired by the design's lock-screen frame). Drag the bubble onto the ✕ to hang up.
+- **Mascot call screen**: the chosen mascot on soft rings in its colour, with idle, listening,
+  thinking and speaking states. It follows the phone: white in light mode, black in dark mode.
+- **Docked bubble**: minimize Sous into a draggable mascot bubble over a simulated phone home
+  screen; it keeps listening and shows captions, and a Live Activity card shows the call and the
+  current recipe step. Drag the bubble onto the ✕ to hang up.
 - **Cooking mode**: step list with the current step expanded, spoken steps, timers detected from
-  step text, video tutorial cards. `app/ai/cook/[id]`
-- **Groceries**: Need / Have checklist for a recipe, add items, nearby stores. `app/ai/groceries/[id]`
+  step text, technique tutorials ("How to dice an onion") and video cards. `app/ai/cook/[id]`
+- **Groceries**: Need / Have checklist for a recipe, add items, two nearby stores with price
+  estimates (demo values). `app/ai/groceries/[id]`
 - **Planner**: search with voice input, filters, Most popular (from Social upvotes), recently
   made, ingredient combinations and similar recipes. `app/planner`
 - **Nutrient tracking**: 15 nutrients with daily targets (calories, protein, carbs, fat, fiber,
@@ -107,19 +115,23 @@ motion, lucide-react, `@google/genai`. No database: state lives in the browser
 
 ### Design system
 
-All visual values come from the Figma file (which has no Figma variables) and live as tokens in
-`app/globals.css`: cream `#fbf8f3` background, `#ece6dc` lines, forest green `#2f5d46` as the
-brand color, orange `#e0603a` for voice actions, amber `#e9a93a`, plus a type scale and radii.
-Fonts are DM Sans (body, optical size 14) and Fraunces (headings, SOFT 0 / WONK 1). Exported
-Figma icons and illustrations are in `public/figma/`. Shared primitives are in `components/ui/`.
+All visual values come from the Figma file and its "Design rules v1" frame, and live as tokens
+in `app/globals.css`. Each mascot gives the palette a colour: Leo avocado `#3d6b2e` is the
+primary (buttons, active tabs, protein), Nova lemon `#d9ac3e` is carbs, Maya tomato `#d8604a` is
+fat and warnings, plus info blue `#5f85b2`, ink `#1e1d1a` and a cream `#fbf8f3` background. The
+chosen voice tints the AI surfaces (call rings, avatars, speaker label). Headings use Bricolage
+Grotesque SemiBold, body text DM Sans. The mascot art (`public/mascots/<persona>/`) is drawn by
+`components/mascot/Mascot.tsx`: `MascotAvatar` (head in a soft circle, 24–64 px), `MascotFigure`
+(full body, 120 px and up) and `SousLogo`. Exported Figma assets are in `public/figma/v2/`.
+Shared primitives are in `components/ui/`.
 
 ### Screens
 
 | Route | Screen |
 | --- | --- |
 | `/` | Redirects to `/ai` |
-| `/ai` | Home: greeting, persona picker, Start talking, things to try |
-| `/ai/talk` | Live call (dark screen): orb, transcript, quick actions, Pause / Type / End, hands-free toggle; Type switches to the light chat view |
+| `/ai` | Home: logo, greeting, "Who's cooking with you?" persona picker, Start talking, things to try, Settings |
+| `/ai/talk` | Live call: the mascot on soft rings (white, or black in dark mode), transcript, quick actions, Pause / Type / End, hands-free toggle; Type switches to the chat view |
 | `/ai/fridge` | Fridge scan -> editable ingredient chips |
 | `/ai/recipes` | Recipes ranked by fridge match |
 | `/ai/cook/[id]` | Cooking mode |
@@ -128,8 +140,8 @@ Figma icons and illustrations are in `public/figma/`. Shared primitives are in `
 | `/planner` | Meal planner and search (`/ai/plan` redirects here) |
 | `/diary`, `/diary/[date]` | Daily diary (today, or a date): energy rings, meals, log by voice, nutrient breakdown |
 | `/diary/calendar` | Month calendar: on target / over / partial days, day card, logging streak |
-| `/me` | Personal stats: weekly averages, energy targets, activity, Community (Social) |
-| `/me/nutrients` | Highlighted nutrients: weekly averages vs targets, Sous tip ("Plan it for me") |
+| `/me` | Personal stats: weekly averages, macros, activity, Community (Social) |
+| `/me/nutrients` | Highlighted nutrients: weekly averages vs targets, a tip from your sous-chef ("Sure" opens matching recipes) |
 | `/social`, `/social/new`, `/social/u/[handle]` | Feed, composer, profiles |
 
 ### API routes
@@ -160,23 +172,21 @@ keys or images, and answer with a usable fallback instead of a bare 500.
 | `useDiary` | Diary entries (seeded history + your logged meals) | yes |
 | `useSocial` | Posts, upvotes, follows, share draft | yes |
 
-### Recipe cache and seed script
+### Recipe catalog and seed script
 
 Spoonacular's free plan is 50 points/day, so the app ships its own catalog: `data/recipes.json`
-holds trimmed Spoonacular recipe objects (including nutrition), normalized at runtime by
-`lib/recipes/normalize.ts` exactly like live responses. Live calls only happen when a key is set
-and `SOUS_FORCE_CACHE` is not `1`; any error falls back to the catalog.
+holds the 10 dishes from the design (ids 910001–910010, from Chicken Tikka Bowl to Beef & Rice
+Skillet) as Spoonacular-format recipe objects with full nutrition, normalized at runtime by
+`lib/recipes/normalize.ts` exactly like live responses. Each one links its source recipe and has
+a credited photo (`public/recipes/`); ingredient photos are in `public/ingredients/`, and every
+photo is credited in [`public/CREDITS.md`](public/CREDITS.md). YouTube tutorials are mapped by
+recipe id in `data/youtube.json`. Live Spoonacular calls only happen when a key is set and
+`SOUS_FORCE_CACHE` is not `1`; any error falls back to the catalog.
 
-`npm run seed` (`scripts/seed-recipes.mjs`, no dependencies) rebuilds the catalog from 7
-searches (chicken, beef, salmon, eggs, rice, pasta, vegetables), about 21 recipes for roughly
-**23 points**. It runs requests one at a time, prints the quota headers, and never overwrites the
-cache on a bad key, exhausted quota, rate limit or network error. `npm run seed -- --dry-run`
-shows the plan and cost without any requests.
-
-Until the seed runs, the catalog has 3 placeholder recipes with a drawn image, so **run it before
-demo day**. Then restart `npm run dev` (the catalog is bundled at build time), commit
-`data/recipes.json`, and tap **Reset demo data** once. Optional YouTube tutorials are mapped by
-recipe id in `data/youtube.json`.
+`npm run seed` (`scripts/seed-recipes.mjs`, no dependencies) **replaces** the catalog with about
+21 live Spoonacular recipes from 7 searches (roughly 23 points). Only run it if you want live
+data instead of the design's dishes. It never overwrites the cache on a bad key, exhausted quota,
+rate limit or network error, and `npm run seed -- --dry-run` shows the plan without requests.
 
 ---
 
@@ -187,7 +197,6 @@ Requires **Node.js 20.9+**.
 ```bash
 npm install
 cp .env.example .env.local   # then add your keys
-npm run seed                 # recommended: real recipes (needs a Spoonacular key)
 npm run voices               # optional: re-record the persona greetings (already committed)
 npm run dev                  # http://localhost:3000
 ```
@@ -214,15 +223,14 @@ All are read on the server only. **Never prefix them with `NEXT_PUBLIC_`.**
 | `GEMINI_CHAT_MODEL` | no | chain: `gemini-3.5-flash-lite`, `gemini-3.1-flash-lite`, `gemini-3.6-flash` | Put a model first in the chat chain |
 | `GEMINI_VISION_MODEL` | no | chain: `gemini-3.8-flash`, `gemini-3.6-flash`, `gemini-3.5-flash-lite`, `gemini-3.7-flash` | Put a model first in the vision chain |
 | `ELEVENLABS_MODEL_ID` | no | `eleven_flash_v2_5` | TTS model |
-| `ELEVENLABS_DEFAULT_VOICE_ID` | no | Maya's voice | Voice before a persona is picked |
+| `ELEVENLABS_DEFAULT_VOICE_ID` | no | Leo's voice | Voice before a persona is picked |
 | `SOUS_FORCE_CACHE` | no | `0` | `1` = never call Spoonacular |
 
 ---
 
 ## Deploy to Vercel
 
-1. Run `npm run seed` locally and commit `data/recipes.json`, then push the repo to GitHub
-   (`.env.local` is git-ignored; only `.env.example` is committed).
+1. Push the repo to GitHub (`.env.local` is git-ignored; only `.env.example` is committed).
 2. In Vercel, **Add New -> Project** and import the repo; keep the detected Next.js settings.
 3. Under **Settings -> Environment Variables**, add `GEMINI_API_KEY`, `ELEVENLABS_API_KEY` and
    optionally `SPOONACULAR_API_KEY` / the overrides above, for **Production** and **Preview**.
@@ -237,7 +245,7 @@ All are read on the server only. **Never prefix them with `NEXT_PUBLIC_`.**
 - Use **desktop Chrome** or a **normal iOS Safari tab**. Avoid Edge, Brave and home-screen (PWA)
   mode: their speech recognition is unreliable. iOS Safari may need a tap per turn even in
   hands-free mode; the app falls back to tap-to-talk and says so.
-- Tap **Reset demo data** (Home -> settings) before presenting.
+- Tap **Reset demo data** (Home -> Settings) before presenting.
 - Set `SOUS_FORCE_CACHE=1` to save Spoonacular quota; the bundled catalog covers the demo path.
 - Every API has a fallback (see the table): no key, a Gemini 503, a slow ElevenLabs or no network
   all degrade to canned data or the browser voice instead of an error screen.
@@ -248,13 +256,16 @@ All are read on the server only. **Never prefix them with `NEXT_PUBLIC_`.**
 
 ## Credits
 
-- UI design: the team's Figma file *Sous — MVP concept screens*; icons and illustrations exported
-  from it.
-- Recipe data and images: [Spoonacular API](https://spoonacular.com/food-api) (backlink on recipe
-  screens); each recipe credits and links its original source.
-- Sample fridge photo: **Ello** on [Unsplash](https://unsplash.com/photos/AEU9UZstCfs), Unsplash
-  License. Full list in [`public/CREDITS.md`](public/CREDITS.md).
+- UI design and mascots (Maya, Leo, Nova, Brock): the team's Figma file *Stormhacks 2026
+  (Updated)*; icons, mascot art and illustrations exported from it.
+- Recipes: each catalog dish credits and links its original source recipe. Live recipes, when a
+  key is set, come from the [Spoonacular API](https://spoonacular.com/food-api) with its backlink.
+- Photos: 19 dish, ingredient and store photos from [Wikimedia Commons](https://commons.wikimedia.org)
+  and the sample fridge photo by **Ello** on [Unsplash](https://unsplash.com/photos/AEU9UZstCfs),
+  all credited in [`public/CREDITS.md`](public/CREDITS.md); dish and store photos are also
+  credited on screen.
 - Avatars: [DiceBear](https://www.dicebear.com) **Notionists** style by Zoish, CC0 1.0.
-- Fonts: DM Sans (Colophon Foundry) and Fraunces (Undercase Type), SIL Open Font License 1.1.
+- Fonts: Bricolage Grotesque (Mathieu Triay) and DM Sans (Colophon Foundry), SIL Open Font
+  License 1.1.
 - Icons: [Lucide](https://lucide.dev), ISC, alongside the Figma exports.
 - AI: Google Gemini API; voice: ElevenLabs.
