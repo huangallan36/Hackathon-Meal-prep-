@@ -360,6 +360,7 @@ const CANNED: Record<SousActionName, string> = {
   next_step: "Okay.",
   previous_step: "Okay.",
   repeat_step: "Okay.",
+  log_food: "Got it. I logged that to your diary.",
 };
 
 const isStep = (name: SousActionName): name is StepActionName => (STEP_ACTIONS as readonly string[]).includes(name);

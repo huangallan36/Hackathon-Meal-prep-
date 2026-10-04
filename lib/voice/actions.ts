@@ -158,6 +158,9 @@ async function applyOne(action: SousAction): Promise<string | null> {
       return previousStep();
     case "repeat_step":
       return repeatStep();
+    case "log_food":
+      // Placeholder until spoken food logging is wired up (the server never sends it yet).
+      return null;
   }
 }
 

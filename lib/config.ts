@@ -5,6 +5,9 @@ export const APP_NAME = "Sous";
 /** The single hardcoded demo user */
 export const DEMO_USER = {
   name: "Alex",
+  fullName: "Alex Rivera",
+  /** Shown under the name on the Me tab: "Goal: lean bulk · 2,200 kcal" */
+  goal: "lean bulk",
   handle: "alex.cooks",
   avatar: "/avatars/alex.svg",
   bio: "Engineer by day, slightly chaotic home cook by night. Learning one recipe at a time.",
@@ -17,14 +20,16 @@ export const storageKey = (name: string) => `sous:${STORAGE_VERSION}:${name}`;
 
 /** Default daily targets for the Diary tab */
 export const DEFAULT_GOALS = {
-  calories: 2100,
-  protein: 120,
+  calories: 2200,
+  protein: 150,
   carbs: 240,
   fat: 70,
   fiber: 30,
   iron: 18,
   calcium: 1000,
   vitaminA: 900,
+  vitaminC: 90,
+  sodium: 2300,
 } as const;
 
 /** Client-side timeouts (ms). Server routes have their own, shorter, upstream timeouts. */

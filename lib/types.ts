@@ -47,6 +47,10 @@ export interface Micros {
   calcium: number;
   /** micrograms RAE */
   vitaminA: number;
+  /** mg (Figma 3.2 highlighted nutrients) */
+  vitaminC?: number;
+  /** mg (Figma 3.2 highlighted nutrients; over target is bad) */
+  sodium?: number;
 }
 
 export interface Recipe {
@@ -168,11 +172,25 @@ export type SousActionName =
   | "log_meal"
   | "next_step"
   | "previous_step"
-  | "repeat_step";
+  | "repeat_step"
+  /** Log foods described by voice ("log my lunch: chicken wrap and a latte"); Gemini estimates the numbers */
+  | "log_food";
+
+/** One food item Gemini estimated from a spoken description */
+export interface SpokenFood {
+  name: string;
+  /** e.g. "1 wrap", "12 oz" */
+  portion: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+}
 
 export interface SousAction {
   name: SousActionName;
-  args?: { recipeId?: number };
+  args?: { recipeId?: number; meal?: MealType; items?: SpokenFood[] };
 }
 
 export interface ChatTurn {
@@ -185,6 +203,8 @@ export interface ChatContext {
   /** Current pathname, e.g. "/ai/cook/123" */
   screen: string;
   userName: string;
+  /** Selected voice persona's name ("Maya", "Leo", "Nova"); the assistant speaks as this persona */
+  assistantName?: string;
   ingredients: string[];
   /** Recipes currently on screen / last suggested */
   recipes: { id: number; title: string; readyInMinutes: number; missing: string[] }[];
