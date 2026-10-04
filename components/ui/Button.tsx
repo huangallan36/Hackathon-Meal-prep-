@@ -5,23 +5,26 @@ import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Spinner } from "./Spinner";
 
-type Variant = "primary" | "secondary" | "soft" | "ghost" | "danger";
+type Variant = "primary" | "secondary" | "soft" | "ghost" | "danger" | "voice";
 type Size = "sm" | "md" | "lg";
 
 const base =
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-pill font-semibold transition-[transform,background-color,box-shadow,opacity] duration-200 active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-cream";
 
+/** Figma: flat pills, no shadows. Primary is forest green; voice actions are orange. */
 const variants: Record<Variant, string> = {
-  primary: "bg-accent text-white shadow-accent hover:bg-accent-strong",
+  primary: "bg-accent text-white hover:bg-accent-strong",
   secondary: "bg-surface text-ink shadow-card hover:bg-cream-deep",
-  soft: "bg-accent-soft text-accent-strong hover:bg-[#ffd6c7]",
+  soft: "bg-accent-soft text-accent hover:bg-[#d5e6da]",
   ghost: "bg-transparent text-ink-soft hover:bg-cream-deep",
-  danger: "bg-danger text-white hover:opacity-90",
+  danger: "bg-flame text-white hover:opacity-90",
+  voice: "bg-flame text-white hover:opacity-90",
 };
 
+/** Figma heights: small 30 (12px label), medium 48, large 56 ("Start talking", 16px label) */
 const sizes: Record<Size, string> = {
-  sm: "h-9 px-4 text-sm",
-  md: "h-12 px-5 text-[15px]",
+  sm: "h-[30px] px-3.5 text-xs",
+  md: "h-12 px-5 text-body",
   lg: "h-14 px-7 text-base",
 };
 
@@ -87,7 +90,8 @@ export function IconButton({
       aria-label={label}
       title={label}
       className={cn(
-        "inline-flex size-11 items-center justify-center rounded-full bg-surface text-ink shadow-soft transition active:scale-95 hover:bg-cream-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+        // Figma header buttons: 40px white circles with no border; the ::after keeps a 48px tap target.
+        "relative inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-surface text-ink transition after:absolute after:-inset-1 after:content-[''] active:scale-95 hover:bg-cream-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
         className,
       )}
       {...rest}

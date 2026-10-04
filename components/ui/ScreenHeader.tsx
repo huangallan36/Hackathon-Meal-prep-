@@ -7,16 +7,22 @@ import { cn } from "@/lib/utils";
 import { IconButton } from "./Button";
 
 /**
- * Sticky screen header. `back` = true uses history; a string navigates to that path.
+ * Figma header bar (2.3, 2.4, 3.2–3.4): a 40px white circle back button on the left,
+ * an optional right button, and an optional centred title (Fraunces 17) with a small
+ * eyebrow above or a subtitle below. Large left-aligned page titles are separate
+ * (see PageTitle) and sit under this bar.
+ * `back` = true uses history; a string navigates to that path.
  */
 export function ScreenHeader({
   title,
+  eyebrow,
   subtitle,
   back,
   right,
   className,
 }: {
   title?: ReactNode;
+  eyebrow?: ReactNode;
   subtitle?: ReactNode;
   back?: boolean | string;
   right?: ReactNode;
@@ -26,24 +32,41 @@ export function ScreenHeader({
   return (
     <header
       className={cn(
-        "sticky top-0 z-20 flex items-center gap-3 bg-cream/85 px-4 pb-3 pt-[calc(var(--safe-top)+14px)] backdrop-blur-md",
+        "sticky top-0 z-20 grid grid-cols-[40px_1fr_40px] items-center gap-3 bg-cream/90 px-5 pb-2 pt-[calc(var(--safe-top)+6px)] backdrop-blur-md",
         className,
       )}
     >
-      {back && (
-        <IconButton
-          label="Back"
-          onClick={() => (typeof back === "string" ? router.push(back) : router.back())}
-          className="shrink-0"
-        >
-          <ChevronLeft className="size-5" />
-        </IconButton>
-      )}
-      <div className="min-w-0 flex-1">
-        {title && <h1 className="truncate font-display text-[22px] font-semibold leading-tight text-ink">{title}</h1>}
-        {subtitle && <p className="truncate text-sm text-ink-soft">{subtitle}</p>}
+      <div className="flex">
+        {back && (
+          <IconButton label="Back" onClick={() => (typeof back === "string" ? router.push(back) : router.back())}>
+            <ChevronLeft className="size-5" strokeWidth={2} />
+          </IconButton>
+        )}
       </div>
-      {right && <div className="flex shrink-0 items-center gap-2">{right}</div>}
+      <div className="min-w-0 text-center">
+        {eyebrow && <p className="truncate text-xs font-medium tracking-[0.06em] text-ink-soft">{eyebrow}</p>}
+        {title && <h1 className="truncate font-display text-lead font-semibold leading-tight text-ink">{title}</h1>}
+        {subtitle && <p className="truncate text-xs text-ink-soft">{subtitle}</p>}
+      </div>
+      <div className="flex justify-end">{right}</div>
     </header>
+  );
+}
+
+/** Figma large page title ("Meal planner", "Groceries"): Fraunces 30 with an optional line below */
+export function PageTitle({
+  title,
+  subtitle,
+  className,
+}: {
+  title: ReactNode;
+  subtitle?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("px-5", className)}>
+      <h1 className="font-display text-title font-semibold leading-tight text-ink">{title}</h1>
+      {subtitle && <p className="mt-1 text-meta text-ink-soft">{subtitle}</p>}
+    </div>
   );
 }

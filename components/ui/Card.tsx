@@ -7,10 +7,10 @@ export function Card({ className, ...rest }: ComponentProps<"div">) {
 
 /** Small uppercase label above a section */
 export function SectionLabel({ className, ...rest }: ComponentProps<"h2">) {
-  return <h2 className={cn("text-xs font-semibold uppercase tracking-[0.12em] text-ink-faint", className)} {...rest} />;
+  return <h2 className={cn("text-xs font-semibold uppercase tracking-[0.08em] text-ink-soft", className)} {...rest} />;
 }
 
-/** Section header with optional right-aligned action ("See all") */
+/** Figma section header: Fraunces 18 title, optional right-aligned link ("See all", "Map") */
 export function SectionHeader({
   title,
   action,
@@ -21,8 +21,8 @@ export function SectionHeader({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-end justify-between gap-3", className)}>
-      <h2 className="font-display text-xl font-semibold text-ink">{title}</h2>
+    <div className={cn("flex items-center justify-between gap-3", className)}>
+      <h2 className="font-display text-section font-semibold text-ink">{title}</h2>
       {action}
     </div>
   );

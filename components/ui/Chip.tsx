@@ -4,13 +4,16 @@ import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-type Tone = "neutral" | "accent" | "herb" | "butter";
+type Tone = "neutral" | "selected" | "accent" | "herb" | "butter" | "flame";
 
+/** Figma chips: white with a 1px line; selected = ink fill; tinted tones for status/macros */
 const tones: Record<Tone, string> = {
   neutral: "bg-surface text-ink border border-line",
-  accent: "bg-accent-soft text-accent-strong",
+  selected: "bg-ink text-white",
+  accent: "bg-accent-soft text-accent",
   herb: "bg-herb-soft text-herb",
-  butter: "bg-butter-soft text-[#8a6410]",
+  butter: "bg-butter-soft text-butter-ink",
+  flame: "bg-flame-soft text-flame",
 };
 
 export function Chip({
@@ -33,7 +36,7 @@ export function Chip({
     <Tag
       {...(onClick ? { type: "button" as const, onClick } : {})}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-sm font-medium animate-pop",
+        "inline-flex items-center gap-1.5 rounded-pill px-3 py-[7px] text-meta font-medium animate-pop",
         tones[tone],
         onClick && "active:scale-95 transition",
         className,

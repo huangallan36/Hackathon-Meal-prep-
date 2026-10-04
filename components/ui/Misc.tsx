@@ -21,7 +21,7 @@ export function EmptyState({
   return (
     <div className={cn("flex flex-col items-center gap-3 px-6 py-10 text-center", className)}>
       {icon && <div className="flex size-14 items-center justify-center rounded-full bg-accent-soft text-accent">{icon}</div>}
-      <h3 className="font-display text-lg font-semibold text-ink">{title}</h3>
+      <h3 className="font-display text-section font-semibold text-ink">{title}</h3>
       {body && <p className="max-w-[260px] text-sm text-ink-soft">{body}</p>}
       {action}
     </div>
@@ -32,7 +32,7 @@ export function EmptyState({
 export function FallbackNote({ show, children = "Offline mode: showing saved results" }: { show: boolean; children?: ReactNode }) {
   if (!show) return null;
   return (
-    <p className="inline-flex items-center gap-1.5 rounded-pill bg-butter-soft px-3 py-1 text-xs font-medium text-[#8a6410]">
+    <p className="inline-flex items-center gap-1.5 rounded-pill bg-butter-soft px-3 py-1 text-xs font-medium text-butter-ink">
       <WifiOff className="size-3.5" />
       {children}
     </p>

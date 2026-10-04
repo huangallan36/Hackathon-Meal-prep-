@@ -1,55 +1,85 @@
 @import "tailwindcss";
 
 /*
- * Sous design tokens. Everything visual hangs off these, so restyling to the
- * Figma file is a token swap. Tailwind v4 turns each token into utilities:
+ * Sous design tokens, taken from the Figma file "Sous — MVP concept screens".
+ * The file has no Figma variables, so these are its raw values, deduplicated.
+ * Tailwind v4 turns each token into utilities:
  *   --color-accent  -> bg-accent / text-accent / border-accent / ring-accent
  *   --radius-card   -> rounded-card
  *   --shadow-card   -> shadow-card
- *   --font-display  -> font-display
+ *   --text-title    -> text-title
  */
 @theme {
   /* Surfaces */
-  --color-cream: #fff8f0;
-  --color-cream-deep: #fbefe2;
-  --color-surface: #ffffff;
-  --color-line: #efe4d8;
+  --color-cream: #fbf8f3; /* page background */
+  --color-cream-deep: #efeae1; /* sunken: segmented track, clear button, skeletons */
+  --color-surface: #ffffff; /* cards, tab bar, header buttons, chips */
+  --color-line: #ece6dc; /* 1px borders, dividers, ring + bar tracks */
+  --color-line-strong: #c9c3b8; /* unchecked checkbox */
 
   /* Text */
-  --color-ink: #1f1a17;
-  --color-ink-soft: #6b625c;
-  --color-ink-faint: #a39a93;
+  --color-ink: #1e1d1a;
+  --color-ink-soft: #7a766e;
+  --color-ink-faint: #a9a49b; /* placeholder, inactive tab */
+  --color-ink-mute: #b3aea5; /* disabled, row chevrons */
 
-  /* The one strong accent (tomato) */
-  --color-accent: #f2542d;
-  --color-accent-strong: #d9431e;
-  --color-accent-soft: #ffe4d9;
+  /* Brand: forest green (primary buttons, links, active states) */
+  --color-accent: #2f5d46;
+  --color-accent-strong: #24493a;
+  --color-accent-soft: #e2ede5;
 
-  /* Supporting */
-  --color-herb: #3f8f5b;
-  --color-herb-soft: #e2f2e7;
-  --color-butter: #f6c350;
-  --color-butter-soft: #fff3d1;
-  --color-danger: #d64545;
+  /* Voice / warm accent: orange (orb, end call, voice CTAs, low + over) */
+  --color-flame: #e0603a;
+  --color-flame-soft: #fbe5dc;
+
+  /* Amber (current step, carbs, "a bit low") and butter tints */
+  --color-butter: #e9a93a;
+  --color-butter-soft: #fbf0d9;
+  --color-butter-ink: #8a5a0b;
+
+  /* Blue (Nova voice, sleep) */
+  --color-sky: #4f7fb8;
+  --color-sky-soft: #e9eff6;
+
+  /* Status aliases */
+  --color-herb: #2f5d46; /* on track */
+  --color-herb-soft: #e2ede5;
+  --color-danger: #e0603a;
+  --color-live: #7bd88f; /* "Live" dot on the call screen */
+
+  /* Dark call screen (1.2) */
+  --color-call-top: #24493a;
+  --color-call-bottom: #11231b;
 
   /* Nutrition */
-  --color-protein: #e8664a;
-  --color-carbs: #e09a26;
-  --color-fat: #6a8de0;
-  --color-fiber: #4fa36b;
+  --color-protein: #2f5d46;
+  --color-carbs: #e9a93a;
+  --color-fat: #e0603a;
+  --color-fiber: #4f7fb8;
+
+  /* Type scale (Fraunces for display sizes, DM Sans for the rest) */
+  --text-micro: 10px;
+  --text-caption: 11px;
+  --text-meta: 13px;
+  --text-body: 15px;
+  --text-lead: 17px;
+  --text-section: 18px; /* Fraunces section titles: "Most popular" */
+  --text-heading: 22px; /* Fraunces: "Alex Rivera" */
+  --text-title: 30px; /* Fraunces page titles: "Meal planner" */
 
   /* Radii */
-  --radius-card: 24px;
+  --radius-card: 22px;
   --radius-tile: 18px;
+  --radius-thumb: 14px;
   --radius-pill: 999px;
-  --radius-phone: 48px;
+  --radius-phone: 44px;
 
-  /* Shadows */
-  --shadow-soft: 0 6px 24px -10px rgb(70 35 10 / 0.18);
-  --shadow-card: 0 1px 2px rgb(70 35 10 / 0.05), 0 12px 32px -14px rgb(70 35 10 / 0.22);
-  --shadow-lift: 0 18px 40px -16px rgb(70 35 10 / 0.35);
-  --shadow-accent: 0 12px 28px -10px rgb(242 84 45 / 0.55);
-  --shadow-phone: 0 40px 90px -30px rgb(60 30 10 / 0.45), 0 0 0 10px #1f1a17, 0 0 0 11px #3a322d;
+  /* Shadows: the design is flat; cards get a 1px line instead of a drop shadow */
+  --shadow-soft: 0 1px 2px rgb(51 38 26 / 0.05);
+  --shadow-card: 0 0 0 1px var(--color-line);
+  --shadow-lift: 0 -4px 10px rgb(51 38 26 / 0.08), 0 10px 30px -12px rgb(51 38 26 / 0.22);
+  --shadow-accent: 0 0 #0000;
+  --shadow-phone: 0 40px 90px -30px rgb(30 29 26 / 0.45), 0 0 0 10px #1e1d1a, 0 0 0 11px #3a3833;
 
   /* Motion */
   --ease-spring: cubic-bezier(0.22, 1.2, 0.36, 1);
@@ -73,13 +103,13 @@
 
 /* next/font variables are set on <html>; map them into Tailwind's font tokens. */
 @theme inline {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
 }
 
 :root {
   /* Fixed UI measurements shared by the shell and screens */
-  --nav-height: 78px;
+  --nav-height: 64px; /* tab content; + --safe-bottom = Figma's 86px bar on the desktop frame */
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
   color-scheme: light;
@@ -94,6 +124,13 @@ body {
 
 body {
   font-family: var(--font-sans);
+  /* Figma sets DM Sans to optical size 14 everywhere */
+  font-variation-settings: "opsz" 14;
+}
+
+/* Figma sets every Fraunces style to SOFT 0, WONK 1 (optical size stays automatic) */
+.font-display {
+  font-variation-settings: "SOFT" 0, "WONK" 1;
 }
 
 /* Utility classes shared by every screen */
