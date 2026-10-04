@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { FallbackNote, EmptyState } from "@/components/ui/Misc";
 import { SPOONACULAR_BACKLINK } from "@/lib/config";
 import type { PlannerResult } from "@/lib/planner/client";
+import { usePopularRecipes } from "@/lib/planner/hooks";
 import { searchSuggestions } from "@/lib/planner/search";
 import { ingredientMatches } from "@/lib/recipes/catalog";
 import { useKitchen } from "@/lib/stores/kitchen";
@@ -58,35 +59,7 @@ export function ResultsView({
 
   if (total === 0) {
     if (loading) return <ResultsSkeleton />;
-    return (
-      <EmptyState
-        className="mt-6 animate-fade-up"
-        icon={<SearchX className="size-6" />}
-        title={`Nothing for “${query}” yet`}
-        body={filtersActive ? "Try removing a filter, or search for one of these." : "Try an ingredient you have, or one of these."}
-        action={
-          <div className="mt-1 flex flex-col items-center gap-3">
-            <div className="flex flex-wrap justify-center gap-2">
-              {searchSuggestions().map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => onQuery(s)}
-                  className="inline-flex h-11 items-center rounded-pill bg-surface px-4 text-sm font-semibold text-ink ring-1 ring-line transition hover:bg-cream-deep active:scale-95"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-            {filtersActive && (
-              <Button variant="ghost" size="sm" className="h-11" onClick={onClearFilters}>
-                Clear filters
-              </Button>
-            )}
-          </div>
-        }
-      />
-    );
+    return <NoResults query={query} filtersActive={filtersActive} onOpen={onOpen} onQuery={onQuery} onClearFilters={onClearFilters} />;
   }
 
   const matches = visible("matches", data.matches);
@@ -177,5 +150,62 @@ export function ResultsView({
         </PlannerSection>
       )}
     </div>
+  );
+}
+
+/** Nothing found: suggestion chips that are known to hit, plus a few popular recipes so it's never a dead end */
+function NoResults({
+  query,
+  filtersActive,
+  onOpen,
+  onQuery,
+  onClearFilters,
+}: {
+  query: string;
+  filtersActive: boolean;
+  onOpen: (recipe: Recipe) => void;
+  onQuery: (query: string) => void;
+  onClearFilters: () => void;
+}) {
+  const popular = usePopularRecipes(3);
+  return (
+    <>
+      <EmptyState
+        className="mt-6 animate-fade-up pb-4"
+        icon={<SearchX className="size-6" />}
+        title={`Nothing for “${query}” yet`}
+        body={filtersActive ? "Try removing a filter, or search for one of these." : "Try an ingredient you have, or one of these."}
+        action={
+          <div className="mt-1 flex flex-col items-center gap-3">
+            <div className="flex flex-wrap justify-center gap-2">
+              {searchSuggestions().map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => onQuery(s)}
+                  className="inline-flex h-11 items-center rounded-pill bg-surface px-4 text-sm font-semibold text-ink ring-1 ring-line transition hover:bg-cream-deep active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+            {filtersActive && (
+              <Button variant="ghost" size="sm" className="h-11" onClick={onClearFilters}>
+                Clear filters
+              </Button>
+            )}
+          </div>
+        }
+      />
+      {popular.length > 0 && (
+        <PlannerSection id="meanwhile" title="Popular right now" subtitle="While you think it over" className="mt-4">
+          <div className="flex flex-col gap-3">
+            {popular.map((p, i) => (
+              <RecipeRow key={p.recipe.id} recipe={p.recipe} index={i} onOpen={onOpen} />
+            ))}
+          </div>
+        </PlannerSection>
+      )}
+    </>
   );
 }
