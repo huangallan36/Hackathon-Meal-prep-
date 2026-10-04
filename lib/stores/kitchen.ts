@@ -79,7 +79,8 @@ export const useKitchen = create<KitchenState>()(
       cookStartedAt: null,
       finishedRecipeId: null,
       timer: null,
-      recentRecipeIds: [],
+      // Seeded like the diary history: the design's "Recently made" (Beef Teriyaki, Seared Salmon, Harvest Salad)
+      recentRecipeIds: [910004, 910005, 910006],
       groceryChecked: {},
 
       setIngredients: (list, ingredientsSource) =>
